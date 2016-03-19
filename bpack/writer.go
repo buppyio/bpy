@@ -53,7 +53,7 @@ func (w *Writer) writeSlice(v []byte) error {
 func (w *Writer) Add(key string, val []byte) error {
 	_, has := w.keys[key]
 	if has {
-		return errors.New("duplicate key in bpack")
+		return nil
 	}
 	err := w.writeSlice(val)
 	if err != nil {

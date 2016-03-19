@@ -19,7 +19,6 @@ func keycmp(l, r string) bool {
 			return false
 		}
 	}
-
 	for k := range l {
 		if l[k] != r[k] {
 			if l[k] < r[k] {

@@ -1,10 +1,10 @@
 package fs
 
 import (
-	"testing"
-	"reflect"
 	"crypto/sha256"
 	"errors"
+	"reflect"
+	"testing"
 )
 
 type memstore struct {
@@ -29,11 +29,11 @@ func (m *memstore) Put(val []byte) ([32]byte, error) {
 
 func TestDir(t *testing.T) {
 	dir := DirEnts{
-		{Name: "Bar", Size: 4, Mode: 5, ModTime: 6, Data: [32]byte{1,2,3,4}},
-		{Name: "Foo", Size: 0xffffff, Mode: 0xffffff, ModTime: 0xffff, },
+		{Name: "Bar", Size: 4, Mode: 5, ModTime: 6, Data: [32]byte{1, 2, 3, 4}},
+		{Name: "Foo", Size: 0xffffff, Mode: 0xffffff, ModTime: 0xffff},
 	}
 	store := &memstore{vals: make(map[string][]byte)}
-	
+
 	hash, err := WriteDir(store, dir)
 	if err != nil {
 		t.Fatal(err)
