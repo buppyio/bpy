@@ -1,40 +1,19 @@
 package htree
 
 import (
+	"acha.ninja/bpy/testhelp"
 	"bytes"
-	"crypto/sha256"
-	"errors"
 	"io"
 	"math/rand"
 	"testing"
 )
 
-type memstore struct {
-	vals map[string][]byte
-}
-
-func (m *memstore) Get(hash [32]byte) ([]byte, error) {
-	val, ok := m.vals[string(hash[:])]
-	if !ok {
-		return nil, errors.New("hash not found in store")
-	}
-	return val, nil
-}
-
-func (m *memstore) Put(val []byte) ([32]byte, error) {
-	hash := sha256.Sum256(val)
-	valcpy := make([]byte, len(val), len(val))
-	copy(valcpy, val)
-	m.vals[string(hash[:])] = valcpy
-	return hash, nil
-}
-
 func TestHTree(t *testing.T) {
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 25; i++ {
 		var randbytes bytes.Buffer
 		var readbytes bytes.Buffer
 
-		store := &memstore{vals: make(map[string][]byte)}
+		store := testhelp.NewMemStore()
 		rand := rand.New(rand.NewSource(int64(i + 100)))
 		random := &io.LimitedReader{N: int64(rand.Int31() % 5 * 1024 * 1024), R: rand}
 		_, err := io.Copy(&randbytes, random)

@@ -30,10 +30,6 @@ func hostFileToHashTree(store bpy.CStore, path string) ([32]byte, error) {
 }
 
 func CpHostDirToFs(store bpy.CStore, path string) ([32]byte, error) {
-	stat, err := os.Stat(path)
-	if err != nil {
-		return [32]byte{}, err
-	}
 	ents, err := ioutil.ReadDir(path)
 	if err != nil {
 		return [32]byte{}, err
@@ -49,7 +45,8 @@ func CpHostDirToFs(store bpy.CStore, path string) ([32]byte, error) {
 			dir = append(dir, fs.DirEnt{
 				Name: e.Name(),
 				Data: hash,
-				Size: stat.Size(),
+				Size: e.Size(),
+				Mode: e.Mode(),
 			})
 		case e.IsDir():
 			hash, err := CpHostDirToFs(store, filepath.Join(path, e.Name()))
@@ -58,6 +55,7 @@ func CpHostDirToFs(store bpy.CStore, path string) ([32]byte, error) {
 			}
 			dir = append(dir, fs.DirEnt{
 				Name: e.Name(),
+				Mode: e.Mode(),
 				Data: hash,
 			})
 		}

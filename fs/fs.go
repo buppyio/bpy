@@ -83,8 +83,9 @@ func ReadDir(store bpy.CStore, hash [32]byte) (DirEnts, error) {
 	for len(dirdata) != 0 {
 		var hash [32]byte
 		namelen := int(binary.LittleEndian.Uint16(dirdata[0:2]))
-		name := string(dirdata[2 : 2+namelen])
-		dirdata = dirdata[2+namelen:]
+		dirdata = dirdata[2:]
+		name := string(dirdata[0:namelen])
+		dirdata = dirdata[namelen:]
 		size := int64(binary.LittleEndian.Uint64(dirdata[0:8]))
 		dirdata = dirdata[8:]
 		mode := os.FileMode(binary.LittleEndian.Uint32(dirdata[0:4]))
