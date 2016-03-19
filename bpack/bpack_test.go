@@ -36,6 +36,7 @@ func TestBpack(t *testing.T) {
 	w.Add("", []byte("b"))
 	w.Add("c", []byte(""))
 	w.Add("test", []byte("vector"))
+	w.Add("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", []byte("zzz"))
 	err = w.Close()
 	if err != nil {
 		t.Fatal(err)
@@ -45,20 +46,27 @@ func TestBpack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	v, _, _ := r.Get("")
-	if string(v) != "b" {
+	v, _, err := r.Get("")
+	if string(v) != "b" || err != nil {
 		t.Fatal("Get failed", v)
 	}
-	v, _, _ = r.Get("c")
-	if string(v) != "" {
+	v, _, err = r.Get("c")
+	if string(v) != "" || err != nil {
 		t.Fatal("Get failed", v)
 	}
-	v, _, _ = r.Get("test")
-	if string(v) != "vector" {
+	v, _, err = r.Get("test")
+	if string(v) != "vector" || err != nil {
 		t.Fatal("Get failed", v)
 	}
-	_, ok, _ := r.Get("nothing")
-	if ok != false {
-		t.Fatal("Get succeeded?")
+	v, _, err = r.Get("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+	if string(v) != "zzz" || err != nil {
+		t.Fatal("Get failed", v)
+	}
+	v, ok, err := r.Get("nothing")
+	if err != nil {
+		t.Fatal("Get failed", err)
+	}
+	if ok == true {
+		t.Fatal("Get succeeded?", v)
 	}
 }

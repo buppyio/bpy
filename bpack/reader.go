@@ -24,7 +24,7 @@ func (r *Reader) Get(key string) ([]byte, bool, error) {
 		}
 		return keycmp(key, r.index[i].Key)
 	})
-	if idx >= len(r.index) {
+	if idx == len(r.index) || key != r.index[idx].Key {
 		return nil, false, nil
 	}
 	off := r.index[idx].Offset

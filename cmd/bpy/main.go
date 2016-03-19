@@ -76,13 +76,17 @@ func get() {
 		panic(err)
 	}
 	r := bpack.NewReader(f)
+	err = r.ReadIndex()
+	if err != nil {
+		panic(err)
+	}
 	store := &rstore{pack: r}
 	hbytes, err := hex.DecodeString(os.Args[3])
 	if err != nil {
 		panic(err)
 	}
 	copy(hash[:], hbytes)
-	err = fsutil.CpFsDirToHost(store, hash, os.Args[4], 0666)
+	err = fsutil.CpFsDirToHost(store, hash, os.Args[4], 0755)
 	if err != nil {
 		panic(err)
 	}
