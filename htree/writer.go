@@ -11,9 +11,11 @@ type Writer struct {
 }
 
 func NewWriter(store bpy.CStore) *Writer {
-	return &Writer{
+	w := &Writer{
 		store: store,
 	}
+	w.nbytes[0] = 1
+	return w
 }
 
 func (w *Writer) Write(buf []byte) (int, error) {
@@ -29,9 +31,7 @@ func (w *Writer) Write(buf []byte) (int, error) {
 			w.nbytes[0] = 1
 			continue
 		}
-		for i := 0; i < n; i++ {
-			w.lvls[0][w.nbytes[0]+i] = buf[i]
-		}
+		copy(w.lvls[0][w.nbytes[0]:maxlen], buf)
 		w.nbytes[0] += n
 		buf = buf[n:]
 	}
@@ -45,7 +45,7 @@ func (w *Writer) flushLvl(lvl int) error {
 	}
 
 	// ensure there is enough room for the hash
-	if len(w.lvls[lvl+1])-w.nbytes[lvl+1] < len(hash) {
+	if maxlen-w.nbytes[lvl+1] < len(hash) {
 		err = w.flushLvl(lvl + 1)
 		if err != nil {
 			return err
@@ -57,9 +57,7 @@ func (w *Writer) flushLvl(lvl int) error {
 		w.nbytes[lvl+1] = 1
 	}
 
-	for i := range hash {
-		w.lvls[lvl+1][w.nbytes[lvl+1]+i] = hash[i]
-	}
+	copy(w.lvls[lvl+1][w.nbytes[lvl+1]:maxlen], hash[:])
 
 	w.nbytes[lvl+1] += len(hash)
 	w.lvls[lvl][0] = byte(lvl)
@@ -79,6 +77,10 @@ func (w *Writer) Close() ([32]byte, error) {
 	for i := 0; i <= highest; i++ {
 		if w.nbytes[i] == 0 {
 			continue
+		}
+		err := w.flushLvl(i)
+		if err != nil {
+			return [32]byte{}, err
 		}
 	}
 

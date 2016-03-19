@@ -22,12 +22,11 @@ func NewReader(store bpy.CStore, root [32]byte) (*Reader, error) {
 	r := &Reader{
 		store: store,
 	}
-	lvl := byte(buf[0])
+	lvl := int(buf[0])
 	r.length[lvl] = len(buf)
 	r.pos[lvl] = 1
-	for i := range buf {
-		r.lvls[0][i] = buf[i]
-	}
+	r.height = lvl
+	copy(r.lvls[lvl][:], buf)
 	return r, nil
 }
 
@@ -46,9 +45,7 @@ func (r *Reader) Read(buf []byte) (int, error) {
 			continue
 		}
 		n := min(len(buf), len(src))
-		for i := 0; i < n; i++ {
-			buf[i] = src[i]
-		}
+		copy(buf, src)
 		buf = buf[n:]
 		r.pos[0] += n
 		nread += n
@@ -62,7 +59,7 @@ func (r *Reader) next(lvl int) (bool, error) {
 	if lvl > r.height {
 		return false, errors.New("corrupt hash tree: overflowed")
 	}
-	if r.pos[lvl+1] == r.length[lvl+1] {
+	if r.pos[lvl+1] >= r.length[lvl+1] {
 		if lvl+1 > r.height {
 			return true, nil
 		}
@@ -74,19 +71,14 @@ func (r *Reader) next(lvl int) (bool, error) {
 			return true, nil
 		}
 	}
-
-	for i := 0; i < len(hash); i++ {
-		hash[i] = r.lvls[lvl+1][r.pos[lvl+1]+i]
-	}
+	copy(hash[:], r.lvls[lvl+1][r.pos[lvl+1]:maxlen])
 	buf, err := r.store.Get(hash)
 	if err != nil {
 		return false, err
 	}
-	for i := 0; i < len(buf); i++ {
-		r.lvls[lvl][i] = buf[i]
-	}
+	copy(r.lvls[lvl][0:len(buf)], buf)
+	r.pos[lvl+1] += 32
 	r.length[lvl] = len(buf)
 	r.pos[lvl] = 1
-	r.pos[lvl+1] += 32
 	return false, nil
 }
