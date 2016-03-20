@@ -22,6 +22,7 @@ func (r *Reader) Get(key string) ([]byte, bool, error) {
 		if key == r.index[i].Key {
 			return true
 		}
+
 		return keycmp(key, r.index[i].Key)
 	})
 	if idx == len(r.index) || key != r.index[idx].Key {

@@ -2,6 +2,9 @@ package bpack
 
 import (
 	"bytes"
+	"encoding/hex"
+	"math/rand"
+	"reflect"
 	"testing"
 )
 
@@ -33,10 +36,28 @@ func TestBpack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w.Add("", []byte("b"))
-	w.Add("c", []byte(""))
-	w.Add("test", []byte("vector"))
-	w.Add("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", []byte("zzz"))
+	rd := rand.New(rand.NewSource(76463))
+	has := make(map[string][]byte)
+	for i := 0; i < 1000; i++ {
+		ksz := rd.Int31() % 100
+		vsz := rd.Int31() % 100
+		k := make([]byte, ksz, ksz)
+		v := make([]byte, vsz, vsz)
+		_, err = rd.Read(k)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = rd.Read(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, ok := has[string(k)]
+		if ok {
+			continue
+		}
+		err = w.Add(string(k), v)
+		has[string(k)] = v
+	}
 	err = w.Close()
 	if err != nil {
 		t.Fatal(err)
@@ -46,27 +67,16 @@ func TestBpack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	v, _, err := r.Get("")
-	if string(v) != "b" || err != nil {
-		t.Fatal("Get failed", v)
-	}
-	v, _, err = r.Get("c")
-	if string(v) != "" || err != nil {
-		t.Fatal("Get failed", v)
-	}
-	v, _, err = r.Get("test")
-	if string(v) != "vector" || err != nil {
-		t.Fatal("Get failed", v)
-	}
-	v, _, err = r.Get("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-	if string(v) != "zzz" || err != nil {
-		t.Fatal("Get failed", v)
-	}
-	v, ok, err := r.Get("nothing")
-	if err != nil {
-		t.Fatal("Get failed", err)
-	}
-	if ok == true {
-		t.Fatal("Get succeeded?", v)
+	for k, v := range has {
+		gotv, ok, err := r.Get(string(k))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !ok {
+			t.Fatalf("k=(%v) not found!\n", hex.EncodeToString([]byte(k)))
+		}
+		if !reflect.DeepEqual(v, gotv) {
+			t.Fatalf("k=(%v) %v != %v", []byte(k), v, gotv)
+		}
 	}
 }
