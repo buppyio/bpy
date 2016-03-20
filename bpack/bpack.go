@@ -9,24 +9,24 @@ type Index []IndexEnt
 
 func (idx Index) Len() int           { return len(idx) }
 func (idx Index) Swap(i, j int)      { t := idx[i]; idx[i] = idx[j]; idx[j] = t }
-func (idx Index) Less(i, j int) bool { return keycmp(idx[i].Key, idx[j].Key) }
+func (idx Index) Less(i, j int) bool { return keycmp(idx[i].Key, idx[j].Key) < 0 }
 
-func keycmp(l, r string) bool {
+func keycmp(l, r string) int {
 	if len(l) != len(r) {
 		if len(l) < len(r) {
-			return true
+			return -1
 		} else {
-			return false
+			return 1
 		}
 	}
-	for k := range l {
-		if l[k] != r[k] {
-			if l[k] < r[k] {
-				return true
+	for i := range l {
+		if l[i] != r[i] {
+			if l[i] < r[i] {
+				return -1
 			} else {
-				return false
+				return 1
 			}
 		}
 	}
-	return false
+	return 0
 }

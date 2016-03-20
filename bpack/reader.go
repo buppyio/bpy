@@ -3,7 +3,6 @@ package bpack
 import (
 	"encoding/binary"
 	"io"
-	"sort"
 )
 
 type Reader struct {
@@ -18,14 +17,23 @@ func NewReader(r io.ReadSeeker) *Reader {
 }
 
 func (r *Reader) Get(key string) ([]byte, bool, error) {
-	idx := sort.Search(len(r.index), func(i int) bool {
-		if key == r.index[i].Key {
-			return true
+	lo := 0
+	hi := len(r.index) - 1
+	idx := -1
+	for lo <= hi {
+		mid := (hi + lo) / 2
+		switch keycmp(r.index[mid].Key, key) {
+		case 1:
+			hi = mid - 1
+		case -1:
+			lo = mid + 1
+		case 0:
+			idx = mid
+			goto done
 		}
-
-		return keycmp(key, r.index[i].Key)
-	})
-	if idx == len(r.index) || key != r.index[idx].Key {
+	}
+done:
+	if idx == -1 {
 		return nil, false, nil
 	}
 	off := r.index[idx].Offset
