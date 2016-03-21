@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"sort"
+	"strings"
 )
 
 type DirEnts []DirEnt
@@ -103,4 +105,51 @@ func ReadDir(store bpy.CStore, hash [32]byte) (DirEnts, error) {
 		})
 	}
 	return dir, nil
+}
+
+func Walk(store bpy.CStore, hash [32]byte, fpath string) (DirEnt, error) {
+	var result DirEnt
+	var end int
+
+	if fpath[0] != '/' {
+		fpath = "/" + fpath
+	}
+	fpath = path.Clean(fpath)
+	pathelems := strings.Split(fpath, "/")
+	if pathelems[len(pathelems)-1] == "" {
+		end = len(pathelems) - 1
+	} else {
+		end = len(pathelems)
+	}
+	for i := 0; i < end; i++ {
+		entname := pathelems[i]
+		if entname == "" {
+			continue
+		}
+		ents, err := ReadDir(store, hash)
+		if err != nil {
+			return result, err
+		}
+		found := false
+		j := 0
+		for j = range ents {
+			if ents[j].Name != entname {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return result, fmt.Errorf("no such directory: %s", entname)
+		}
+
+		if i != end-1 {
+			if !ents[j].Mode.IsDir() {
+				fmt.Errorf("not a directory: %s", ents[j].Name)
+			}
+			hash = ents[j].Data
+		} else {
+			result = ents[j]
+		}
+	}
+	return result, nil
 }
