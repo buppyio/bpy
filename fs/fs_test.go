@@ -24,3 +24,7 @@ func TestDir(t *testing.T) {
 		t.Fatalf("dirs differ\n%v\n%v\n", dir, rdir)
 	}
 }
+
+func TestWalk(t *testing.T) {
+	t.Fatal("unimplemented test")
+}
