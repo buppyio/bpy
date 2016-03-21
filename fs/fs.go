@@ -5,6 +5,7 @@ import (
 	"acha.ninja/bpy/htree"
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -115,6 +116,9 @@ func Walk(store bpy.CStore, hash [32]byte, fpath string) (DirEnt, error) {
 		fpath = "/" + fpath
 	}
 	fpath = path.Clean(fpath)
+	if fpath == "/" {
+		return result, errors.New("empty walk path")
+	}
 	pathelems := strings.Split(fpath, "/")
 	if pathelems[len(pathelems)-1] == "" {
 		end = len(pathelems) - 1
@@ -133,7 +137,7 @@ func Walk(store bpy.CStore, hash [32]byte, fpath string) (DirEnt, error) {
 		found := false
 		j := 0
 		for j = range ents {
-			if ents[j].Name != entname {
+			if ents[j].Name == entname {
 				found = true
 				break
 			}

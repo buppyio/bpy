@@ -2,6 +2,7 @@ package fs
 
 import (
 	"acha.ninja/bpy/testhelp"
+	"os"
 	"reflect"
 	"testing"
 )
@@ -26,5 +27,34 @@ func TestDir(t *testing.T) {
 }
 
 func TestWalk(t *testing.T) {
-	t.Fatal("unimplemented test")
+
+	store := testhelp.NewMemStore()
+	f := DirEnt{Name: "f", Size: 10, Mode: 0}
+
+	hash, err := WriteDir(store, DirEnts{f})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := DirEnt{Name: "d", Size: 0, Mode: os.ModeDir, Data: hash}
+	for i := 0; i < 3; i++ {
+		hash, err = WriteDir(store, DirEnts{d})
+		if err != nil {
+			t.Fatal(err)
+		}
+		d.Data = hash
+	}
+	ent, err := Walk(store, hash, "/d/d/d/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ent.Mode.IsDir() {
+		t.Fatal("expected dir")
+	}
+	ent, err = Walk(store, hash, "/d/d/d/f")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ent.Size != 10 {
+		t.Fatal("bad size")
+	}
 }
