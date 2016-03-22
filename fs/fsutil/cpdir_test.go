@@ -39,7 +39,7 @@ func TestStoreDirAndRestore(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = CpFsDirToHost(store, hash, restored, 0700)
+		err = CpFsDirToHost(store, hash, restored)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -13,7 +13,7 @@ func TestDir(t *testing.T) {
 		{Name: "Foo", Size: 0xffffff, Mode: 0xffffff, ModTime: 0xffff},
 	}
 	store := testhelp.NewMemStore()
-	hash, err := WriteDir(store, dir)
+	hash, err := WriteDir(store, dir, 0777)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,7 +21,10 @@ func TestDir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(dir, rdir) {
+	if rdir[0].Name != "" {
+		t.Fatal("missing current dir entry\n")
+	}
+	if !reflect.DeepEqual(dir, rdir[1:]) {
 		t.Fatalf("dirs differ\n%v\n%v\n", dir, rdir)
 	}
 }
@@ -31,19 +34,33 @@ func TestWalk(t *testing.T) {
 	store := testhelp.NewMemStore()
 	f := DirEnt{Name: "f", Size: 10, Mode: 0}
 
-	hash, err := WriteDir(store, DirEnts{f})
+	hash, err := WriteDir(store, DirEnts{f}, 0777)
 	if err != nil {
 		t.Fatal(err)
 	}
 	d := DirEnt{Name: "d", Size: 0, Mode: os.ModeDir, Data: hash}
 	for i := 0; i < 3; i++ {
-		hash, err = WriteDir(store, DirEnts{d})
+		hash, err = WriteDir(store, DirEnts{d}, 0777)
 		if err != nil {
 			t.Fatal(err)
 		}
 		d.Data = hash
 	}
-	ent, err := Walk(store, hash, "/d/d/d/")
+	ent, err := Walk(store, hash, "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ent.Data != hash {
+		t.Fatal("empty walk failed")
+	}
+	ent, err = Walk(store, hash, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ent.Data != hash {
+		t.Fatal("empty walk failed")
+	}
+	ent, err = Walk(store, hash, "/d/d/d/")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -30,6 +30,10 @@ func hostFileToHashTree(store bpy.CStore, path string) ([32]byte, error) {
 }
 
 func CpHostDirToFs(store bpy.CStore, path string) ([32]byte, error) {
+	st, err := os.Stat(path)
+	if err != nil {
+		return [32]byte{}, err
+	}
 	ents, err := ioutil.ReadDir(path)
 	if err != nil {
 		return [32]byte{}, err
@@ -60,7 +64,7 @@ func CpHostDirToFs(store bpy.CStore, path string) ([32]byte, error) {
 			})
 		}
 	}
-	return fs.WriteDir(store, dir)
+	return fs.WriteDir(store, dir, st.Mode())
 }
 
 func CpHashTreeToHostFile(store bpy.CStore, hash [32]byte, dst string, mode os.FileMode) error {
@@ -81,19 +85,19 @@ func CpHashTreeToHostFile(store bpy.CStore, hash [32]byte, dst string, mode os.F
 
 }
 
-func CpFsDirToHost(store bpy.CStore, hash [32]byte, dest string, mode os.FileMode) error {
+func CpFsDirToHost(store bpy.CStore, hash [32]byte, dest string) error {
 	ents, err := fs.ReadDir(store, hash)
 	if err != nil {
 		return err
 	}
-	err = os.Mkdir(dest, mode)
+	err = os.Mkdir(dest, ents[0].Mode)
 	if err != nil {
 		return err
 	}
-	for _, e := range ents {
+	for _, e := range ents[1:] {
 		subp := filepath.Join(dest, e.Name)
 		if e.Mode.IsDir() {
-			err = CpFsDirToHost(store, e.Data, subp, e.Mode)
+			err = CpFsDirToHost(store, e.Data, subp)
 			if err != nil {
 				return err
 			}

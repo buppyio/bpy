@@ -5,7 +5,6 @@ import (
 	"acha.ninja/bpy/htree"
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -28,8 +27,22 @@ func (dir DirEnts) Len() int           { return len(dir) }
 func (dir DirEnts) Less(i, j int) bool { return dir[i].Name < dir[j].Name }
 func (dir DirEnts) Swap(i, j int)      { dir[i], dir[j] = dir[j], dir[i] }
 
-func WriteDir(store bpy.CStore, dir DirEnts) ([32]byte, error) {
+func WriteDir(store bpy.CStore, indir DirEnts, mode os.FileMode) ([32]byte, error) {
 	var numbytes [8]byte
+	var dirBuf [256]DirEnt
+	var dir DirEnts
+
+	// Best effort at stack allocating this slice
+	// XXX todo benchmark the affect of this.
+	// XXX should probably factor code so it doesn't need to do this copy
+	if len(indir)+1 < len(dirBuf) {
+		dir = dirBuf[0 : len(indir)+1]
+	} else {
+		dir = make(DirEnts, len(indir)+1, len(indir)+1)
+	}
+	copy(dir[1:], indir)
+	mode |= os.ModeDir
+	dir[0] = DirEnt{Name: "", Mode: mode}
 
 	sort.Sort(dir)
 	for i := 0; i < len(dir)-1; i++ {
@@ -105,6 +118,8 @@ func ReadDir(store bpy.CStore, hash [32]byte) (DirEnts, error) {
 			Data:    hash,
 		})
 	}
+	// Fill current directory "" by sorted order must be the first entry.
+	dir[0].Data = hash
 	return dir, nil
 }
 
@@ -112,13 +127,10 @@ func Walk(store bpy.CStore, hash [32]byte, fpath string) (DirEnt, error) {
 	var result DirEnt
 	var end int
 
-	if fpath[0] != '/' {
+	if fpath == "" || fpath[0] != '/' {
 		fpath = "/" + fpath
 	}
 	fpath = path.Clean(fpath)
-	if fpath == "/" {
-		return result, errors.New("empty walk path")
-	}
 	pathelems := strings.Split(fpath, "/")
 	if pathelems[len(pathelems)-1] == "" {
 		end = len(pathelems) - 1
@@ -127,9 +139,6 @@ func Walk(store bpy.CStore, hash [32]byte, fpath string) (DirEnt, error) {
 	}
 	for i := 0; i < end; i++ {
 		entname := pathelems[i]
-		if entname == "" {
-			continue
-		}
 		ents, err := ReadDir(store, hash)
 		if err != nil {
 			return result, err
@@ -155,5 +164,38 @@ func Walk(store bpy.CStore, hash [32]byte, fpath string) (DirEnt, error) {
 			result = ents[j]
 		}
 	}
+	if result.Name == "" {
+		result.Data = hash
+	}
 	return result, nil
+}
+
+func Open(store bpy.CStore, roothash [32]byte, fpath string) (*htree.Reader, error) {
+	dirent, err := Walk(store, roothash, fpath)
+	if err != nil {
+		return nil, err
+	}
+	if dirent.Mode.IsDir() {
+		return nil, fmt.Errorf("%s is a directory", fpath)
+	}
+	rdr, err := htree.NewReader(store, dirent.Data)
+	if err != nil {
+		return nil, err
+	}
+	return rdr, nil
+}
+
+func Ls(store bpy.CStore, roothash [32]byte, fpath string) (DirEnts, error) {
+	dirent, err := Walk(store, roothash, fpath)
+	if err != nil {
+		return nil, err
+	}
+	if !dirent.Mode.IsDir() {
+		return nil, fmt.Errorf("%s is not a directory", fpath)
+	}
+	ents, err := ReadDir(store, dirent.Data)
+	if err != nil {
+		return nil, err
+	}
+	return ents[1:], nil
 }
