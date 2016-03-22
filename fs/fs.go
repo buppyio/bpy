@@ -18,8 +18,8 @@ type DirEnts []DirEnt
 type DirEnt struct {
 	Name    string
 	Size    int64
-	Mode    os.FileMode
 	ModTime int64
+	Mode    os.FileMode
 	Data    [32]byte
 }
 
@@ -27,7 +27,7 @@ func (dir DirEnts) Len() int           { return len(dir) }
 func (dir DirEnts) Less(i, j int) bool { return dir[i].Name < dir[j].Name }
 func (dir DirEnts) Swap(i, j int)      { dir[i], dir[j] = dir[j], dir[i] }
 
-func WriteDir(store bpy.CStore, indir DirEnts, mode os.FileMode) ([32]byte, error) {
+func WriteDir(store bpy.CStoreWriter, indir DirEnts, mode os.FileMode) ([32]byte, error) {
 	var numbytes [8]byte
 	var dirBuf [256]DirEnt
 	var dir DirEnts
@@ -86,7 +86,7 @@ func WriteDir(store bpy.CStore, indir DirEnts, mode os.FileMode) ([32]byte, erro
 	return tw.Close()
 }
 
-func ReadDir(store bpy.CStore, hash [32]byte) (DirEnts, error) {
+func ReadDir(store bpy.CStoreReader, hash [32]byte) (DirEnts, error) {
 	var dir DirEnts
 	rdr, err := htree.NewReader(store, hash)
 	if err != nil {
@@ -123,7 +123,7 @@ func ReadDir(store bpy.CStore, hash [32]byte) (DirEnts, error) {
 	return dir, nil
 }
 
-func Walk(store bpy.CStore, hash [32]byte, fpath string) (DirEnt, error) {
+func Walk(store bpy.CStoreReader, hash [32]byte, fpath string) (DirEnt, error) {
 	var result DirEnt
 	var end int
 
@@ -170,7 +170,7 @@ func Walk(store bpy.CStore, hash [32]byte, fpath string) (DirEnt, error) {
 	return result, nil
 }
 
-func Open(store bpy.CStore, roothash [32]byte, fpath string) (*htree.Reader, error) {
+func Open(store bpy.CStoreReader, roothash [32]byte, fpath string) (*htree.Reader, error) {
 	dirent, err := Walk(store, roothash, fpath)
 	if err != nil {
 		return nil, err
@@ -185,7 +185,7 @@ func Open(store bpy.CStore, roothash [32]byte, fpath string) (*htree.Reader, err
 	return rdr, nil
 }
 
-func Ls(store bpy.CStore, roothash [32]byte, fpath string) (DirEnts, error) {
+func Ls(store bpy.CStoreReader, roothash [32]byte, fpath string) (DirEnts, error) {
 	dirent, err := Walk(store, roothash, fpath)
 	if err != nil {
 		return nil, err

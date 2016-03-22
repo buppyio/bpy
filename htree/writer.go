@@ -5,12 +5,12 @@ import (
 )
 
 type Writer struct {
-	store  bpy.CStore
+	store  bpy.CStoreWriter
 	lvls   [nlevels][maxlen]byte
 	nbytes [nlevels]int
 }
 
-func NewWriter(store bpy.CStore) *Writer {
+func NewWriter(store bpy.CStoreWriter) *Writer {
 	w := &Writer{
 		store: store,
 	}

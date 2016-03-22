@@ -7,14 +7,14 @@ import (
 )
 
 type Reader struct {
-	store  bpy.CStore
+	store  bpy.CStoreReader
 	height int
 	lvls   [nlevels][maxlen]byte
 	pos    [nlevels]int
 	length [nlevels]int
 }
 
-func NewReader(store bpy.CStore, root [32]byte) (*Reader, error) {
+func NewReader(store bpy.CStoreReader, root [32]byte) (*Reader, error) {
 	buf, err := store.Get(root)
 	if err != nil {
 		return nil, err
