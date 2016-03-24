@@ -26,15 +26,15 @@ func NewWriter(w io.WriteSeeker) (*Writer, error) {
 	}, err
 }
 
-func (w *Writer) writeUInt64(v uint64) error {
+func writeUInt64(w io.Writer, v uint64) error {
 	var buf [8]byte
 
 	binary.LittleEndian.PutUint64(buf[:], v)
-	_, err := w.w.Write(buf[:])
+	_, err := w.Write(buf[:])
 	return err
 }
 
-func (w *Writer) writeSlice(v []byte) error {
+func writeSlice(w io.Writer, v []byte) error {
 	var lbuf [2]byte
 
 	if len(v) > 65535 {
@@ -42,11 +42,11 @@ func (w *Writer) writeSlice(v []byte) error {
 	}
 	binary.LittleEndian.PutUint16(lbuf[:], uint16(len(v)))
 
-	_, err := w.w.Write(lbuf[:])
+	_, err := w.Write(lbuf[:])
 	if err != nil {
 		return err
 	}
-	_, err = w.w.Write(v)
+	_, err = w.Write(v)
 	return err
 }
 
@@ -55,7 +55,7 @@ func (w *Writer) Add(key string, val []byte) error {
 	if has {
 		return nil
 	}
-	err := w.writeSlice(val)
+	err := writeSlice(w.w, val)
 	if err != nil {
 		return err
 	}
@@ -65,28 +65,36 @@ func (w *Writer) Add(key string, val []byte) error {
 	return nil
 }
 
-func (w *Writer) Close() error {
-	sort.Sort(w.index)
-	idxoffset := w.offset
-	err := w.writeUInt64(uint64(len(w.index)))
+func WriteIndex(w io.Writer, idx Index) error {
+	sort.Sort(idx)
+	err := writeUInt64(w, uint64(len(idx)))
 	if err != nil {
 		return err
 	}
-	for i := range w.index {
-		err = w.writeSlice([]byte(w.index[i].Key))
+	for i := range idx {
+		err = writeSlice(w, []byte(idx[i].Key))
 		if err != nil {
 			return err
 		}
-		err = w.writeUInt64(w.index[i].Offset)
+		err = writeUInt64(w, idx[i].Offset)
 		if err != nil {
 			return err
 		}
 	}
+	return nil
+}
+
+func (w *Writer) Close() error {
+	idxoffset := w.offset
+	err := WriteIndex(w.w, w.index)
+	if err != nil {
+		return err
+	}	
 	_, err = w.w.Seek(0, 0)
 	if err != nil {
 		return err
 	}
-	err = w.writeUInt64(idxoffset)
+	err = writeUInt64(w.w, idxoffset)
 	if err != nil {
 		return err
 	}

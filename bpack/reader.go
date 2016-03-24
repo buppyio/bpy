@@ -7,7 +7,7 @@ import (
 
 type Reader struct {
 	r     io.ReadSeeker
-	index Index
+	Idx Index
 }
 
 func NewReader(r io.ReadSeeker) *Reader {
@@ -18,11 +18,11 @@ func NewReader(r io.ReadSeeker) *Reader {
 
 func (r *Reader) Get(key string) ([]byte, bool, error) {
 	lo := 0
-	hi := len(r.index) - 1
+	hi := len(r.Idx) - 1
 	idx := -1
 	for lo <= hi {
 		mid := (hi + lo) / 2
-		switch keycmp(r.index[mid].Key, key) {
+		switch keycmp(r.Idx[mid].Key, key) {
 		case 1:
 			hi = mid - 1
 		case -1:
@@ -36,7 +36,7 @@ done:
 	if idx == -1 {
 		return nil, false, nil
 	}
-	off := r.index[idx].Offset
+	off := r.Idx[idx].Offset
 	r.r.Seek(int64(off), 0)
 	b, err := readSlice(r.r)
 	return b, true, err
@@ -55,7 +55,7 @@ func (r *Reader) ReadIndex() error {
 	if err != nil {
 		return err
 	}
-	r.index, err = ReadIndex(r.r)
+	r.Idx, err = ReadIndex(r.r)
 	return err
 }
 
