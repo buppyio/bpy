@@ -30,6 +30,10 @@ func (s *rstore) Get(hash [32]byte) ([]byte, error) {
 	return data, nil
 }
 
+func (s *rstore) Close() error {
+	return s.pack.Close()
+}
+
 type wstore struct {
 	pack *bpack.Writer
 }
@@ -37,6 +41,10 @@ type wstore struct {
 func (s *wstore) Put(v []byte) ([32]byte, error) {
 	hash := sha256.Sum256(v)
 	return hash, s.pack.Add(string(hash[:]), v)
+}
+
+func (s *wstore) Close() error {
+	return s.pack.Close()
 }
 
 func (s *wstore) Get(hash [32]byte) ([]byte, error) {
@@ -57,15 +65,11 @@ func put() {
 	if err != nil {
 		panic(err)
 	}
-	err = w.Close()
-	if err != nil {
-		panic(err)
-	}
-	err = f.Close()
-	if err != nil {
-		panic(err)
-	}
 	_, err = fmt.Println(hex.EncodeToString(hash[:]))
+	if err != nil {
+		panic(err)
+	}
+	err = store.Close()
 	if err != nil {
 		panic(err)
 	}
@@ -89,6 +93,10 @@ func get() {
 	}
 	copy(hash[:], hbytes)
 	err = fsutil.CpFsDirToHost(store, hash, os.Args[4])
+	if err != nil {
+		panic(err)
+	}
+	err = store.Close()
 	if err != nil {
 		panic(err)
 	}
@@ -125,6 +133,10 @@ func ls() {
 			panic(err)
 		}
 	}
+	err = store.Close()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func cat() {
@@ -154,6 +166,10 @@ func cat() {
 		if err != nil {
 			panic(err)
 		}
+	}
+	err = store.Close()
+	if err != nil {
+		panic(err)
 	}
 }
 
