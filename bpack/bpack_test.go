@@ -29,6 +29,26 @@ func (b *bufwriteseeker) Write(buf []byte) (int, error) {
 	return len(buf), nil
 }
 
+func (b *bufwriteseeker) Close() error {
+	return nil
+}
+
+type bufreader struct {
+	buf *bytes.Reader
+}
+
+func (b *bufreader) Seek(off int64, whence int) (int64, error) {
+	return b.buf.Seek(off, whence)
+}
+
+func (b *bufreader) Read(buf []byte) (int, error) {
+	return b.buf.Read(buf)
+}
+
+func (b *bufreader) Close() error {
+	return nil
+}
+
 func TestBpack(t *testing.T) {
 	var buf [1024 * 1024]byte
 
@@ -62,7 +82,7 @@ func TestBpack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := NewReader(bytes.NewReader(buf[:]))
+	r := NewReader(&bufreader{buf: bytes.NewReader(buf[:])})
 	err = r.ReadIndex()
 	if err != nil {
 		t.Fatal(err)

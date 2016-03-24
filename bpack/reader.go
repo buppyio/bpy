@@ -5,12 +5,18 @@ import (
 	"io"
 )
 
+type ReadSeekCloser interface {
+	io.Reader
+	io.Seeker
+	io.Closer
+}
+
 type Reader struct {
-	r     io.ReadSeeker
+	r     ReadSeekCloser
 	index Index
 }
 
-func NewReader(r io.ReadSeeker) *Reader {
+func NewReader(r ReadSeekCloser) *Reader {
 	return &Reader{
 		r: r,
 	}
@@ -40,6 +46,10 @@ done:
 	r.r.Seek(int64(off), 0)
 	b, err := readSlice(r.r)
 	return b, true, err
+}
+
+func (r *Reader) Close() error {
+	return r.r.Close()
 }
 
 func (r *Reader) ReadIndex() error {
