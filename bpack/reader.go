@@ -28,7 +28,7 @@ func (r *Reader) Get(key string) ([]byte, bool, error) {
 	idx := -1
 	for lo <= hi {
 		mid := (hi + lo) / 2
-		switch keycmp(r.Idx[mid].Key, key) {
+		switch KeyCmp(r.Idx[mid].Key, key) {
 		case 1:
 			hi = mid - 1
 		case -1:
