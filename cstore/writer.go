@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"crypto/sha256"
 	"sort"
 )
 
 type Writer struct {
 	rdr        *Reader
 	workingSet map[string][]byte
+	workingSetSz uint64
 	storepath  string
 }
 
@@ -31,7 +33,6 @@ func (w *Writer) Close() error {
 }
 
 type keyList []string
-
 func (kl keyList) Len() int           { return len(kl) }
 func (kl keyList) Swap(i, j int)      { kl[i], kl[j] = kl[j], kl[i] }
 func (kl keyList) Less(i, j int) bool { return bpack.KeyCmp(kl[i], kl[j]) < 0 }
@@ -65,4 +66,22 @@ func (w *Writer) flushWorkingSet() error {
 		return err
 	}
 	return fmt.Errorf("unimplemented...\n")
+}
+
+func (w *Writer) Add(data []byte) ([32]byte, error) {
+	h := sha256.Sum256(data)
+	k := string(h[:])
+	ok, _ := w.workingSet[k]
+	if ok {
+		return h, nil
+	}
+	v := make([]byte, len(data), len(data))
+	copy(v, data)
+	w.workingSet[k] = v
+	w.workingSetSz += uint64(len(data))
+	if w.workingSetSz > 1024 * 1024 * 128 {
+		return h, w.flushWorkingSet()
+	} else {
+		return h, nil
+	}
 }
