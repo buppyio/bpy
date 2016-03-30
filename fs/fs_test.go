@@ -33,7 +33,6 @@ func TestWalk(t *testing.T) {
 
 	store := testhelp.NewMemStore()
 	f := DirEnt{Name: "f", Size: 10, Mode: 0}
-
 	hash, err := WriteDir(store, DirEnts{f}, 0777)
 	if err != nil {
 		t.Fatal(err)

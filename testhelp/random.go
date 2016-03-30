@@ -5,7 +5,7 @@ import (
 	"io"
 	"math/rand"
 	"os"
-	"path"
+	"path/filepath"
 )
 
 type RandDirConfig struct {
@@ -40,7 +40,7 @@ func RandomDirectoryTree(p string, cfg RandDirConfig, rd *rand.Rand) error {
 			name := fmt.Sprintf("file%d", i) + randomName()
 			perms := []os.FileMode{0777, 0666}
 			perm := perms[(int(rand.Int63()) % len(perms))]
-			f, err := os.OpenFile(path.Join(p, name), os.O_CREATE|os.O_WRONLY, perm)
+			f, err := os.OpenFile(filepath.Join(p, name), os.O_CREATE|os.O_WRONLY, perm)
 			if err != nil {
 				return err
 			}
@@ -59,7 +59,7 @@ func RandomDirectoryTree(p string, cfg RandDirConfig, rd *rand.Rand) error {
 		for i := uint32(0); i < ndirs; i++ {
 			newcfg := cfg
 			newcfg.MaxDepth -= 1
-			newp := path.Join(p, fmt.Sprintf("subdir%d", i)+randomName())
+			newp := filepath.Join(p, fmt.Sprintf("subdir%d", i)+randomName())
 			os.Mkdir(newp, 0700)
 			err := RandomDirectoryTree(newp, newcfg, rd)
 			if err != nil {
