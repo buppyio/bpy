@@ -2,18 +2,18 @@ package cstore
 
 import (
 	"acha.ninja/bpy/bpack"
-	"fmt"
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"path/filepath"
-	"crypto/sha256"
 	"sort"
 )
 
 type Writer struct {
-	rdr        *Reader
-	workingSet map[string][]byte
+	rdr          *Reader
+	workingSet   map[string][]byte
 	workingSetSz uint64
-	storepath  string
+	storepath    string
 }
 
 func NewWriter(storepath string, cachepath string) (*Writer, error) {
@@ -33,6 +33,7 @@ func (w *Writer) Close() error {
 }
 
 type keyList []string
+
 func (kl keyList) Len() int           { return len(kl) }
 func (kl keyList) Swap(i, j int)      { kl[i], kl[j] = kl[j], kl[i] }
 func (kl keyList) Less(i, j int) bool { return bpack.KeyCmp(kl[i], kl[j]) < 0 }
@@ -47,7 +48,20 @@ func (w *Writer) flushWorkingSet() error {
 		keys[i] = k
 	}
 	sort.Sort(keys)
-	f, err := os.Create(filepath.Join(w.storepath, "XXXTODO.bpack"))
+	dgst := sha256.New()
+	for _, k := range keys {
+		_, err := dgst.Write([]byte(k))
+		if err != nil {
+			return err
+		}
+	}
+	bpackname := filepath.Join(w.storepath, hex.EncodeToString(dgst.Sum(nil))+".bpack")
+	_, err := os.Stat(bpackname)
+	if err == nil {
+		return nil
+	}
+	tmppath := filepath.Join(w.storepath, "XXXTODO.bpack")
+	f, err := os.Create(tmppath)
 	if err != nil {
 		return err
 	}
@@ -65,13 +79,13 @@ func (w *Writer) flushWorkingSet() error {
 	if err != nil {
 		return err
 	}
-	return fmt.Errorf("unimplemented...\n")
+	return os.Rename(tmppath, bpackname)
 }
 
 func (w *Writer) Add(data []byte) ([32]byte, error) {
 	h := sha256.Sum256(data)
 	k := string(h[:])
-	ok, _ := w.workingSet[k]
+	_, ok := w.workingSet[k]
 	if ok {
 		return h, nil
 	}
@@ -79,7 +93,7 @@ func (w *Writer) Add(data []byte) ([32]byte, error) {
 	copy(v, data)
 	w.workingSet[k] = v
 	w.workingSetSz += uint64(len(data))
-	if w.workingSetSz > 1024 * 1024 * 128 {
+	if w.workingSetSz > 1024*1024*128 {
 		return h, w.flushWorkingSet()
 	} else {
 		return h, nil
