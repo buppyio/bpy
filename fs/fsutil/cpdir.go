@@ -94,16 +94,17 @@ func CpFsDirToHost(store bpy.CStoreReader, hash [32]byte, dest string) error {
 	}
 	for _, e := range ents[1:] {
 		subp := filepath.Join(dest, e.Name)
-		if e.Mode.IsDir() {
+		switch {
+		case e.Mode.IsDir():
 			err = CpFsDirToHost(store, e.Data, subp)
 			if err != nil {
 				return err
 			}
-			continue
-		}
-		err = CpHashTreeToHostFile(store, e.Data, subp, e.Mode)
-		if err != nil {
-			return err
+		case e.Mode.IsRegular():
+			err = CpHashTreeToHostFile(store, e.Data, subp, e.Mode)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil

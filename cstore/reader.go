@@ -127,3 +127,14 @@ func getAndCacheIndex(storepath, packbasename, cachepath string) (bpack.Index, e
 	}
 	return pack.Idx, idxf.Close()
 }
+
+func (r *Reader) Close() error {
+	for e := r.lru.Front(); e != nil; e = e.Next() {
+		ent := e.Value.(lruent)
+		err := ent.pack.Close()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}

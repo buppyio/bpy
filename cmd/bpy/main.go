@@ -1,65 +1,21 @@
 package main
 
 import (
-	"acha.ninja/bpy/bpack"
+	"acha.ninja/bpy/cstore"
 	"acha.ninja/bpy/fs"
 	"acha.ninja/bpy/fs/fsutil"
-	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
 )
 
-type rstore struct {
-	pack *bpack.Reader
-}
-
-func (s *rstore) Put(v []byte) ([32]byte, error) {
-	panic("unimplemented")
-}
-
-func (s *rstore) Get(hash [32]byte) ([]byte, error) {
-	data, err := s.pack.Get(string(hash[:]))
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
-}
-
-func (s *rstore) Close() error {
-	return s.pack.Close()
-}
-
-type wstore struct {
-	pack *bpack.Writer
-}
-
-func (s *wstore) Put(v []byte) ([32]byte, error) {
-	hash := sha256.Sum256(v)
-	return hash, s.pack.Add(string(hash[:]), v)
-}
-
-func (s *wstore) Close() error {
-	_, err := s.pack.Close()
-	return err
-}
-
-func (s *wstore) Get(hash [32]byte) ([]byte, error) {
-	panic("unimplemented")
-}
-
 func put() {
-	f, err := os.Create(os.Args[2])
+	store, err := cstore.NewWriter("/home/ac/.bpy/store", "/home/ac/.bpy/cache")
 	if err != nil {
 		panic(err)
 	}
-	w, err := bpack.NewWriter(f)
-	if err != nil {
-		panic(err)
-	}
-	store := &wstore{pack: w}
-	hash, err := fsutil.CpHostDirToFs(store, os.Args[3])
+	hash, err := fsutil.CpHostDirToFs(store, os.Args[2])
 	if err != nil {
 		panic(err)
 	}
@@ -75,22 +31,16 @@ func put() {
 
 func get() {
 	var hash [32]byte
-	f, err := os.Open(os.Args[2])
+	store, err := cstore.NewReader("/home/ac/.bpy/store", "/home/ac/.bpy/cache")
 	if err != nil {
 		panic(err)
 	}
-	r := bpack.NewReader(f)
-	err = r.ReadIndex()
-	if err != nil {
-		panic(err)
-	}
-	store := &rstore{pack: r}
-	hbytes, err := hex.DecodeString(os.Args[3])
+	hbytes, err := hex.DecodeString(os.Args[2])
 	if err != nil {
 		panic(err)
 	}
 	copy(hash[:], hbytes)
-	err = fsutil.CpFsDirToHost(store, hash, os.Args[4])
+	err = fsutil.CpFsDirToHost(store, hash, os.Args[3])
 	if err != nil {
 		panic(err)
 	}
@@ -102,22 +52,16 @@ func get() {
 
 func ls() {
 	var hash [32]byte
-	f, err := os.Open(os.Args[2])
+	store, err := cstore.NewReader("/home/ac/.bpy/store", "/home/ac/.bpy/cache")
 	if err != nil {
 		panic(err)
 	}
-	r := bpack.NewReader(f)
-	err = r.ReadIndex()
-	if err != nil {
-		panic(err)
-	}
-	store := &rstore{pack: r}
-	hbytes, err := hex.DecodeString(os.Args[3])
+	hbytes, err := hex.DecodeString(os.Args[2])
 	if err != nil {
 		panic(err)
 	}
 	copy(hash[:], hbytes)
-	ents, err := fs.Ls(store, hash, os.Args[4])
+	ents, err := fs.Ls(store, hash, os.Args[3])
 	if err != nil {
 		panic(err)
 	}
@@ -139,23 +83,17 @@ func ls() {
 
 func cat() {
 	var hash [32]byte
-	f, err := os.Open(os.Args[2])
+	store, err := cstore.NewReader("/home/ac/.bpy/store", "/home/ac/.bpy/cache")
 	if err != nil {
 		panic(err)
 	}
-	r := bpack.NewReader(f)
-	err = r.ReadIndex()
-	if err != nil {
-		panic(err)
-	}
-	store := &rstore{pack: r}
-	hbytes, err := hex.DecodeString(os.Args[3])
+	hbytes, err := hex.DecodeString(os.Args[2])
 	if err != nil {
 		panic(err)
 	}
 	copy(hash[:], hbytes)
 
-	for _, fpath := range os.Args[4:] {
+	for _, fpath := range os.Args[3:] {
 		rdr, err := fs.Open(store, hash, fpath)
 		if err != nil {
 			panic(err)

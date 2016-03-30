@@ -93,7 +93,7 @@ func (w *Writer) flushWorkingSet() error {
 	return nil
 }
 
-func (w *Writer) Add(data []byte) ([32]byte, error) {
+func (w *Writer) Put(data []byte) ([32]byte, error) {
 	h := sha256.Sum256(data)
 	_, ok := w.workingSet[h]
 	if ok {
