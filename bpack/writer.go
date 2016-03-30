@@ -90,19 +90,19 @@ func WriteIndex(w io.Writer, idx Index) error {
 	return nil
 }
 
-func (w *Writer) Close() error {
+func (w *Writer) Close() (Index, error) {
 	idxoffset := w.offset
 	err := WriteIndex(w.w, w.index)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	_, err = w.w.Seek(0, 0)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = writeUInt64(w.w, idxoffset)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return w.w.Close()
+	return w.index, w.w.Close()
 }

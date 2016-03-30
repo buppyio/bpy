@@ -77,7 +77,7 @@ func TestBpack(t *testing.T) {
 		err = w.Add(string(k), v)
 		has[string(k)] = v
 	}
-	err = w.Close()
+	_, err = w.Close()
 	if err != nil {
 		t.Fatal(err)
 	}

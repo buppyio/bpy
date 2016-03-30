@@ -41,7 +41,8 @@ func (s *wstore) Put(v []byte) ([32]byte, error) {
 }
 
 func (s *wstore) Close() error {
-	return s.pack.Close()
+	_, err := s.pack.Close()
+	return err
 }
 
 func (s *wstore) Get(hash [32]byte) ([]byte, error) {

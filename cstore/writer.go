@@ -11,7 +11,7 @@ import (
 
 type Writer struct {
 	rdr          *Reader
-	workingSet   map[string][]byte
+	workingSet   map[[32]byte][]byte
 	workingSetSz uint64
 	storepath    string
 }
@@ -22,7 +22,7 @@ func NewWriter(storepath string, cachepath string) (*Writer, error) {
 		return nil, err
 	}
 	return &Writer{
-		workingSet: make(map[string][]byte),
+		workingSet: make(map[[32]byte][]byte),
 		rdr:        rdr,
 		storepath:  storepath,
 	}, nil
@@ -32,11 +32,11 @@ func (w *Writer) Close() error {
 	return w.flushWorkingSet()
 }
 
-type keyList []string
+type keyList [][32]byte
 
 func (kl keyList) Len() int           { return len(kl) }
 func (kl keyList) Swap(i, j int)      { kl[i], kl[j] = kl[j], kl[i] }
-func (kl keyList) Less(i, j int) bool { return bpack.KeyCmp(kl[i], kl[j]) < 0 }
+func (kl keyList) Less(i, j int) bool { return bpack.KeyCmp(string(kl[i][:]), string(kl[j][:])) < 0 }
 
 func (w *Writer) flushWorkingSet() error {
 	if len(w.workingSet) == 0 {
@@ -50,12 +50,13 @@ func (w *Writer) flushWorkingSet() error {
 	sort.Sort(keys)
 	dgst := sha256.New()
 	for _, k := range keys {
-		_, err := dgst.Write([]byte(k))
+		_, err := dgst.Write(k[:])
 		if err != nil {
 			return err
 		}
 	}
-	bpackname := filepath.Join(w.storepath, hex.EncodeToString(dgst.Sum(nil))+".bpack")
+	bpackbasename := hex.EncodeToString(dgst.Sum(nil)) + ".bpack"
+	bpackname := filepath.Join(w.storepath, bpackbasename)
 	_, err := os.Stat(bpackname)
 	if err == nil {
 		return nil
@@ -70,28 +71,36 @@ func (w *Writer) flushWorkingSet() error {
 		return err
 	}
 	for _, k := range keys {
-		err = pack.Add(k, w.workingSet[k])
+		err = pack.Add(string(k[:]), w.workingSet[k])
 		if err != nil {
 			return err
 		}
 	}
-	err = pack.Close()
+	packidx, err := pack.Close()
 	if err != nil {
 		return err
 	}
-	return os.Rename(tmppath, bpackname)
+	err = os.Rename(tmppath, bpackname)
+	if err != nil {
+		return err
+	}
+	midxent := metaIndexEnt{
+		packname: bpackbasename,
+		idx:      packidx,
+	}
+	w.rdr.midx = append(w.rdr.midx, midxent)
+	return nil
 }
 
 func (w *Writer) Add(data []byte) ([32]byte, error) {
 	h := sha256.Sum256(data)
-	k := string(h[:])
-	_, ok := w.workingSet[k]
+	_, ok := w.workingSet[h]
 	if ok {
 		return h, nil
 	}
 	v := make([]byte, len(data), len(data))
 	copy(v, data)
-	w.workingSet[k] = v
+	w.workingSet[h] = v
 	w.workingSetSz += uint64(len(data))
 	if w.workingSetSz > 1024*1024*128 {
 		return h, w.flushWorkingSet()
