@@ -2,7 +2,6 @@ package bpack
 
 import (
 	"bytes"
-	"encoding/hex"
 	"math/rand"
 	"reflect"
 	"testing"
@@ -88,12 +87,9 @@ func TestBpack(t *testing.T) {
 		t.Fatal(err)
 	}
 	for k, v := range has {
-		gotv, ok, err := r.Get(string(k))
+		gotv, err := r.Get(string(k))
 		if err != nil {
 			t.Fatal(err)
-		}
-		if !ok {
-			t.Fatalf("k=(%v) not found!\n", hex.EncodeToString([]byte(k)))
 		}
 		if !reflect.DeepEqual(v, gotv) {
 			t.Fatalf("k=(%v) %v != %v", []byte(k), v, gotv)

@@ -20,12 +20,9 @@ func (s *rstore) Put(v []byte) ([32]byte, error) {
 }
 
 func (s *rstore) Get(hash [32]byte) ([]byte, error) {
-	data, ok, err := s.pack.Get(string(hash[:]))
+	data, err := s.pack.Get(string(hash[:]))
 	if err != nil {
 		return nil, err
-	}
-	if !ok {
-		return nil, fmt.Errorf("%s not found", hex.EncodeToString(hash[:]))
 	}
 	return data, nil
 }

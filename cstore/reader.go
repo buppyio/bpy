@@ -3,6 +3,7 @@ package cstore
 import (
 	"acha.ninja/bpy/bpack"
 	"container/list"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -51,6 +52,21 @@ func NewReader(storepath string, cachepath string) (*Reader, error) {
 		storepath: storepath,
 		cachepath: cachepath,
 	}, nil
+}
+
+func (r *Reader) Get(hash [32]byte) ([]byte, error) {
+	k := string(hash[:])
+	for i := range r.midx {
+		_, ok := r.midx[i].idx.Search(k)
+		if ok {
+			packrdr, err := r.getPackReader(r.midx[i].packname, r.midx[i].idx)
+			if err != nil {
+				return nil, err
+			}
+			return packrdr.Get(k)
+		}
+	}
+	return nil, fmt.Errorf("hash not found in cstore")
 }
 
 func (r *Reader) getPackReader(packname string, idx bpack.Index) (*bpack.Reader, error) {

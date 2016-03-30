@@ -2,6 +2,7 @@ package bpack
 
 import (
 	"encoding/binary"
+	"errors"
 	"io"
 )
 
@@ -22,30 +23,17 @@ func NewReader(r ReadSeekCloser) *Reader {
 	}
 }
 
-func (r *Reader) Get(key string) ([]byte, bool, error) {
-	lo := 0
-	hi := len(r.Idx) - 1
-	idx := -1
-	for lo <= hi {
-		mid := (hi + lo) / 2
-		switch KeyCmp(r.Idx[mid].Key, key) {
-		case 1:
-			hi = mid - 1
-		case -1:
-			lo = mid + 1
-		case 0:
-			idx = mid
-			goto done
-		}
-	}
-done:
-	if idx == -1 {
-		return nil, false, nil
+var NotFound = errors.New("Not Found")
+
+func (r *Reader) Get(key string) ([]byte, error) {
+	idx, ok := r.Idx.Search(key)
+	if !ok {
+		return nil, NotFound
 	}
 	off := r.Idx[idx].Offset
 	r.r.Seek(int64(off), 0)
 	b, err := readSlice(r.r)
-	return b, true, err
+	return b, err
 }
 
 func (r *Reader) Close() error {
