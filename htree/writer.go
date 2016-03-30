@@ -44,8 +44,8 @@ func (w *Writer) flushLvl(lvl int) error {
 		return err
 	}
 
-	// ensure there is enough room for the hash
-	if maxlen-w.nbytes[lvl+1] < len(hash) {
+	// ensure there is enough room for offset:hash
+	if maxlen-w.nbytes[lvl+1] < 8+len(hash) {
 		err = w.flushLvl(lvl + 1)
 		if err != nil {
 			return err
@@ -57,9 +57,8 @@ func (w *Writer) flushLvl(lvl int) error {
 		w.nbytes[lvl+1] = 1
 	}
 
-	copy(w.lvls[lvl+1][w.nbytes[lvl+1]:maxlen], hash[:])
-
-	w.nbytes[lvl+1] += len(hash)
+	copy(w.lvls[lvl+1][w.nbytes[lvl+1]+8:maxlen], hash[:])
+	w.nbytes[lvl+1] += 8+len(hash)
 	w.lvls[lvl][0] = byte(lvl)
 	w.nbytes[lvl] = 1
 	return nil

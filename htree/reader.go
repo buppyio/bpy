@@ -71,13 +71,13 @@ func (r *Reader) next(lvl int) (bool, error) {
 			return true, nil
 		}
 	}
-	copy(hash[:], r.lvls[lvl+1][r.pos[lvl+1]:maxlen])
+	copy(hash[:], r.lvls[lvl+1][r.pos[lvl+1]+8:maxlen])
 	buf, err := r.store.Get(hash)
 	if err != nil {
 		return false, err
 	}
 	copy(r.lvls[lvl][0:len(buf)], buf)
-	r.pos[lvl+1] += 32
+	r.pos[lvl+1] += 32+8
 	r.length[lvl] = len(buf)
 	r.pos[lvl] = 1
 	return false, nil
