@@ -16,7 +16,7 @@ type RandDirConfig struct {
 }
 
 var pathchars = []string{
-	"a", "b", "c", "d", "e", "f", "h", " ", "\t", "ф",
+	"a", "b", "c", "d", "e", "f", "h", "ф",
 }
 
 func randomPathChar() string {
