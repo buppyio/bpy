@@ -33,7 +33,7 @@ func TestCStore(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		for j := 0; j < int(r.Int31())%100; j++ {
+		for j := 0; j < int(r.Int31())%500; j++ {
 			nbytes := r.Int31() % 10
 			rbytes := make([]byte, nbytes, nbytes)
 			_, err = r.Read(rbytes)

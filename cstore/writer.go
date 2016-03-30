@@ -46,6 +46,7 @@ func (w *Writer) flushWorkingSet() error {
 	i := 0
 	for k := range w.workingSet {
 		keys[i] = k
+		i++
 	}
 	sort.Sort(keys)
 	dgst := sha256.New()
