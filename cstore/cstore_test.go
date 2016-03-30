@@ -12,7 +12,7 @@ import (
 
 func TestCStore(t *testing.T) {
 	r := rand.New(rand.NewSource(1234))
-	d, err := ioutil.TempDir("", "")
+	d, err := ioutil.TempDir("", "cstoretest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +33,7 @@ func TestCStore(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		for j := 0; j < 100; j++ {
+		for j := 0; j < int(r.Int31())%100; j++ {
 			nbytes := r.Int31() % 10
 			rbytes := make([]byte, nbytes, nbytes)
 			_, err = r.Read(rbytes)
