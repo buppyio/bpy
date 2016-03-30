@@ -49,7 +49,7 @@ func (b *bufreader) Close() error {
 }
 
 func TestBpack(t *testing.T) {
-	var buf [1024 * 1024]byte
+	var buf [1024 * 1024 * 10]byte
 
 	w, err := NewWriter(&bufwriteseeker{off: 0, buf: buf[:]})
 	if err != nil {
@@ -57,9 +57,9 @@ func TestBpack(t *testing.T) {
 	}
 	rd := rand.New(rand.NewSource(76463))
 	has := make(map[string][]byte)
-	for i := 0; i < 1000; i++ {
-		ksz := rd.Int31() % 100
-		vsz := rd.Int31() % 100
+	for i := 0; i < 10000; i++ {
+		ksz := rd.Int31() % 10
+		vsz := rd.Int31() % 10
 		k := make([]byte, ksz, ksz)
 		v := make([]byte, vsz, vsz)
 		_, err = rd.Read(k)
