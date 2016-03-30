@@ -40,7 +40,7 @@ func TestCStore(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			hash, err := w.Add(rbytes)
+			hash, err := w.Put(rbytes)
 			if err != nil {
 				t.Fatal(err)
 			}

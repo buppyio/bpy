@@ -29,6 +29,7 @@ func NewWriter(storepath string, cachepath string) (*Writer, error) {
 }
 
 func (w *Writer) Close() error {
+	w.rdr.Close()
 	return w.flushWorkingSet()
 }
 
@@ -98,6 +99,10 @@ func (w *Writer) Put(data []byte) ([32]byte, error) {
 	_, ok := w.workingSet[h]
 	if ok {
 		return h, nil
+	}
+	_, err := w.rdr.Get(h)
+	if err != NotFound {
+		return h, err
 	}
 	v := make([]byte, len(data), len(data))
 	copy(v, data)
