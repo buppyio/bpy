@@ -7,11 +7,13 @@ import (
 )
 
 type Reader struct {
+	root   [32]byte
 	store  bpy.CStoreReader
 	height int
 	lvls   [nlevels][maxlen]byte
 	pos    [nlevels]int
 	length [nlevels]int
+	offset uint64
 }
 
 func NewReader(store bpy.CStoreReader, root [32]byte) (*Reader, error) {
@@ -20,6 +22,7 @@ func NewReader(store bpy.CStoreReader, root [32]byte) (*Reader, error) {
 		return nil, err
 	}
 	r := &Reader{
+		root:  root,
 		store: store,
 	}
 	lvl := int(buf[0])
@@ -28,6 +31,48 @@ func NewReader(store bpy.CStoreReader, root [32]byte) (*Reader, error) {
 	r.height = lvl
 	copy(r.lvls[lvl][:], buf)
 	return r, nil
+}
+
+func (r *Reader) Seek(offset int64) error {
+	// XXX todo proper seek
+	absoffset := uint64(offset)
+	buf, err := store.Get(root)
+	if err != nil {
+		return nil, err
+	}
+	r := &Reader{
+		root:  root,
+		store: store,
+	}
+	lvl := int(buf[0])
+	r.length[lvl] = len(buf)
+	r.pos[lvl] = 1
+	r.height = lvl
+	copy(r.lvls[lvl][:], buf)
+	curoff := uint64(0)
+	for lvl != 0 {
+		for {
+			var enthash [32]byte
+			curoff = binary.LittleEndian.Uint64(r.lvls[lvl][r.pos[lvl]:])
+			nextoff := binary.LittleEndian.Uint64(r.lvls[lvl][r.pos[lvl]+40:])
+			copy(enthash[:], r.lvls[lvl][r.pos[lvl]+8:])
+			r.pos[lvl] += 40
+			if curoff <= absoff && absoff < nextoff {
+				buf, err := store.Get(enthash)
+				if err != nil {
+					return nil, err
+				}
+				lvl -= 1
+				r.length[lvl] = len(buf)
+				r.pos[lvl] = 1
+				copy(r.lvls[lvl][:], buf)
+				break
+			}
+		}
+	}
+	r.pos[0] += (absoffset - curoff)
+	return r, nil
+
 }
 
 func (r *Reader) Read(buf []byte) (int, error) {
