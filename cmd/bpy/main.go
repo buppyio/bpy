@@ -119,5 +119,7 @@ func main() {
 		cat()
 	case "ls":
 		ls()
+	case "dbg":
+		dbg()
 	}
 }

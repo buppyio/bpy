@@ -77,7 +77,7 @@ func (r *Reader) next(lvl int) (bool, error) {
 		return false, err
 	}
 	copy(r.lvls[lvl][0:len(buf)], buf)
-	r.pos[lvl+1] += 32+8
+	r.pos[lvl+1] += 32 + 8
 	r.length[lvl] = len(buf)
 	r.pos[lvl] = 1
 	return false, nil

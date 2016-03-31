@@ -91,6 +91,8 @@ func (w *Writer) flushWorkingSet() error {
 		idx:      packidx,
 	}
 	w.rdr.midx = append(w.rdr.midx, midxent)
+	w.workingSet = make(map[[32]byte][]byte)
+	w.workingSetSz = 0
 	return nil
 }
 

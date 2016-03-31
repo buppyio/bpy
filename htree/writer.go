@@ -58,20 +58,20 @@ func (w *Writer) flushLvl(lvl int) error {
 		w.lvls[lvl+1][0] = byte(lvl + 1)
 		w.nbytes[lvl+1] = 1
 	}
-	
+
 	if lvl == 0 {
 		binary.LittleEndian.PutUint64(w.lvls[lvl+1][w.nbytes[lvl+1]:maxlen], w.offset)
 	} else {
 		copy(w.lvls[lvl+1][w.nbytes[lvl+1]:maxlen], w.lvls[lvl][1:9])
 	}
 	copy(w.lvls[lvl+1][w.nbytes[lvl+1]+8:maxlen], hash[:])
-	w.nbytes[lvl+1] += 8+len(hash)
+	w.nbytes[lvl+1] += 8 + len(hash)
 	if lvl == 0 {
 		w.offset += uint64(w.nbytes[0])
 	}
 	w.lvls[lvl][0] = byte(lvl)
 	w.nbytes[lvl] = 1
-	
+
 	return nil
 }
 
