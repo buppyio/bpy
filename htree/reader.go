@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"fmt"
 )
 
 type Reader struct {
@@ -37,6 +38,7 @@ func NewReader(store bpy.CStoreReader, root [32]byte) (*Reader, error) {
 func (r *Reader) Seek(offset int64) (int64, error) {
 	// XXX todo proper seek
 	absoff := uint64(offset)
+	fmt.Printf("seeking to %d\n", absoff)
 	buf, err := r.store.Get(r.root)
 	if err != nil {
 		return 0, err
@@ -48,13 +50,17 @@ func (r *Reader) Seek(offset int64) (int64, error) {
 	copy(r.lvls[lvl][:], buf)
 	curoff := uint64(0)
 	for lvl != 0 {
+		fmt.Printf("seeking lvl %d\n", lvl)
 		for {
 			var enthash [32]byte
 			curoff = binary.LittleEndian.Uint64(r.lvls[lvl][r.pos[lvl]:])
-			nextoff := binary.LittleEndian.Uint64(r.lvls[lvl][r.pos[lvl]+40:])
 			copy(enthash[:], r.lvls[lvl][r.pos[lvl]+8:])
 			r.pos[lvl] += 40
-			if curoff <= absoff && absoff < nextoff {
+			nextoff := absoff + 1
+			if r.pos[lvl] < r.length[lvl] {
+				nextoff = binary.LittleEndian.Uint64(r.lvls[lvl][r.pos[lvl]:])
+			}
+			if absoff < nextoff {
 				buf, err := r.store.Get(enthash)
 				if err != nil {
 					return 0, err
