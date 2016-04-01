@@ -2,6 +2,7 @@ package htree
 
 import (
 	"acha.ninja/bpy"
+	"encoding/binary"
 	"errors"
 	"io"
 )
@@ -33,16 +34,12 @@ func NewReader(store bpy.CStoreReader, root [32]byte) (*Reader, error) {
 	return r, nil
 }
 
-func (r *Reader) Seek(offset int64) error {
+func (r *Reader) Seek(offset int64) (int64, error) {
 	// XXX todo proper seek
-	absoffset := uint64(offset)
-	buf, err := store.Get(root)
+	absoff := uint64(offset)
+	buf, err := r.store.Get(r.root)
 	if err != nil {
-		return nil, err
-	}
-	r := &Reader{
-		root:  root,
-		store: store,
+		return 0, err
 	}
 	lvl := int(buf[0])
 	r.length[lvl] = len(buf)
@@ -58,9 +55,9 @@ func (r *Reader) Seek(offset int64) error {
 			copy(enthash[:], r.lvls[lvl][r.pos[lvl]+8:])
 			r.pos[lvl] += 40
 			if curoff <= absoff && absoff < nextoff {
-				buf, err := store.Get(enthash)
+				buf, err := r.store.Get(enthash)
 				if err != nil {
-					return nil, err
+					return 0, err
 				}
 				lvl -= 1
 				r.length[lvl] = len(buf)
@@ -70,8 +67,8 @@ func (r *Reader) Seek(offset int64) error {
 			}
 		}
 	}
-	r.pos[0] += (absoffset - curoff)
-	return r, nil
+	r.pos[0] += int(absoff - curoff)
+	return int64(absoff), nil
 
 }
 

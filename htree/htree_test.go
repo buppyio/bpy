@@ -47,5 +47,29 @@ func TestHTree(t *testing.T) {
 				t.Fatalf("corrupt read at idx %d (%d != %d)", i, expected[i], got[i])
 			}
 		}
+
+		_, err = r.Seek(int64(len(expected)))
+		if err != io.EOF {
+			t.Fatal("Seek should hit EOF")
+		}
+
+		for i := 0; i < 100; i++ {
+			seekto := int64(rand.Int31()) % int64(len(expected))
+			seekedto, err := r.Seek(seekto)
+			if err != nil {
+				t.Fatal("Seek failed %s", err.Error())
+			}
+			if seekedto != seekto {
+				t.Fatal("Seek returned bad offset")
+			}
+			seekbuf := []byte{0}
+			_, err = r.Read(seekbuf)
+			if err != nil {
+				t.Fatal("Seek failed %s", err.Error())
+			}
+			if seekbuf[seekto] != expected[0] {
+				t.Fatal("Seek gave wrong value differ")
+			}
+		}
 	}
 }
