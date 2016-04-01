@@ -15,7 +15,7 @@ func TestHTree(t *testing.T) {
 
 		store := testhelp.NewMemStore()
 		rand := rand.New(rand.NewSource(int64(i + 100)))
-		random := &io.LimitedReader{N: int64(rand.Int31() % 5 * 1024 * 1024), R: rand}
+		random := &io.LimitedReader{N: int64(rand.Int31() % (5 * 1024 * 1024)), R: rand}
 		_, err := io.Copy(&randbytes, random)
 		if err != nil {
 			t.Fatal(err)
@@ -48,9 +48,18 @@ func TestHTree(t *testing.T) {
 			}
 		}
 
-		_, err = r.Seek(int64(len(expected)))
+		end, err := r.Seek(int64(len(expected)))
+		if err != nil || end != int64(len(expected)) {
+			t.Fatal("Seek should hit end")
+		}
+		end, err = r.Seek(int64(len(expected)) + 1)
+		if err != nil || end != int64(len(expected)) {
+			t.Fatalf("Seek should hit end, end=%d, expected=%d", end, len(expected))
+		}
+		rdbuf := []byte{0}
+		_, err = r.Read(rdbuf)
 		if err != io.EOF {
-			t.Fatal("Seek should hit EOF")
+			t.Fatal("Seek expected eof")
 		}
 
 		for i := 0; i < 100; i++ {
@@ -62,12 +71,11 @@ func TestHTree(t *testing.T) {
 			if seekedto != seekto {
 				t.Fatal("Seek returned bad offset")
 			}
-			seekbuf := []byte{0}
-			_, err = r.Read(seekbuf)
+			_, err = r.Read(rdbuf)
 			if err != nil {
 				t.Fatal("Seek failed %s", err.Error())
 			}
-			if seekbuf[seekto] != expected[0] {
+			if rdbuf[0] != expected[seekto] {
 				t.Fatal("Seek gave wrong value differ")
 			}
 		}

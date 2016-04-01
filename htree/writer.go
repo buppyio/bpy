@@ -67,7 +67,7 @@ func (w *Writer) flushLvl(lvl int) error {
 	copy(w.lvls[lvl+1][w.nbytes[lvl+1]+8:maxlen], hash[:])
 	w.nbytes[lvl+1] += 8 + len(hash)
 	if lvl == 0 {
-		w.offset += uint64(w.nbytes[0])
+		w.offset += uint64(w.nbytes[0] - 1)
 	}
 	w.lvls[lvl][0] = byte(lvl)
 	w.nbytes[lvl] = 1
