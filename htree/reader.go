@@ -14,7 +14,6 @@ type Reader struct {
 	lvls   [nlevels][maxlen]byte
 	pos    [nlevels]int
 	length [nlevels]int
-	offset uint64
 }
 
 func NewReader(store bpy.CStoreReader, root [32]byte) (*Reader, error) {
@@ -34,9 +33,7 @@ func NewReader(store bpy.CStoreReader, root [32]byte) (*Reader, error) {
 	return r, nil
 }
 
-func (r *Reader) Seek(offset int64) (int64, error) {
-	// XXX todo proper seek
-	absoff := uint64(offset)
+func (r *Reader) Seek(absoff uint64) (uint64, error) {
 	buf, err := r.store.Get(r.root)
 	if err != nil {
 		return 0, err
@@ -60,6 +57,7 @@ func (r *Reader) Seek(offset int64) (int64, error) {
 			if absoff < nextoff {
 				buf, err := r.store.Get(enthash)
 				if err != nil {
+					// XXX revert seek on error?
 					return 0, err
 				}
 				lvl -= 1
@@ -77,7 +75,7 @@ func (r *Reader) Seek(offset int64) (int64, error) {
 	} else {
 		r.pos[0] += int(skipamnt)
 	}
-	return int64(absoff), nil
+	return absoff, nil
 
 }
 

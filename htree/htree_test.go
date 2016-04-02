@@ -48,12 +48,12 @@ func TestHTree(t *testing.T) {
 			}
 		}
 
-		end, err := r.Seek(int64(len(expected)))
-		if err != nil || end != int64(len(expected)) {
+		end, err := r.Seek(uint64(len(expected)))
+		if err != nil || end != uint64(len(expected)) {
 			t.Fatal("Seek should hit end")
 		}
-		end, err = r.Seek(int64(len(expected)) + 1)
-		if err != nil || end != int64(len(expected)) {
+		end, err = r.Seek(uint64(len(expected)) + 1)
+		if err != nil || end != uint64(len(expected)) {
 			t.Fatalf("Seek should hit end, end=%d, expected=%d", end, len(expected))
 		}
 		rdbuf := []byte{0}
@@ -63,7 +63,7 @@ func TestHTree(t *testing.T) {
 		}
 
 		for i := 0; i < 100; i++ {
-			seekto := int64(rand.Int31()) % int64(len(expected))
+			seekto := uint64(rand.Int31()) % uint64(len(expected))
 			seekedto, err := r.Seek(seekto)
 			if err != nil {
 				t.Fatal("Seek failed %s", err.Error())
