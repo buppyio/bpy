@@ -171,28 +171,34 @@ func Walk(store bpy.CStoreReader, hash [32]byte, fpath string) (DirEnt, error) {
 }
 
 type FileReader struct {
-	offset int64
+	offset uint64
 	fsize  int64
 	rdr    *htree.Reader
 }
 
-func (r *FileReader) Seek(off int64, whence int) {
+func (r *FileReader) Seek(off int64, whence int) (int64, error) {
 	switch whence {
 	case 0:
 		o, err := r.rdr.Seek(uint64(off))
 		r.offset = o
-		return o, err
+		return int64(o), err
 	case 1:
-		o, err := r.rdr.Seek(uint64(r.offset + off))
+		o, err := r.rdr.Seek(r.offset + uint64(off))
 		r.offset = o
-		return o, err
+		return int64(o), err
 	case 2:
-		o, err := r.rdr.Seek(uint64(fsize + off))
+		o, err := r.rdr.Seek(uint64(r.fsize + off))
 		r.offset = o
-		return o, err
+		return int64(o), err
 	default:
-		return r.offset, fmt.Errorf("bad whence %d", whence)
+		return int64(r.offset), fmt.Errorf("bad whence %d", whence)
 	}
+}
+
+func (r *FileReader) Read(buf []byte) (int, error) {
+	nread, err := r.rdr.Read(buf)
+	r.offset += uint64(nread)
+	return nread, err
 }
 
 func Open(store bpy.CStoreReader, roothash [32]byte, fpath string) (*FileReader, error) {
