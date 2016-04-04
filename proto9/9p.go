@@ -79,25 +79,25 @@ func UnpackMsg(buf []byte) (Msg, error) {
 	return msg, nil
 }
 
-type TVersion struct {
+func truncstrlen(s string) int {
+	return int(uint16(len(s)))
+}
+
+type Tversion struct {
 	Tag         Tag
 	MessageSize uint32
 	Version     string
 }
 
-func (msg *TVersion) MsgType() MessageType {
+func (msg *Tversion) MsgType() MessageType {
 	return Mt_Tversion
 }
 
-func truncstrlen(s string) int {
-	return int(uint16(len(s)))
-}
-
-func (msg *TVersion) WireLen() int {
+func (msg *Tversion) WireLen() int {
 	return HeaderSize + 2 + 4 + 2 + truncstrlen(msg.Version)
 }
 
-func (msg *TVersion) PackBody(b []byte) {
+func (msg *Tversion) PackBody(b []byte) {
 	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.MessageSize))
 	strlen := uint16(len(msg.Version))
@@ -105,7 +105,46 @@ func (msg *TVersion) PackBody(b []byte) {
 	copy(b[8:], []byte(msg.Version)[:strlen])
 }
 
-func (msg *TVersion) UnpackBody(b []byte) error {
+func (msg *Tversion) UnpackBody(b []byte) error {
+	sz := 2 + 4 + 2
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	msg.MessageSize = binary.LittleEndian.Uint32(b[2:6])
+	idx := 6
+	strlen := int(binary.LittleEndian.Uint16(b[idx : idx+2]))
+	sz += strlen
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Version = string(b[idx+2 : idx+2+sz])
+	return nil
+}
+
+type Rversion struct {
+	Tag         Tag
+	MessageSize uint32
+	Version     string
+}
+
+func (msg *Rversion) MsgType() MessageType {
+	return Mt_Rversion
+}
+
+func (msg *Rversion) WireLen() int {
+	return HeaderSize + 2 + 4 + 2 + truncstrlen(msg.Version)
+}
+
+func (msg *Rversion) PackBody(b []byte) {
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
+	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.MessageSize))
+	strlen := uint16(len(msg.Version))
+	binary.LittleEndian.PutUint16(b[6:8], strlen)
+	copy(b[8:], []byte(msg.Version)[:strlen])
+}
+
+func (msg *Rversion) UnpackBody(b []byte) error {
 	sz := 2 + 4 + 2
 	if len(b) < sz {
 		return ErrMsgCorrupt
