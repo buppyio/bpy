@@ -45,6 +45,8 @@ func NewMsg(mt MessageType) (Msg, error) {
 		return &Rversion{}, nil
 	case Mt_Tauth:
 		return &Tauth{}, nil
+	case Mt_Rauth:
+		return &Rauth{}, nil
 	case Mt_Rerror:
 		return &Rerror{}, nil
 	case Mt_Tflush:
@@ -71,12 +73,42 @@ func NewMsg(mt MessageType) (Msg, error) {
 	return nil, ErrMsgCorrupt
 }
 
-func PackQid(buf []byte, qid Qid) ([]byte, error) {
-	return nil, errors.New("unimplemented")
+func PackQid(buf []byte, qid Qid) {
+	buf[0] = byte(qid.Type)
+	binary.LittleEndian.PutUint32(buf[1:5], qid.Version)
+	binary.LittleEndian.PutUint64(buf[5:13], qid.Path)
 }
 
-func PackStat(buf []byte, st Stat) ([]byte, error) {
-	return nil, errors.New("unimplemented")
+func UnpackQid(buf []byte, qid *Qid) {
+	qid.Type = QidType(buf[0])
+	qid.Version = binary.LittleEndian.Uint32(buf[1:5])
+	qid.Path = binary.LittleEndian.Uint64(buf[5:13])
+}
+
+func StatLen(st *Stat) int {
+	return 2 + 4 + QidSize + 4 + 4 + 4 + 8 + 2 + truncstrlen(st.Name) + 2 + truncstrlen(st.UID) + 2 + truncstrlen(st.GID) + 2 + truncstrlen(st.MUID)
+}
+
+func PackStat(buf []byte, st Stat) {
+	binary.LittleEndian.PutUint16(buf[0:2], st.Type)
+	binary.LittleEndian.PutUint32(buf[2:6], st.Dev)
+	PackQid(buf[6:19], st.Qid)
+	binary.LittleEndian.PutUint32(buf[19:23], uint32(st.Mode))
+	binary.LittleEndian.PutUint32(buf[23:27], st.Atime)
+	binary.LittleEndian.PutUint32(buf[27:31], st.Mtime)
+	binary.LittleEndian.PutUint64(buf[31:39], st.Length)
+	namelen := truncstrlen(st.Name)
+	uidlen := truncstrlen(st.UID)
+	gidlen := truncstrlen(st.GID)
+	muidlen := truncstrlen(st.MUID)
+	binary.LittleEndian.PutUint16(buf[39:], uint16(namelen))
+	binary.LittleEndian.PutUint16(buf[41+namelen:], uint16(uidlen))
+	binary.LittleEndian.PutUint16(buf[43+namelen+uidlen:], uint16(gidlen))
+	binary.LittleEndian.PutUint16(buf[45:+namelen+uidlen+gidlen], uint16(muidlen))
+	copy(buf[41:41+namelen], st.Name)
+	copy(buf[43+namelen:43+namelen+uidlen], st.UID)
+	copy(buf[45+namelen+uidlen:45+namelen+uidlen+gidlen], st.GID)
+	copy(buf[47+namelen+uidlen+gidlen:47+namelen+uidlen+gidlen+muidlen], st.MUID)
 }
 
 func PackMsg(buf []byte, msg Msg) ([]byte, error) {
@@ -230,6 +262,34 @@ func (msg *Tauth) UnpackBody(b []byte) error {
 		return ErrMsgCorrupt
 	}
 	msg.Aname = string(b[10+unamelen : 10+unamelen+anamelen])
+	return nil
+}
+
+type Rauth struct {
+	Tag  Tag
+	Aqid Qid
+}
+
+func (msg *Rauth) MsgType() MessageType {
+	return Mt_Rauth
+}
+
+func (msg *Rauth) WireLen() int {
+	return HeaderSize + 2 + QidSize
+}
+
+func (msg *Rauth) PackBody(b []byte) {
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
+	PackQid(b[2:], msg.Aqid)
+}
+
+func (msg *Rauth) UnpackBody(b []byte) error {
+	sz := 2 + QidSize
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	UnpackQid(b[2:QidSize], &msg.Aqid)
 	return nil
 }
 

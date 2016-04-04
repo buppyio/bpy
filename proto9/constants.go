@@ -4,6 +4,7 @@ const (
 	HeaderSize     = 4 + 1
 	ReadOverhead   = HeaderSize + 4
 	WriteOverhead  = HeaderSize + 4 + 8 + 4
+	QidSize        = 13
 	Version        = "9P2000"
 	UnknownVersion = "unknown"
 )
