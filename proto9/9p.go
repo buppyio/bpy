@@ -73,6 +73,10 @@ func NewMsg(mt MessageType) (Msg, error) {
 		return &Tremove{}, nil
 	case Mt_Rremove:
 		return &Rremove{}, nil
+	case Mt_Topen:
+		return &Topen{}, nil
+	case Mt_Ropen:
+		return &Ropen{}, nil
 	}
 	return nil, ErrMsgCorrupt
 }
@@ -705,5 +709,67 @@ func (msg *Rremove) UnpackBody(b []byte) error {
 		return ErrMsgCorrupt
 	}
 	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	return nil
+}
+
+type Topen struct {
+	Tag  Tag
+	Fid  Fid
+	Mode OpenMode
+}
+
+func (msg *Topen) MsgType() MessageType {
+	return Mt_Topen
+}
+
+func (msg *Topen) WireLen() int {
+	return HeaderSize + 2 + 4 + 1
+}
+
+func (msg *Topen) PackBody(b []byte) {
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
+	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.Fid))
+	b[6] = byte(msg.Mode)
+}
+
+func (msg *Topen) UnpackBody(b []byte) error {
+	sz := 2 + 4 + 1
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Fid = Fid(binary.LittleEndian.Uint32(b[2:6]))
+	msg.Mode = OpenMode(b[6])
+	return nil
+}
+
+type Ropen struct {
+	Tag    Tag
+	Qid    Qid
+	Iounit uint32
+}
+
+func (msg *Ropen) MsgType() MessageType {
+	return Mt_Ropen
+}
+
+func (msg *Ropen) WireLen() int {
+	return HeaderSize + 2 + QidSize + 4
+}
+
+func (msg *Ropen) PackBody(b []byte) {
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
+	PackQid(b[2:15], msg.Qid)
+	binary.LittleEndian.PutUint32(b[15:19], msg.Iounit)
+}
+
+func (msg *Ropen) UnpackBody(b []byte) error {
+	sz := 2 + QidSize + 4
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	UnpackQid(b[2:15], &msg.Qid)
+	msg.Iounit = binary.LittleEndian.Uint32(b[15:19])
 	return nil
 }
