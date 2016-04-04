@@ -51,6 +51,10 @@ func NewMsg(mt MessageType) (Msg, error) {
 		return &Tflush{}, nil
 	case Mt_Rflush:
 		return &Rflush{}, nil
+	case Mt_Tread:
+		return &Tread{}, nil
+	case Mt_Rread:
+		return &Rread{}, nil
 	}
 	return nil, ErrMsgCorrupt
 }
@@ -302,5 +306,74 @@ func (msg *Rflush) UnpackBody(b []byte) error {
 		return ErrMsgCorrupt
 	}
 	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	return nil
+}
+
+type Tread struct {
+	Tag    Tag
+	Fid    Fid
+	Offset uint64
+	Count  uint32
+}
+
+func (msg *Tread) MsgType() MessageType {
+	return Mt_Tread
+}
+
+func (msg *Tread) WireLen() int {
+	return HeaderSize + 2 + 4 + 8 + 4
+}
+
+func (msg *Tread) PackBody(b []byte) {
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
+	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.Fid))
+	binary.LittleEndian.PutUint64(b[6:14], msg.Offset)
+	binary.LittleEndian.PutUint32(b[14:18], msg.Count)
+}
+
+func (msg *Tread) UnpackBody(b []byte) error {
+	sz := 2 + 4 + 8 + 4
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Fid = Fid(binary.LittleEndian.Uint32(b[2:6]))
+	msg.Offset = binary.LittleEndian.Uint64(b[6:14])
+	msg.Count = binary.LittleEndian.Uint32(b[14:18])
+	return nil
+}
+
+type Rread struct {
+	Tag  Tag
+	Data []byte
+}
+
+func (msg *Rread) MsgType() MessageType {
+	return Mt_Rread
+}
+
+func (msg *Rread) WireLen() int {
+	return HeaderSize + 2 + 4 + len(msg.Data)
+}
+
+func (msg *Rread) PackBody(b []byte) {
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
+	binary.LittleEndian.PutUint32(b[2:6], uint32(len(msg.Data)))
+	copy(b[6:], msg.Data)
+}
+
+func (msg *Rread) UnpackBody(b []byte) error {
+	sz := 2 + 4
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	datalen := binary.LittleEndian.Uint32(b[2:6])
+	sz += int(datalen)
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Data = make([]byte, datalen, datalen)
+	copy(msg.Data, b[6:6+datalen])
 	return nil
 }
