@@ -40,7 +40,9 @@ type Stat struct {
 func NewMsg(mt MessageType) (Msg, error) {
 	switch mt {
 	case Mt_Tversion:
-		return &TVersion{}, nil
+		return &Tversion{}, nil
+	case Mt_Rversion:
+		return &Rversion{}, nil
 	}
 	return nil, ErrMsgCorrupt
 }
@@ -58,8 +60,8 @@ func PackMsg(buf []byte, msg Msg) ([]byte, error) {
 	if len(buf) < nreq {
 		return nil, ErrBuffTooSmall
 	}
-	buf[0] = byte(msg.MsgType())
-	binary.LittleEndian.PutUint32(buf[1:HeaderSize], uint32(nreq))
+	binary.LittleEndian.PutUint32(buf[0:4], uint32(nreq))
+	buf[4] = byte(msg.MsgType())
 	msg.PackBody(buf[HeaderSize:nreq])
 	return buf[0:nreq], nil
 }
@@ -68,7 +70,7 @@ func UnpackMsg(buf []byte) (Msg, error) {
 	if len(buf) < 5 {
 		return nil, ErrBuffTooSmall
 	}
-	msg, err := NewMsg(MessageType(buf[0]))
+	msg, err := NewMsg(MessageType(buf[4]))
 	if err != nil {
 		return nil, err
 	}
@@ -112,13 +114,12 @@ func (msg *Tversion) UnpackBody(b []byte) error {
 	}
 	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	msg.MessageSize = binary.LittleEndian.Uint32(b[2:6])
-	idx := 6
-	strlen := int(binary.LittleEndian.Uint16(b[idx : idx+2]))
+	strlen := int(binary.LittleEndian.Uint16(b[6:8]))
 	sz += strlen
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Version = string(b[idx+2 : idx+2+sz])
+	msg.Version = string(b[8 : 8+strlen])
 	return nil
 }
 
@@ -151,12 +152,11 @@ func (msg *Rversion) UnpackBody(b []byte) error {
 	}
 	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	msg.MessageSize = binary.LittleEndian.Uint32(b[2:6])
-	idx := 6
-	strlen := int(binary.LittleEndian.Uint16(b[idx : idx+2]))
+	strlen := int(binary.LittleEndian.Uint16(b[6:8]))
 	sz += strlen
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Version = string(b[idx+2 : idx+2+sz])
+	msg.Version = string(b[8 : 8+strlen])
 	return nil
 }
