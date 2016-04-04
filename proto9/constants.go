@@ -9,34 +9,34 @@ const (
 )
 
 const (
-	Tversion MessageType = 100 + iota
-	Rversion
-	Tauth
-	Rauth
-	Tattach
-	Rattach
+	Mt_Tversion MessageType = 100 + iota
+	Mt_Rversion
+	Mt_Tauth
+	Mt_Rauth
+	Mt_Tattach
+	Mt_Rattach
 	_
-	Rerror
-	Tflush
-	Rflush
-	Twalk
-	Rwalk
-	Topen
-	Ropen
-	Tcreate
-	Rcreate
-	Tread
-	Rread
-	Twrite
-	Rwrite
-	Tclunk
-	Rclunk
-	Tremove
-	Rremove
-	Tstat
-	Rstat
-	Twstat
-	Rwstat
+	Mt_Rerror
+	Mt_Tflush
+	Mt_Rflush
+	Mt_Twalk
+	Mt_Rwalk
+	Mt_Topen
+	Mt_Ropen
+	Mt_Tcreate
+	Mt_Rcreate
+	Mt_Tread
+	Mt_Rread
+	Mt_Twrite
+	Mt_Rwrite
+	Mt_Tclunk
+	Mt_Rclunk
+	Mt_Tremove
+	Mt_Rremove
+	Mt_Tstat
+	Mt_Rstat
+	Mt_Twstat
+	Mt_Rwstat
 )
 
 const (
