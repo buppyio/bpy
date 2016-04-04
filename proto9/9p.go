@@ -43,6 +43,10 @@ func NewMsg(mt MessageType) (Msg, error) {
 		return &Tversion{}, nil
 	case Mt_Rversion:
 		return &Rversion{}, nil
+	case Mt_Tattach:
+		return &Tattach{}, nil
+	case Mt_Rattach:
+		return &Rattach{}, nil
 	case Mt_Tauth:
 		return &Tauth{}, nil
 	case Mt_Rauth:
@@ -290,6 +294,85 @@ func (msg *Rauth) UnpackBody(b []byte) error {
 	}
 	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	UnpackQid(b[2:QidSize], &msg.Aqid)
+	return nil
+}
+
+type Tattach struct {
+	Tag   Tag
+	Fid   Fid
+	Afid  Fid
+	Uname string
+	Aname string
+}
+
+func (msg *Tattach) MsgType() MessageType {
+	return Mt_Tattach
+}
+
+func (msg *Tattach) WireLen() int {
+	return HeaderSize + 2 + 4 + 4 + +2 + truncstrlen(msg.Uname) + 2 + truncstrlen(msg.Aname)
+}
+
+func (msg *Tattach) PackBody(b []byte) {
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
+	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.Fid))
+	binary.LittleEndian.PutUint32(b[6:10], uint32(msg.Afid))
+	unamelen := uint16(len(msg.Uname))
+	binary.LittleEndian.PutUint16(b[10:12], unamelen)
+	copy(b[8:], []byte(msg.Uname)[:unamelen])
+	anamelen := uint16(len(msg.Aname))
+	binary.LittleEndian.PutUint16(b[12+unamelen:14+unamelen], anamelen)
+	copy(b[14+unamelen:], []byte(msg.Aname)[:anamelen])
+}
+
+func (msg *Tattach) UnpackBody(b []byte) error {
+	sz := 2 + 4 + 4 + 2 + 2
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Fid = Fid(binary.LittleEndian.Uint32(b[2:6]))
+	msg.Afid = Fid(binary.LittleEndian.Uint32(b[6:10]))
+	unamelen := int(binary.LittleEndian.Uint16(b[10:12]))
+	sz += unamelen
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Uname = string(b[12 : 12+unamelen])
+	anamelen := int(binary.LittleEndian.Uint16(b[12+unamelen : 14+unamelen]))
+	sz += anamelen
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Aname = string(b[14+unamelen : 14+unamelen+anamelen])
+	return nil
+}
+
+type Rattach struct {
+	Tag Tag
+	Qid Qid
+}
+
+func (msg *Rattach) MsgType() MessageType {
+	return Mt_Rattach
+}
+
+func (msg *Rattach) WireLen() int {
+	return HeaderSize + 2 + QidSize
+}
+
+func (msg *Rattach) PackBody(b []byte) {
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
+	PackQid(b[2:], msg.Qid)
+}
+
+func (msg *Rattach) UnpackBody(b []byte) error {
+	sz := 2 + QidSize
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	UnpackQid(b[2:QidSize], &msg.Qid)
 	return nil
 }
 
