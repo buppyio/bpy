@@ -59,6 +59,14 @@ func NewMsg(mt MessageType) (Msg, error) {
 		return &Twrite{}, nil
 	case Mt_Rwrite:
 		return &Rwrite{}, nil
+	case Mt_Tclunk:
+		return &Tclunk{}, nil
+	case Mt_Rclunk:
+		return &Rclunk{}, nil
+	case Mt_Tremove:
+		return &Tremove{}, nil
+	case Mt_Rremove:
+		return &Rremove{}, nil
 	}
 	return nil, ErrMsgCorrupt
 }
@@ -448,5 +456,111 @@ func (msg *Rwrite) UnpackBody(b []byte) error {
 	}
 	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	msg.Count = binary.LittleEndian.Uint32(b[2:6])
+	return nil
+}
+
+type Tclunk struct {
+	Tag Tag
+	Fid Fid
+}
+
+func (msg *Tclunk) MsgType() MessageType {
+	return Mt_Tclunk
+}
+
+func (msg *Tclunk) WireLen() int {
+	return HeaderSize + 2 + 4
+}
+
+func (msg *Tclunk) PackBody(b []byte) {
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
+	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.Fid))
+}
+
+func (msg *Tclunk) UnpackBody(b []byte) error {
+	sz := 2 + 4
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Fid = Fid(binary.LittleEndian.Uint32(b[2:6]))
+	return nil
+}
+
+type Rclunk struct {
+	Tag Tag
+}
+
+func (msg *Rclunk) MsgType() MessageType {
+	return Mt_Rclunk
+}
+
+func (msg *Rclunk) WireLen() int {
+	return HeaderSize + 2
+}
+
+func (msg *Rclunk) PackBody(b []byte) {
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
+}
+
+func (msg *Rclunk) UnpackBody(b []byte) error {
+	sz := 2
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	return nil
+}
+
+type Tremove struct {
+	Tag Tag
+	Fid Fid
+}
+
+func (msg *Tremove) MsgType() MessageType {
+	return Mt_Tremove
+}
+
+func (msg *Tremove) WireLen() int {
+	return HeaderSize + 2 + 4
+}
+
+func (msg *Tremove) PackBody(b []byte) {
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
+	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.Fid))
+}
+
+func (msg *Tremove) UnpackBody(b []byte) error {
+	sz := 2 + 4
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Fid = Fid(binary.LittleEndian.Uint32(b[2:6]))
+	return nil
+}
+
+type Rremove struct {
+	Tag Tag
+}
+
+func (msg *Rremove) MsgType() MessageType {
+	return Mt_Rremove
+}
+
+func (msg *Rremove) WireLen() int {
+	return HeaderSize + 2
+}
+
+func (msg *Rremove) PackBody(b []byte) {
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
+}
+
+func (msg *Rremove) UnpackBody(b []byte) error {
+	sz := 2
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	return nil
 }
