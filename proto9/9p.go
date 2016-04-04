@@ -45,6 +45,8 @@ func NewMsg(mt MessageType) (Msg, error) {
 		return &Rversion{}, nil
 	case Mt_Tauth:
 		return &Tauth{}, nil
+	case Mt_Rerror:
+		return &Rerror{}, nil
 	}
 	return nil, ErrMsgCorrupt
 }
@@ -208,5 +210,40 @@ func (msg *Tauth) UnpackBody(b []byte) error {
 		return ErrMsgCorrupt
 	}
 	msg.Aname = string(b[10+unamelen : 10+unamelen+anamelen])
+	return nil
+}
+
+type Rerror struct {
+	Tag Tag
+	Err string
+}
+
+func (msg *Rerror) MsgType() MessageType {
+	return Mt_Rerror
+}
+
+func (msg *Rerror) WireLen() int {
+	return HeaderSize + 2 + 2 + truncstrlen(msg.Err)
+}
+
+func (msg *Rerror) PackBody(b []byte) {
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
+	errlen := uint16(len(msg.Err))
+	binary.LittleEndian.PutUint16(b[2:4], errlen)
+	copy(b[4:], []byte(msg.Err)[:errlen])
+}
+
+func (msg *Rerror) UnpackBody(b []byte) error {
+	sz := 2 + 2
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	errlen := int(binary.LittleEndian.Uint16(b[2:4]))
+	sz += errlen
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Err = string(b[4 : 4+errlen])
 	return nil
 }
