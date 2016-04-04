@@ -43,6 +43,8 @@ func NewMsg(mt MessageType) (Msg, error) {
 		return &Tversion{}, nil
 	case Mt_Rversion:
 		return &Rversion{}, nil
+	case Mt_Tauth:
+		return &Tauth{}, nil
 	}
 	return nil, ErrMsgCorrupt
 }
@@ -158,5 +160,53 @@ func (msg *Rversion) UnpackBody(b []byte) error {
 		return ErrMsgCorrupt
 	}
 	msg.Version = string(b[8 : 8+strlen])
+	return nil
+}
+
+type Tauth struct {
+	Tag   Tag
+	Afid  Fid
+	Uname string
+	Aname string
+}
+
+func (msg *Tauth) MsgType() MessageType {
+	return Mt_Tauth
+}
+
+func (msg *Tauth) WireLen() int {
+	return HeaderSize + 2 + 4 + 2 + truncstrlen(msg.Uname) + 2 + truncstrlen(msg.Aname)
+}
+
+func (msg *Tauth) PackBody(b []byte) {
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
+	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.Afid))
+	unamelen := uint16(len(msg.Uname))
+	binary.LittleEndian.PutUint16(b[6:8], unamelen)
+	copy(b[8:], []byte(msg.Uname)[:unamelen])
+	anamelen := uint16(len(msg.Aname))
+	binary.LittleEndian.PutUint16(b[8+unamelen:10+unamelen], anamelen)
+	copy(b[10+unamelen:], []byte(msg.Aname)[:anamelen])
+}
+
+func (msg *Tauth) UnpackBody(b []byte) error {
+	sz := 2 + 4 + 2 + 2
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Afid = Fid(binary.LittleEndian.Uint32(b[2:6]))
+	unamelen := int(binary.LittleEndian.Uint16(b[6:8]))
+	sz += unamelen
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Uname = string(b[8 : 8+unamelen])
+	anamelen := int(binary.LittleEndian.Uint16(b[8+unamelen : 10+unamelen]))
+	sz += anamelen
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Aname = string(b[10+unamelen : 10+unamelen+anamelen])
 	return nil
 }
