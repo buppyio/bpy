@@ -79,6 +79,8 @@ func NewMsg(mt MessageType) (Msg, error) {
 		return &Ropen{}, nil
 	case Mt_Tcreate:
 		return &Tcreate{}, nil
+	case Mt_Rcreate:
+		return &Rcreate{}, nil
 	}
 	return nil, ErrMsgCorrupt
 }
@@ -817,5 +819,36 @@ func (msg *Tcreate) UnpackBody(b []byte) error {
 	msg.Name = string(b[8 : 8+namelen])
 	msg.Perm = FileMode(binary.LittleEndian.Uint32(b[8+namelen : 12+namelen]))
 	msg.Mode = OpenMode(b[12+namelen])
+	return nil
+}
+
+type Rcreate struct {
+	Tag    Tag
+	Qid    Qid
+	Iounit uint32
+}
+
+func (msg *Rcreate) MsgType() MessageType {
+	return Mt_Rcreate
+}
+
+func (msg *Rcreate) WireLen() int {
+	return HeaderSize + 2 + QidSize + 4
+}
+
+func (msg *Rcreate) PackBody(b []byte) {
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
+	PackQid(b[2:15], msg.Qid)
+	binary.LittleEndian.PutUint32(b[15:19], msg.Iounit)
+}
+
+func (msg *Rcreate) UnpackBody(b []byte) error {
+	sz := 2 + QidSize + 4
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	UnpackQid(b[2:15], &msg.Qid)
+	msg.Iounit = binary.LittleEndian.Uint32(b[15:19])
 	return nil
 }
