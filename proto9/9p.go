@@ -81,6 +81,8 @@ func NewMsg(mt MessageType) (Msg, error) {
 		return &Tcreate{}, nil
 	case Mt_Rcreate:
 		return &Rcreate{}, nil
+	case Mt_Tstat:
+		return &Tstat{}, nil
 	}
 	return nil, ErrMsgCorrupt
 }
@@ -850,5 +852,33 @@ func (msg *Rcreate) UnpackBody(b []byte) error {
 	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	UnpackQid(b[2:15], &msg.Qid)
 	msg.Iounit = binary.LittleEndian.Uint32(b[15:19])
+	return nil
+}
+
+type Tstat struct {
+	Tag Tag
+	Fid Fid
+}
+
+func (msg *Tstat) MsgType() MessageType {
+	return Mt_Tstat
+}
+
+func (msg *Tstat) WireLen() int {
+	return HeaderSize + 2 + 4
+}
+
+func (msg *Tstat) PackBody(b []byte) {
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
+	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.Fid))
+}
+
+func (msg *Tstat) UnpackBody(b []byte) error {
+	sz := 2 + 4
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Fid = Fid(binary.LittleEndian.Uint32(b[2:6]))
 	return nil
 }
