@@ -47,6 +47,10 @@ func NewMsg(mt MessageType) (Msg, error) {
 		return &Tauth{}, nil
 	case Mt_Rerror:
 		return &Rerror{}, nil
+	case Mt_Tflush:
+		return &Tflush{}, nil
+	case Mt_Rflush:
+		return &Rflush{}, nil
 	}
 	return nil, ErrMsgCorrupt
 }
@@ -245,5 +249,58 @@ func (msg *Rerror) UnpackBody(b []byte) error {
 		return ErrMsgCorrupt
 	}
 	msg.Err = string(b[4 : 4+errlen])
+	return nil
+}
+
+type Tflush struct {
+	Tag    Tag
+	OldTag Tag
+}
+
+func (msg *Tflush) MsgType() MessageType {
+	return Mt_Tflush
+}
+
+func (msg *Tflush) WireLen() int {
+	return HeaderSize + 2 + 2
+}
+
+func (msg *Tflush) PackBody(b []byte) {
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
+	binary.LittleEndian.PutUint16(b[2:4], uint16(msg.OldTag))
+}
+
+func (msg *Tflush) UnpackBody(b []byte) error {
+	sz := 2 + 2
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	msg.OldTag = Tag(binary.LittleEndian.Uint16(b[2:4]))
+	return nil
+}
+
+type Rflush struct {
+	Tag Tag
+}
+
+func (msg *Rflush) MsgType() MessageType {
+	return Mt_Rflush
+}
+
+func (msg *Rflush) WireLen() int {
+	return HeaderSize + 2
+}
+
+func (msg *Rflush) PackBody(b []byte) {
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
+}
+
+func (msg *Rflush) UnpackBody(b []byte) error {
+	sz := 2
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	return nil
 }
