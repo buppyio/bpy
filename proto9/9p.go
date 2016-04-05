@@ -85,6 +85,8 @@ func NewMsg(mt MessageType) (Msg, error) {
 		return &Tstat{}, nil
 	case Mt_Rstat:
 		return &Rstat{}, nil
+	case Mt_Twstat:
+		return &Twstat{}, nil
 	}
 	return nil, ErrMsgCorrupt
 }
@@ -939,5 +941,37 @@ func (msg *Rstat) UnpackBody(b []byte) error {
 	}
 	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	_, err := UnpackStat(b[4:], &msg.Stat)
+	return err
+}
+
+type Twstat struct {
+	Tag  Tag
+	Fid  Fid
+	Stat Stat
+}
+
+func (msg *Twstat) MsgType() MessageType {
+	return Mt_Twstat
+}
+
+func (msg *Twstat) WireLen() int {
+	return HeaderSize + 2 + 4 + 2 + StatLen(&msg.Stat)
+}
+
+func (msg *Twstat) PackBody(b []byte) {
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
+	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.Fid))
+	binary.LittleEndian.PutUint16(b[6:8], uint16(StatLen(&msg.Stat)))
+	PackStat(b[8:], &msg.Stat)
+}
+
+func (msg *Twstat) UnpackBody(b []byte) error {
+	sz := 8
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Fid = Fid(binary.LittleEndian.Uint32(b[2:6]))
+	_, err := UnpackStat(b[8:], &msg.Stat)
 	return err
 }
