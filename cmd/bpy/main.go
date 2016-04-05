@@ -119,6 +119,8 @@ func main() {
 		cat()
 	case "ls":
 		ls()
+	case "9p":
+		srv9p()
 	case "dbg":
 		dbg()
 	}
