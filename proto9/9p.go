@@ -83,6 +83,8 @@ func NewMsg(mt MessageType) (Msg, error) {
 		return &Rcreate{}, nil
 	case Mt_Tstat:
 		return &Tstat{}, nil
+	case Mt_Rstat:
+		return &Rstat{}, nil
 	}
 	return nil, ErrMsgCorrupt
 }
@@ -100,50 +102,57 @@ func UnpackQid(buf []byte, qid *Qid) {
 }
 
 func StatLen(st *Stat) int {
-	return 2 + 4 + QidSize + 4 + 4 + 4 + 8 + 2 + truncstrlen(st.Name) + 2 + truncstrlen(st.UID) + 2 + truncstrlen(st.GID) + 2 + truncstrlen(st.MUID)
+	return 2 + 2 + 4 + QidSize + 4 + 4 + 4 + 8 + 2 + truncstrlen(st.Name) + 2 + truncstrlen(st.UID) + 2 + truncstrlen(st.GID) + 2 + truncstrlen(st.MUID)
 }
 
 func PackStat(buf []byte, st *Stat) {
-	binary.LittleEndian.PutUint16(buf[0:2], st.Type)
-	binary.LittleEndian.PutUint32(buf[2:6], st.Dev)
-	PackQid(buf[6:19], st.Qid)
-	binary.LittleEndian.PutUint32(buf[19:23], uint32(st.Mode))
-	binary.LittleEndian.PutUint32(buf[23:27], st.Atime)
-	binary.LittleEndian.PutUint32(buf[27:31], st.Mtime)
-	binary.LittleEndian.PutUint64(buf[31:39], st.Length)
+	binary.LittleEndian.PutUint16(buf[0:2], uint16(StatLen(st)-2))
+	binary.LittleEndian.PutUint16(buf[2:4], st.Type)
+	binary.LittleEndian.PutUint32(buf[4:8], st.Dev)
+	PackQid(buf[8:21], st.Qid)
+	binary.LittleEndian.PutUint32(buf[21:25], uint32(st.Mode))
+	binary.LittleEndian.PutUint32(buf[25:29], st.Atime)
+	binary.LittleEndian.PutUint32(buf[29:33], st.Mtime)
+	binary.LittleEndian.PutUint64(buf[33:41], st.Length)
 	namelen := truncstrlen(st.Name)
 	uidlen := truncstrlen(st.UID)
 	gidlen := truncstrlen(st.GID)
 	muidlen := truncstrlen(st.MUID)
-	binary.LittleEndian.PutUint16(buf[39:], uint16(namelen))
-	binary.LittleEndian.PutUint16(buf[41+namelen:], uint16(uidlen))
-	binary.LittleEndian.PutUint16(buf[43+namelen+uidlen:], uint16(gidlen))
-	binary.LittleEndian.PutUint16(buf[45:+namelen+uidlen+gidlen], uint16(muidlen))
-	copy(buf[41:41+namelen], st.Name)
-	copy(buf[43+namelen:43+namelen+uidlen], st.UID)
-	copy(buf[45+namelen+uidlen:45+namelen+uidlen+gidlen], st.GID)
-	copy(buf[47+namelen+uidlen+gidlen:47+namelen+uidlen+gidlen+muidlen], st.MUID)
+	binary.LittleEndian.PutUint16(buf[41:], uint16(namelen))
+	binary.LittleEndian.PutUint16(buf[43+namelen:], uint16(uidlen))
+	binary.LittleEndian.PutUint16(buf[45+namelen+uidlen:], uint16(gidlen))
+	binary.LittleEndian.PutUint16(buf[47+namelen+uidlen+gidlen:], uint16(muidlen))
+	copy(buf[43:43+namelen], st.Name)
+	copy(buf[45+namelen:45+namelen+uidlen], st.UID)
+	copy(buf[47+namelen+uidlen:47+namelen+uidlen+gidlen], st.GID)
+	copy(buf[49+namelen+uidlen+gidlen:49+namelen+uidlen+gidlen+muidlen], st.MUID)
 }
 
-func UnpackStat(buf []byte, st *Stat) error {
-	st.Type = binary.LittleEndian.Uint16(buf[0:2])
-	st.Dev = binary.LittleEndian.Uint32(buf[2:6])
-	UnpackQid(buf[6:19], &st.Qid)
-	st.Mode = FileMode(binary.LittleEndian.Uint32(buf[19:23]))
-	st.Atime = binary.LittleEndian.Uint32(buf[23:27])
-	st.Mtime = binary.LittleEndian.Uint32(buf[27:31])
-	st.Length = binary.LittleEndian.Uint64(buf[31:39])
-	/*
-		namelen := binary.LittleEndian.Uint16(buf[39:41])
-		uidlen := binary.LittleEndian.Uint16(buf[41+namelen:43+namelen])
-		gidlen := binary.LittleEndian.Uint16(buf[43+namelen+uidlen:45+namelen+uidlen])
-		muidlen := binary.LittleEndian.Uint16(buf[45+namelen+uidlen+gidlen:47+namelen+uidlen+gidlen])
-		copy(buf[41:41+namelen], st.Name)
-		copy(buf[43+namelen:43+namelen+uidlen], st.UID)
-		copy(buf[45+namelen+uidlen:45+namelen+uidlen+gidlen], st.GID)
-		copy(buf[47+namelen+uidlen+gidlen:47+namelen+uidlen+gidlen+muidlen], st.MUID)
-	*/
-	return nil
+func UnpackStat(buf []byte, st *Stat) (int, error) {
+	sz := 2 + 2 + 4 + QidSize + 4 + 4 + 4 + 8 + 2 + 2 + 2 + 2
+	if len(buf) < sz {
+		return 0, ErrMsgCorrupt
+	}
+	st.Type = binary.LittleEndian.Uint16(buf[2:4])
+	st.Dev = binary.LittleEndian.Uint32(buf[4:8])
+	UnpackQid(buf[8:21], &st.Qid)
+	st.Mode = FileMode(binary.LittleEndian.Uint32(buf[21:25]))
+	st.Atime = binary.LittleEndian.Uint32(buf[25:29])
+	st.Mtime = binary.LittleEndian.Uint32(buf[29:33])
+	st.Length = binary.LittleEndian.Uint64(buf[33:41])
+	namelen := int(binary.LittleEndian.Uint16(buf[41:43]))
+	uidlen := int(binary.LittleEndian.Uint16(buf[43+namelen : 45+namelen]))
+	gidlen := int(binary.LittleEndian.Uint16(buf[45+namelen+uidlen : 47+namelen+uidlen]))
+	muidlen := int(binary.LittleEndian.Uint16(buf[47+namelen+uidlen+gidlen : 49+namelen+uidlen+gidlen]))
+	sz += namelen + uidlen + gidlen + muidlen
+	if len(buf) < sz {
+		return 0, ErrMsgCorrupt
+	}
+	st.Name = string(buf[43 : 43+namelen])
+	st.UID = string(buf[45+namelen : 45+namelen+uidlen])
+	st.GID = string(buf[47+namelen+uidlen : 47+namelen+uidlen+gidlen])
+	st.MUID = string(buf[49+namelen+uidlen+gidlen : 49+namelen+uidlen+gidlen+muidlen])
+	return sz, nil
 }
 
 func PackMsg(buf []byte, msg Msg) ([]byte, error) {
@@ -902,4 +911,33 @@ func (msg *Tstat) UnpackBody(b []byte) error {
 	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	msg.Fid = Fid(binary.LittleEndian.Uint32(b[2:6]))
 	return nil
+}
+
+type Rstat struct {
+	Tag  Tag
+	Stat Stat
+}
+
+func (msg *Rstat) MsgType() MessageType {
+	return Mt_Rstat
+}
+
+func (msg *Rstat) WireLen() int {
+	return HeaderSize + 2 + 2 + StatLen(&msg.Stat)
+}
+
+func (msg *Rstat) PackBody(b []byte) {
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
+	binary.LittleEndian.PutUint16(b[2:4], uint16(StatLen(&msg.Stat)))
+	PackStat(b[4:], &msg.Stat)
+}
+
+func (msg *Rstat) UnpackBody(b []byte) error {
+	sz := 4
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	_, err := UnpackStat(b[4:], &msg.Stat)
+	return err
 }
