@@ -91,6 +91,8 @@ func NewMsg(mt MessageType) (Msg, error) {
 		return &Rwstat{}, nil
 	case Mt_Twalk:
 		return &Twalk{}, nil
+	case Mt_Rwalk:
+		return &Rwalk{}, nil
 	}
 	return nil, ErrMsgCorrupt
 }
@@ -1057,6 +1059,48 @@ func (msg *Twalk) UnpackBody(b []byte) error {
 		nlen := int(binary.LittleEndian.Uint16(b[12+offset : 14+offset]))
 		msg.Names[i] = string(b[14+offset : 14+offset+nlen])
 		offset += int(nlen) + 2
+	}
+	return nil
+}
+
+type Rwalk struct {
+	Tag  Tag
+	Qids []Qid
+}
+
+func (msg *Rwalk) MsgType() MessageType {
+	return Mt_Rwalk
+}
+
+func (msg *Rwalk) WireLen() int {
+	return HeaderSize + 2 + 2 + len(msg.Qids)*QidSize
+}
+
+func (msg *Rwalk) PackBody(b []byte) {
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
+	binary.LittleEndian.PutUint16(b[2:4], uint16(len(msg.Qids)))
+	offset := 0
+	for i := range msg.Qids {
+		PackQid(b[4+offset:4+offset+QidSize], msg.Qids[i])
+		offset += QidSize
+	}
+}
+
+func (msg *Rwalk) UnpackBody(b []byte) error {
+	sz := 2 + 2
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	n := int(binary.LittleEndian.Uint16(b[2:4]))
+	if len(b) < n*QidSize {
+		return ErrMsgCorrupt
+	}
+	msg.Qids = make([]Qid, n, n)
+	offset := 0
+	for i := 0; i < n; i++ {
+		UnpackQid(b[4+offset:4+offset+QidSize], &msg.Qids[i])
+		offset += QidSize
 	}
 	return nil
 }
