@@ -89,6 +89,8 @@ func NewMsg(mt MessageType) (Msg, error) {
 		return &Twstat{}, nil
 	case Mt_Rwstat:
 		return &Rwstat{}, nil
+	case Mt_Twalk:
+		return &Twalk{}, nil
 	}
 	return nil, ErrMsgCorrupt
 }
@@ -1000,5 +1002,61 @@ func (msg *Rwstat) UnpackBody(b []byte) error {
 		return ErrMsgCorrupt
 	}
 	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	return nil
+}
+
+type Twalk struct {
+	Tag    Tag
+	Fid    Fid
+	NewFid Fid
+	Names  []string
+}
+
+func (msg *Twalk) MsgType() MessageType {
+	return Mt_Twalk
+}
+
+func (msg *Twalk) WireLen() int {
+	sz := HeaderSize + 2 + 4 + 4 + 2
+	for _, s := range msg.Names {
+		sz += 2 + truncstrlen(s)
+	}
+	return sz
+}
+
+func (msg *Twalk) PackBody(b []byte) {
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
+	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.Fid))
+	binary.LittleEndian.PutUint32(b[6:10], uint32(msg.NewFid))
+	binary.LittleEndian.PutUint16(b[10:12], uint16(len(msg.Names)))
+	offset := 0
+	for _, n := range msg.Names {
+		l := truncstrlen(n)
+		binary.LittleEndian.PutUint16(b[12+offset:14+offset], uint16(l))
+		copy(b[14+offset:14+offset+l], n[0:l])
+		offset += 2 + l
+	}
+}
+
+func (msg *Twalk) UnpackBody(b []byte) error {
+	sz := 2 + 4 + 4 + 2
+	if len(b) < sz {
+		return ErrMsgCorrupt
+	}
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Fid = Fid(binary.LittleEndian.Uint32(b[2:6]))
+	msg.NewFid = Fid(binary.LittleEndian.Uint32(b[6:10]))
+	n := int(binary.LittleEndian.Uint16(b[10:12]))
+	msg.Names = make([]string, n, n)
+	offset := 0
+	for i := 0; i < n; i++ {
+		sz += 2
+		if len(b) < sz {
+			return ErrMsgCorrupt
+		}
+		nlen := int(binary.LittleEndian.Uint16(b[12+offset : 14+offset]))
+		msg.Names[i] = string(b[14+offset : 14+offset+nlen])
+		offset += int(nlen) + 2
+	}
 	return nil
 }
