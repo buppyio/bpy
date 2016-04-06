@@ -4,6 +4,7 @@ import (
 	"acha.ninja/bpy/testhelp"
 	"bytes"
 	"io"
+	"io/ioutil"
 	"math/rand"
 	"testing"
 )
@@ -79,5 +80,35 @@ func TestHTree(t *testing.T) {
 				t.Fatal("Seek gave wrong value differ")
 			}
 		}
+	}
+}
+
+func BenchmarkHTree(b *testing.B) {
+	var randbytes bytes.Buffer
+
+	rand := rand.New(rand.NewSource(int64(452341)))
+	random := &io.LimitedReader{N: int64(rand.Int31() % (5 * 1024 * 1024)), R: rand}
+	_, err := io.Copy(&randbytes, random)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		store := testhelp.NewMemStore()
+		w := NewWriter(store)
+		_, err = io.Copy(w, bytes.NewReader(randbytes.Bytes()))
+		if err != nil {
+			b.Fatal(err)
+		}
+		root, err := w.Close()
+		if err != nil {
+			b.Fatal(err)
+		}
+		r, err := NewReader(store, root)
+		if err != nil {
+			b.Fatal(err)
+		}
+		io.Copy(ioutil.Discard, r)
 	}
 }
