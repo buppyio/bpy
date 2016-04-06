@@ -32,7 +32,7 @@ func (srv *proto9Server) readMsg(c net.Conn) (proto9.Msg, error) {
 	return proto9.UnpackMsg(srv.inbuf[0:sz])
 }
 
-func (srv *proto9Server) sendMsg(msg proto9.Msg, c net.Conn) error {
+func (srv *proto9Server) sendMsg(c net.Conn, msg proto9.Msg) error {
 	packed, err := proto9.PackMsg(srv.outbuf, msg)
 	if err != nil {
 		return err
@@ -42,6 +42,13 @@ func (srv *proto9Server) sendMsg(msg proto9.Msg, c net.Conn) error {
 		return err
 	}
 	return nil
+}
+
+func (srv *proto9Server) handleVersion(msg *proto9.Tversion) proto9.Msg {
+	return &proto9.Rerror{
+		Tag:  msg.Tag,
+		Err: "unimplemented...",
+	}
 }
 
 func (srv *proto9Server) serveConn(c net.Conn) {
@@ -54,19 +61,17 @@ func (srv *proto9Server) serveConn(c net.Conn) {
 			return
 		}
 		log.Printf("%#v", msg)
-		/*
-			switch msg := msg.(type) {
-			case *proto9.Tversion:
-				resp := handleTversion()
-				err = srv.sendMsg(c, resp)
-				if err != nil {
-					log.Printf("error sending message: %s", err.Error())
-					return
-				}
-			default:
-				log.Println("unhandled message type")
+		switch msg := msg.(type) {
+		case *proto9.Tversion:
+			resp := srv.handleVersion(msg)
+			err = srv.sendMsg(c, resp)
+			if err != nil {
+				log.Printf("error sending message: %s", err.Error())
+				return
 			}
-		*/
+		default:
+			log.Println("unhandled message type")
+		}
 	}
 
 }
