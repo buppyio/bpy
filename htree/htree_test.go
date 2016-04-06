@@ -87,7 +87,7 @@ func BenchmarkHTree(b *testing.B) {
 	var randbytes bytes.Buffer
 
 	rand := rand.New(rand.NewSource(int64(452341)))
-	random := &io.LimitedReader{N: int64(rand.Int31() % (5 * 1024 * 1024)), R: rand}
+	random := &io.LimitedReader{N: 5 * 1024 * 1024, R: rand}
 	_, err := io.Copy(&randbytes, random)
 	if err != nil {
 		b.Fatal(err)
