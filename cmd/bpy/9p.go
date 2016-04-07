@@ -1,16 +1,45 @@
 package main
 
 import (
+	"acha.ninja/bpy"
 	"acha.ninja/bpy/proto9"
 	"encoding/binary"
 	"log"
 	"net"
 )
 
+type Data interface{}
+
+type Dir struct {
+	dirents fs.DirEnts
+	packed  []byte
+}
+
+type File struct {
+	rdr bpy.CStoreReader
+	rdr *fs.FileReader
+}
+
+type Handle struct {
+	rc   uint32
+	qid  proto9.Qid
+	data FileData
+}
+
 type proto9Server struct {
-	maxMessageSize uint64
+	maxMessageSize uint32
+	negMessageSize uint32
 	inbuf          []byte
 	outbuf         []byte
+
+	qidPathCount uint64
+	qidmap       map[uint64]*Handle
+}
+
+func (srv *proto9Server) nextQidPath() {
+	p := qidPathCount
+	qidPathCount++
+	return p
 }
 
 func (srv *proto9Server) readMsg(c net.Conn) (proto9.Msg, error) {
@@ -45,16 +74,48 @@ func (srv *proto9Server) sendMsg(c net.Conn, msg proto9.Msg) error {
 }
 
 func (srv *proto9Server) handleVersion(msg *proto9.Tversion) proto9.Msg {
-	return &proto9.Rerror{
-		Tag:  msg.Tag,
-		Err: "unimplemented...",
+
+	if msg.Tag != proto9.NOTAG {
+		return &proto9.Rerror{
+			Tag: msg.Tag,
+			Err: "version tag incorrect",
+		}
+	}
+
+	if msg.MessageSize > srv.maxMessageSize {
+		srv.negMessageSize = srv.maxMessageSize
+	} else {
+		srv.negMessageSize = msg.MessageSize
+	}
+	srv.inbuf = make([]byte, srv.negMessageSize, srv.negMessageSize)
+	srv.outbuf = make([]byte, srv.negMessageSize, srv.negMessageSize)
+
+	return &proto9.Rversion{
+		Tag:         msg.Tag,
+		MessageSize: srv.negMessageSize,
+		Version:     "9P2000",
+	}
+}
+
+func (srv *proto9Server) handleAttach(msg *proto9.Tattach) proto9.Msg {
+	if msg.Afid != proto9.NOFID {
+		return &proto9.Rerror{
+			Tag: msg.Tag,
+			Err: "auth not supported",
+		}
+	}
+
+	return &proto9.Rattach{
+		Tag: msg.Tag,
 	}
 }
 
 func (srv *proto9Server) serveConn(c net.Conn) {
+	defer c.Close()
 	srv.inbuf = make([]byte, srv.maxMessageSize, srv.maxMessageSize)
 	srv.outbuf = make([]byte, srv.maxMessageSize, srv.maxMessageSize)
 	for {
+		var resp Msg
 		msg, err := srv.readMsg(c)
 		if err != nil {
 			log.Printf("error reading message: %s", err.Error())
@@ -63,14 +124,17 @@ func (srv *proto9Server) serveConn(c net.Conn) {
 		log.Printf("%#v", msg)
 		switch msg := msg.(type) {
 		case *proto9.Tversion:
-			resp := srv.handleVersion(msg)
-			err = srv.sendMsg(c, resp)
-			if err != nil {
-				log.Printf("error sending message: %s", err.Error())
-				return
-			}
+			resp = srv.handleVersion(msg)
+		case *proto9.Tattach:
+			resp = srv.handleAttach(msg)
 		default:
 			log.Println("unhandled message type")
+			return
+		}
+		err = srv.sendMsg(c, resp)
+		if err != nil {
+			log.Printf("error sending message: %s", err.Error())
+			return
 		}
 	}
 
