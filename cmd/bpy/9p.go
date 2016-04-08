@@ -4,26 +4,24 @@ import (
 	"acha.ninja/bpy"
 	"acha.ninja/bpy/proto9"
 	"encoding/binary"
+	"errors"
 	"log"
 	"net"
 )
 
-type Data interface{}
-
-type Dir struct {
-	dirents fs.DirEnts
-	packed  []byte
-}
+var (
+	ErrNoSuchFid = errors.New("no such fid")
+	ErrFidInUse  = errors.New("fid in use")
+)
 
 type File struct {
-	rdr bpy.CStoreReader
-	rdr *fs.FileReader
-}
-
-type Handle struct {
-	rc   uint32
-	qid  proto9.Qid
-	data FileData
+	hash   [32]byte
+	dirent fs.DirEnt
+	qid    proto9.Qid
+	// Only valid if qid.Type & QTFILE
+	rdr *fs.Reader
+	// Only valid if qid.Type & QTDIR
+	data []byte
 }
 
 type proto9Server struct {
@@ -31,15 +29,36 @@ type proto9Server struct {
 	negMessageSize uint32
 	inbuf          []byte
 	outbuf         []byte
-
-	qidPathCount uint64
-	qidmap       map[uint64]*Handle
+	qidPathCount   uint64
+	fids           map[Fid]*File
 }
 
 func (srv *proto9Server) nextQidPath() {
 	p := qidPathCount
 	qidPathCount++
 	return p
+}
+
+func (srv *proto9Server) AddFid(fid Fid, f *File) error {
+	_, ok := srv.fids[fid]
+	if !ok {
+		return ErrFidInUse
+	}
+	srv.fids[fid] = f
+	return nil
+}
+
+func (srv *proto9Server) ClunkFid(fid Fid) error {
+	f, ok := srv.fids[fid]
+	if !ok {
+		return ErrNoSuchFid
+	}
+	err := f.Close()
+	if err != nil {
+		return err
+	}
+	delete(srv.fids, fid)
+	return nil
 }
 
 func (srv *proto9Server) readMsg(c net.Conn) (proto9.Msg, error) {
