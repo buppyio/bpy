@@ -8,6 +8,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -25,18 +26,18 @@ var (
 )
 
 type File struct {
-	hash   [32]byte
-	dirent fs.DirEnt
-	qid    proto9.Qid
-	// Only valid if qid.Type & QTFILE
-	rdr *fs.FileReader
-	// Only valid if qid.Type & QTDIR
-	dirents fs.DirEnts
-	data    []byte
+	parent  *File
+	dirhash [32]byte
+	diridx  int
+	dirent  fs.DirEnt
+	qid     proto9.Qid
+
+	rdr    *fs.FileReader
+	dirdat []byte
 }
 
 func (f *File) Close() error {
-	if f.qid.Type&proto9.QTFILE != 0 {
+	if f.rdr != nil {
 		err := f.rdr.Close()
 		if err != nil {
 			return err
@@ -56,7 +57,7 @@ type proto9Server struct {
 	fids           map[proto9.Fid]*File
 }
 
-func dirEntToStat(ent *fs.DirEnt) proto9.Stat {
+func (srv *proto9Server) dirEntToStat(ent *fs.DirEnt) proto9.Stat {
 	mode := proto9.FileMode(0777)
 	qtype := proto9.QidType(0)
 	if ent.Mode.IsDir() {
@@ -70,7 +71,7 @@ func dirEntToStat(ent *fs.DirEnt) proto9.Stat {
 		Atime:  0,
 		Mtime:  0,
 		Name:   ent.Name,
-		Qid:    proto9.Qid{Type: qtype, Version: 0, Path: 0},
+		Qid:    srv.makeQid(*ent),
 		Length: uint64(ent.Size),
 		UID:    "foobar",
 		GID:    "foobar",
@@ -78,11 +79,11 @@ func dirEntToStat(ent *fs.DirEnt) proto9.Stat {
 	}
 }
 
-func packDir(dir fs.DirEnts) []byte {
+func (srv *proto9Server) packDir(dir fs.DirEnts) []byte {
 	n := len(dir)
 	stats := make([]proto9.Stat, n, n)
 	for i := range dir {
-		stats[i] = dirEntToStat(&dir[i])
+		stats[i] = srv.dirEntToStat(&dir[i])
 	}
 	nbytes := 0
 	for i := range stats {
@@ -98,10 +99,18 @@ func packDir(dir fs.DirEnts) []byte {
 	return buf
 }
 
-func (srv *proto9Server) nextQidPath() uint64 {
-	p := srv.qidPathCount
+func (srv *proto9Server) makeQid(ent fs.DirEnt) proto9.Qid {
+	path := srv.qidPathCount
 	srv.qidPathCount++
-	return p
+	ty := proto9.QTFILE
+	if ent.Mode.IsDir() {
+		ty = proto9.QTDIR
+	}
+	return proto9.Qid{
+		Type:    ty,
+		Path:    path,
+		Version: 0,
+	}
 }
 
 func (srv *proto9Server) makeRoot(hash [32]byte) (*File, error) {
@@ -110,11 +119,10 @@ func (srv *proto9Server) makeRoot(hash [32]byte) (*File, error) {
 		return nil, err
 	}
 	return &File{
-		hash:    hash,
+		dirhash: hash,
 		dirent:  ents[0],
-		qid:     proto9.Qid{Type: proto9.QTDIR, Version: 0, Path: 0},
-		dirents: ents,
-		data:    packDir(ents[1:]),
+		qid:     srv.makeQid(ents[0]),
+		dirdat:  srv.packDir(ents[1:]),
 	}, nil
 }
 
@@ -228,76 +236,90 @@ func (srv *proto9Server) handleAttach(msg *proto9.Tattach) proto9.Msg {
 }
 
 func (srv *proto9Server) handleWalk(msg *proto9.Twalk) proto9.Msg {
-	wf, ok := srv.fids[msg.Fid]
+	var werr error
+
+	f, ok := srv.fids[msg.Fid]
 	if !ok {
 		return &proto9.Rerror{
 			Tag: msg.Tag,
 			Err: ErrNoSuchFid.Error(),
 		}
 	}
+	origf := f
+
 	wqids := make([]proto9.Qid, 0, len(msg.Names))
-	whash := wf.hash
-	var err error
-	var dirents fs.DirEnts
-	for i, name := range msg.Names {
+
+	i := 0
+	name := ""
+	for i, name = range msg.Names {
 		found := false
-		if name == "." || name == ".." || name == "" {
-			err = ErrBadPath
+		if name == "." || name == "" {
+			return &proto9.Rerror{
+				Tag: msg.Tag,
+				Err: ErrBadPath.Error(),
+			}
+		}
+		if name == ".." {
+			f = f.parent
+			if f == nil {
+				werr = ErrBadPath
+				goto walkerr
+			}
+			wqids = append(wqids, f.qid)
+			continue
+		}
+
+		if !f.dirent.Mode.IsDir() {
 			goto walkerr
 		}
-		dirents, err = fs.ReadDir(srv.store, whash)
+
+		dirents, err := fs.ReadDir(srv.store, f.dirent.Data)
 		if err != nil {
+			werr = err
 			goto walkerr
 		}
-		for _, ent := range dirents[1:] {
-			if ent.Name == name {
-				if !ent.Mode.IsDir() {
-					err = ErrNotDir
-					goto walkerr
-				}
-				wqids = append(wqids, proto9.Qid{Type: proto9.QTDIR})
+		for diridx := range dirents {
+			if dirents[diridx].Name == name {
 				found = true
-				whash = ent.Data
+				f = &File{
+					parent:  f,
+					dirhash: f.dirent.Data,
+					diridx:  diridx,
+					dirent:  dirents[diridx],
+					qid:     srv.makeQid(dirents[diridx]),
+				}
+				wqids = append(wqids, f.qid)
 				break
 			}
 		}
 		if !found {
-			err = ErrNotExist
+			werr = ErrNotExist
 			goto walkerr
 		}
-		continue
-	walkerr:
-		if i == 0 {
-			return &proto9.Rerror{
-				Tag: msg.Tag,
-				Err: err.Error(),
-			}
-		}
-		break
 	}
 
-	if len(wqids) == len(msg.Names) {
-		dirents, err := fs.ReadDir(srv.store, whash)
-		if err != nil {
-			return &proto9.Rerror{
-				Tag: msg.Tag,
-				Err: err.Error(),
-			}
+	if msg.NewFid == msg.Fid {
+		origf.Close()
+		delete(srv.fids, msg.Fid)
+	}
+	werr = srv.AddFid(msg.NewFid, f)
+	if werr != nil {
+		return &proto9.Rerror{
+			Tag: msg.Tag,
+			Err: werr.Error(),
 		}
-		// XXX handle when newfid == oldfid
-		err = srv.AddFid(msg.NewFid,
-			&File{
-				hash:    whash,
-				dirent:  dirents[0],
-				qid:     proto9.Qid{Type: proto9.QTDIR, Version: 0, Path: 0},
-				dirents: dirents,
-				data:    packDir(dirents[1:]),
-			})
-		if err != nil {
-			return &proto9.Rerror{
-				Tag: msg.Tag,
-				Err: err.Error(),
-			}
+	}
+
+	return &proto9.Rwalk{
+		Tag:  msg.Tag,
+		Qids: wqids,
+	}
+
+walkerr:
+	if i == 0 {
+		return &proto9.Rerror{
+			Tag: msg.Tag,
+			Err: werr.Error(),
 		}
 	}
 	return &proto9.Rwalk{
@@ -337,18 +359,47 @@ func (srv *proto9Server) handleRead(msg *proto9.Tread) proto9.Msg {
 	}
 
 	if f.dirent.Mode.IsDir() {
-		if uint64(len(f.data)) < msg.Offset+nbytes {
-			nbytes = uint64(len(f.data)) - msg.Offset
+		if f.dirdat == nil {
+			ents, err := fs.ReadDir(srv.store, f.dirent.Data)
+			if err != nil {
+				return &proto9.Rerror{
+					Tag: msg.Tag,
+					Err: err.Error(),
+				}
+			}
+			f.dirdat = srv.packDir(ents[:])
 		}
-		buf := f.data[msg.Offset : msg.Offset+nbytes]
+		if uint64(len(f.dirdat)) < msg.Offset+nbytes {
+			nbytes = uint64(len(f.dirdat)) - msg.Offset
+		}
+		buf := f.dirdat[msg.Offset : msg.Offset+nbytes]
 		return &proto9.Rread{
 			Tag:  msg.Tag,
 			Data: buf,
 		}
 	} else {
-		return &proto9.Rerror{
-			Tag: msg.Tag,
-			Err: "unimplemented read",
+		if f.rdr == nil {
+			rdr, err := fs.Open(srv.store, f.dirhash, f.dirent.Name)
+			if err != nil {
+				return &proto9.Rerror{
+					Tag: msg.Tag,
+					Err: err.Error(),
+				}
+			}
+			f.rdr = rdr
+		}
+
+		buf := make([]byte, nbytes, nbytes)
+		n, err := f.rdr.ReadAt(buf, int64(msg.Offset))
+		if err != nil && err != io.EOF {
+			return &proto9.Rerror{
+				Tag: msg.Tag,
+				Err: err.Error(),
+			}
+		}
+		return &proto9.Rread{
+			Tag:  msg.Tag,
+			Data: buf[0:n],
 		}
 	}
 }
@@ -407,6 +458,7 @@ func (srv *proto9Server) serveConn(c net.Conn) {
 		log.Printf("%#v", resp)
 		err = srv.sendMsg(c, resp)
 		if err != nil {
+			log.Printf("XXX %d %d\n", resp.WireLen(), srv.negMessageSize)
 			log.Printf("error sending message: %s", err.Error())
 			return
 		}

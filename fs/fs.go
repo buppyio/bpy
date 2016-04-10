@@ -201,6 +201,16 @@ func (r *FileReader) Read(buf []byte) (int, error) {
 	return nread, err
 }
 
+func (r *FileReader) ReadAt(buf []byte, off int64) (int, error) {
+	if r.offset != uint64(off) {
+		_, err := r.Seek(off, 0)
+		if err != nil {
+			return 0, err
+		}
+	}
+	return r.Read(buf)
+}
+
 func (r *FileReader) Close() error {
 	// nothing to do but having Close in the api isn't bad
 	// if we need to add it.
