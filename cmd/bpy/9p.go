@@ -458,7 +458,6 @@ func (srv *proto9Server) serveConn(c net.Conn) {
 		log.Printf("%#v", resp)
 		err = srv.sendMsg(c, resp)
 		if err != nil {
-			log.Printf("XXX %d %d\n", resp.WireLen(), srv.negMessageSize)
 			log.Printf("error sending message: %s", err.Error())
 			return
 		}
