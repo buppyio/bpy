@@ -201,6 +201,12 @@ func (r *FileReader) Read(buf []byte) (int, error) {
 	return nread, err
 }
 
+func (r *FileReader) Close() error {
+	// nothing to do but having Close in the api isn't bad
+	// if we need to add it.
+	return nil
+}
+
 func Open(store bpy.CStoreReader, roothash [32]byte, fpath string) (*FileReader, error) {
 	dirent, err := Walk(store, roothash, fpath)
 	if err != nil {
