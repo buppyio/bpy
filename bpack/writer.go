@@ -7,29 +7,20 @@ import (
 	"sort"
 )
 
-type WriteSeekCloser interface {
-	io.Writer
-	io.Seeker
-	io.Closer
-}
-
 type Writer struct {
-	w      WriteSeekCloser
+	w      io.WriteCloser
 	keys   map[string]struct{}
 	index  Index
 	offset uint64
 }
 
-func NewWriter(w WriteSeekCloser) (*Writer, error) {
-	var zero [8]byte
-
-	_, err := w.Write(zero[:])
+func NewWriter(w io.WriteCloser) (*Writer, error) {
 	return &Writer{
 		w:      w,
 		keys:   make(map[string]struct{}),
 		index:  make(Index, 0, 2048),
-		offset: 8,
-	}, err
+		offset: 0,
+	}, nil
 }
 
 func writeUInt64(w io.Writer, v uint64) error {
@@ -93,10 +84,6 @@ func WriteIndex(w io.Writer, idx Index) error {
 func (w *Writer) Close() (Index, error) {
 	idxoffset := w.offset
 	err := WriteIndex(w.w, w.index)
-	if err != nil {
-		return nil, err
-	}
-	_, err = w.w.Seek(0, 0)
 	if err != nil {
 		return nil, err
 	}

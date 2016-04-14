@@ -41,7 +41,7 @@ func (r *Reader) Close() error {
 }
 
 func (r *Reader) ReadIndex() error {
-	_, err := r.r.Seek(0, 0)
+	_, err := r.r.Seek(-8, 2)
 	if err != nil {
 		return err
 	}

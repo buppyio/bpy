@@ -7,20 +7,12 @@ import (
 	"testing"
 )
 
-type bufwriteseeker struct {
+type bufwriter struct {
 	off int64
 	buf []byte
 }
 
-func (b *bufwriteseeker) Seek(off int64, whence int) (int64, error) {
-	if whence != 0 {
-		panic("unexpected whence")
-	}
-	b.off = off
-	return off, nil
-}
-
-func (b *bufwriteseeker) Write(buf []byte) (int, error) {
+func (b *bufwriter) Write(buf []byte) (int, error) {
 	for i := range buf {
 		b.buf[int(b.off)+i] = buf[i]
 	}
@@ -28,7 +20,7 @@ func (b *bufwriteseeker) Write(buf []byte) (int, error) {
 	return len(buf), nil
 }
 
-func (b *bufwriteseeker) Close() error {
+func (b *bufwriter) Close() error {
 	return nil
 }
 
@@ -51,7 +43,8 @@ func (b *bufreader) Close() error {
 func TestBpack(t *testing.T) {
 	var buf [1024 * 1024 * 10]byte
 
-	w, err := NewWriter(&bufwriteseeker{off: 0, buf: buf[:]})
+	bufw := &bufwriter{off: 0, buf: buf[:]}
+	w, err := NewWriter(bufw)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +74,7 @@ func TestBpack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := NewReader(&bufreader{buf: bytes.NewReader(buf[:])})
+	r := NewReader(&bufreader{buf: bytes.NewReader(buf[:bufw.off])})
 	err = r.ReadIndex()
 	if err != nil {
 		t.Fatal(err)
