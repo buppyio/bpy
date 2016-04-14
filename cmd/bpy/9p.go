@@ -334,14 +334,16 @@ func (srv *proto9Server) handleOpen(msg *proto9.Topen) proto9.Msg {
 			Err: ErrNoSuchFid.Error(),
 		}
 	}
-	rdr, err := fs.Open(srv.store, fh.file.dirhash, fh.file.dirent.Name)
-	if err != nil {
-		return &proto9.Rerror{
-			Tag: msg.Tag,
-			Err: err.Error(),
+	if fh.file.dirent.Mode.IsRegular() {
+		rdr, err := fs.Open(srv.store, fh.file.dirhash, fh.file.dirent.Name)
+		if err != nil {
+			return &proto9.Rerror{
+				Tag: msg.Tag,
+				Err: err.Error(),
+			}
 		}
+		fh.rdr = rdr
 	}
-	fh.rdr = rdr
 	return &proto9.Ropen{
 		Tag:    msg.Tag,
 		Qid:    fh.file.qid,
