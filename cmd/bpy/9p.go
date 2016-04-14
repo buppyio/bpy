@@ -24,6 +24,7 @@ var (
 	ErrNotDir           = errors.New("not a directory path")
 	ErrNotExist         = errors.New("no such file")
 	ErrFileNotOpen      = errors.New("file not open")
+	ErrBadReadOffset    = errors.New("bad read offset")
 )
 
 type File struct {
@@ -38,8 +39,8 @@ type FileHandle struct {
 	file *File
 	rdr  *fs.FileReader
 
-	offset uint64
-	dirdat []proto9.Stat
+	diroffset uint64
+	stats     []proto9.Stat
 }
 
 func (f *FileHandle) Close() error {
@@ -85,24 +86,13 @@ func (srv *proto9Server) dirEntToStat(ent *fs.DirEnt) proto9.Stat {
 	}
 }
 
-func (srv *proto9Server) packDir(dir fs.DirEnts) []byte {
+func (srv *proto9Server) fsStatToProto9Stat(dir fs.DirEnts) []proto9.Stat {
 	n := len(dir)
 	stats := make([]proto9.Stat, n, n)
 	for i := range dir {
 		stats[i] = srv.dirEntToStat(&dir[i])
 	}
-	nbytes := 0
-	for i := range stats {
-		nbytes += proto9.StatLen(&stats[i])
-	}
-	buf := make([]byte, nbytes, nbytes)
-	offset := 0
-	for i := range stats {
-		statlen := proto9.StatLen(&stats[i])
-		proto9.PackStat(buf[offset:offset+statlen], &stats[i])
-		offset += statlen
-	}
-	return buf
+	return stats
 }
 
 func (srv *proto9Server) makeQid(ent fs.DirEnt) proto9.Qid {
@@ -188,7 +178,6 @@ func (srv *proto9Server) sendMsg(c net.Conn, msg proto9.Msg) error {
 }
 
 func (srv *proto9Server) handleVersion(msg *proto9.Tversion) proto9.Msg {
-
 	if msg.Tag != proto9.NOTAG {
 		return &proto9.Rerror{
 			Tag: msg.Tag,
@@ -345,6 +334,14 @@ func (srv *proto9Server) handleOpen(msg *proto9.Topen) proto9.Msg {
 			Err: ErrNoSuchFid.Error(),
 		}
 	}
+	rdr, err := fs.Open(srv.store, fh.file.dirhash, fh.file.dirent.Name)
+	if err != nil {
+		return &proto9.Rerror{
+			Tag: msg.Tag,
+			Err: err.Error(),
+		}
+	}
+	fh.rdr = rdr
 	return &proto9.Ropen{
 		Tag:    msg.Tag,
 		Qid:    fh.file.qid,
@@ -366,20 +363,64 @@ func (srv *proto9Server) handleRead(msg *proto9.Tread) proto9.Msg {
 	if nbytes > maxbytes {
 		nbytes = maxbytes
 	}
+	buf := make([]byte, nbytes, nbytes)
 
 	if fh.file.dirent.Mode.IsDir() {
-		return &proto9.Rerror{
-			Tag: msg.Tag,
-			Err: "unimplemented dir read",
+
+		if msg.Offset == 0 {
+			dirents, err := fs.ReadDir(srv.store, fh.file.dirent.Data)
+			if err != nil {
+				return &proto9.Rerror{
+					Tag: msg.Tag,
+					Err: err.Error(),
+				}
+			}
+			fh.stats = srv.fsStatToProto9Stat(dirents)
+			fh.diroffset = 0
 		}
+
+		if msg.Offset != fh.diroffset {
+			return &proto9.Rerror{
+				Tag: msg.Tag,
+				Err: ErrBadReadOffset.Error(),
+			}
+		}
+
+		n := 0
+		for {
+			if len(fh.stats) == 0 {
+				break
+			}
+			curstat := fh.stats[0]
+			statlen := proto9.StatLen(&curstat)
+			if uint64(statlen+n) > nbytes {
+				if n == 0 {
+					return &proto9.Rerror{
+						Tag: msg.Tag,
+						Err: proto9.ErrBuffTooSmall.Error(),
+					}
+				}
+				break
+			}
+			proto9.PackStat(buf[n:n+statlen], &curstat)
+			n += statlen
+			fh.stats = fh.stats[1:]
+		}
+		fh.diroffset += uint64(n)
+		return &proto9.Rread{
+			Tag:  msg.Tag,
+			Data: buf[0:n],
+		}
+
 	} else {
+
 		if fh.rdr == nil {
 			return &proto9.Rerror{
 				Tag: msg.Tag,
 				Err: ErrFileNotOpen.Error(),
 			}
 		}
-		buf := make([]byte, nbytes, nbytes)
+
 		n, err := fh.rdr.ReadAt(buf, int64(msg.Offset))
 		if err != nil && err != io.EOF {
 			return &proto9.Rerror{
@@ -387,6 +428,7 @@ func (srv *proto9Server) handleRead(msg *proto9.Tread) proto9.Msg {
 				Err: err.Error(),
 			}
 		}
+
 		return &proto9.Rread{
 			Tag:  msg.Tag,
 			Data: buf[0:n],

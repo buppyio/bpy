@@ -23,7 +23,7 @@ func TestDir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rdir[0].Name != "" {
+	if rdir[0].Name != "." {
 		t.Fatal("missing current dir entry\n")
 	}
 	if !reflect.DeepEqual(dir, rdir[1:]) {

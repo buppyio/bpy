@@ -49,7 +49,11 @@ func WriteDir(store bpy.CStoreWriter, indir DirEnts, mode os.FileMode) ([32]byte
 		if dir[i].Name == dir[i+1].Name {
 			return [32]byte{}, fmt.Errorf("duplicate directory entry '%s'", dir[i].Name)
 		}
+		if dir[i].Name == "." {
+			return [32]byte{}, fmt.Errorf("cannot name file or folder '.'")
+		}
 	}
+	dir[0].Name = "."
 
 	nbytes := 0
 	for i := range dir {
@@ -118,7 +122,7 @@ func ReadDir(store bpy.CStoreReader, hash [32]byte) (DirEnts, error) {
 			Data:    hash,
 		})
 	}
-	// Fill current directory "" by sorted order must be the first entry.
+	// fill in the hash for "."
 	dir[0].Data = hash
 	return dir, nil
 }
@@ -139,6 +143,9 @@ func Walk(store bpy.CStoreReader, hash [32]byte, fpath string) (DirEnt, error) {
 	}
 	for i := 0; i < end; i++ {
 		entname := pathelems[i]
+		if entname == "" {
+			entname = "."
+		}
 		ents, err := ReadDir(store, hash)
 		if err != nil {
 			return result, err
@@ -154,7 +161,6 @@ func Walk(store bpy.CStoreReader, hash [32]byte, fpath string) (DirEnt, error) {
 		if !found {
 			return result, fmt.Errorf("no such directory: %s", entname)
 		}
-
 		if i != end-1 {
 			if !ents[j].Mode.IsDir() {
 				fmt.Errorf("not a directory: %s", ents[j].Name)
@@ -164,7 +170,7 @@ func Walk(store bpy.CStoreReader, hash [32]byte, fpath string) (DirEnt, error) {
 			result = ents[j]
 		}
 	}
-	if result.Name == "" {
+	if result.Name == "." {
 		result.Data = hash
 	}
 	return result, nil
@@ -248,5 +254,5 @@ func Ls(store bpy.CStoreReader, roothash [32]byte, fpath string) (DirEnts, error
 	if err != nil {
 		return nil, err
 	}
-	return ents[1:], nil
+	return ents, nil
 }
