@@ -23,6 +23,7 @@ var (
 	ErrBadPath          = errors.New("bad path")
 	ErrNotDir           = errors.New("not a directory path")
 	ErrNotExist         = errors.New("no such file")
+	ErrFileNotOpen      = errors.New("file not open")
 )
 
 type File struct {
@@ -31,12 +32,17 @@ type File struct {
 	diridx  int
 	dirent  fs.DirEnt
 	qid     proto9.Qid
-
-	rdr    *fs.FileReader
-	dirdat []byte
 }
 
-func (f *File) Close() error {
+type FileHandle struct {
+	file *File
+	rdr  *fs.FileReader
+
+	offset uint64
+	dirdat []proto9.Stat
+}
+
+func (f *FileHandle) Close() error {
 	if f.rdr != nil {
 		err := f.rdr.Close()
 		if err != nil {
@@ -54,7 +60,7 @@ type proto9Server struct {
 	inbuf          []byte
 	outbuf         []byte
 	qidPathCount   uint64
-	fids           map[proto9.Fid]*File
+	fids           map[proto9.Fid]*FileHandle
 }
 
 func (srv *proto9Server) dirEntToStat(ent *fs.DirEnt) proto9.Stat {
@@ -73,9 +79,9 @@ func (srv *proto9Server) dirEntToStat(ent *fs.DirEnt) proto9.Stat {
 		Name:   ent.Name,
 		Qid:    srv.makeQid(*ent),
 		Length: uint64(ent.Size),
-		UID:    "foobar",
-		GID:    "foobar",
-		MUID:   "foobar",
+		UID:    "nobody",
+		GID:    "nobody",
+		MUID:   "nobody",
 	}
 }
 
@@ -122,11 +128,10 @@ func (srv *proto9Server) makeRoot(hash [32]byte) (*File, error) {
 		dirhash: hash,
 		dirent:  ents[0],
 		qid:     srv.makeQid(ents[0]),
-		dirdat:  srv.packDir(ents[1:]),
 	}, nil
 }
 
-func (srv *proto9Server) AddFid(fid proto9.Fid, f *File) error {
+func (srv *proto9Server) AddFid(fid proto9.Fid, fh *FileHandle) error {
 	if fid == proto9.NOFID {
 		return ErrBadFid
 	}
@@ -134,7 +139,7 @@ func (srv *proto9Server) AddFid(fid proto9.Fid, f *File) error {
 	if ok {
 		return ErrFidInUse
 	}
-	srv.fids[fid] = f
+	srv.fids[fid] = fh
 	return nil
 }
 
@@ -220,8 +225,10 @@ func (srv *proto9Server) handleAttach(msg *proto9.Tattach) proto9.Msg {
 			Err: err.Error(),
 		}
 	}
-
-	err = srv.AddFid(msg.Fid, rootFile)
+	f := &FileHandle{
+		file: rootFile,
+	}
+	err = srv.AddFid(msg.Fid, f)
 	if err != nil {
 		return &proto9.Rerror{
 			Tag: msg.Tag,
@@ -238,14 +245,14 @@ func (srv *proto9Server) handleAttach(msg *proto9.Tattach) proto9.Msg {
 func (srv *proto9Server) handleWalk(msg *proto9.Twalk) proto9.Msg {
 	var werr error
 
-	f, ok := srv.fids[msg.Fid]
+	fh, ok := srv.fids[msg.Fid]
 	if !ok {
 		return &proto9.Rerror{
 			Tag: msg.Tag,
 			Err: ErrNoSuchFid.Error(),
 		}
 	}
-	origf := f
+	f := fh.file
 
 	wqids := make([]proto9.Qid, 0, len(msg.Names))
 
@@ -299,17 +306,19 @@ func (srv *proto9Server) handleWalk(msg *proto9.Twalk) proto9.Msg {
 	}
 
 	if msg.NewFid == msg.Fid {
-		origf.Close()
+		fh.Close()
 		delete(srv.fids, msg.Fid)
 	}
-	werr = srv.AddFid(msg.NewFid, f)
+	fh = &FileHandle{
+		file: f,
+	}
+	werr = srv.AddFid(msg.NewFid, fh)
 	if werr != nil {
 		return &proto9.Rerror{
 			Tag: msg.Tag,
 			Err: werr.Error(),
 		}
 	}
-
 	return &proto9.Rwalk{
 		Tag:  msg.Tag,
 		Qids: wqids,
@@ -329,7 +338,7 @@ walkerr:
 }
 
 func (srv *proto9Server) handleOpen(msg *proto9.Topen) proto9.Msg {
-	f, ok := srv.fids[msg.Fid]
+	fh, ok := srv.fids[msg.Fid]
 	if !ok {
 		return &proto9.Rerror{
 			Tag: msg.Tag,
@@ -338,13 +347,13 @@ func (srv *proto9Server) handleOpen(msg *proto9.Topen) proto9.Msg {
 	}
 	return &proto9.Ropen{
 		Tag:    msg.Tag,
-		Qid:    f.qid,
+		Qid:    fh.file.qid,
 		Iounit: srv.negMessageSize - proto9.WriteOverhead,
 	}
 }
 
 func (srv *proto9Server) handleRead(msg *proto9.Tread) proto9.Msg {
-	f, ok := srv.fids[msg.Fid]
+	fh, ok := srv.fids[msg.Fid]
 	if !ok {
 		return &proto9.Rerror{
 			Tag: msg.Tag,
@@ -358,39 +367,20 @@ func (srv *proto9Server) handleRead(msg *proto9.Tread) proto9.Msg {
 		nbytes = maxbytes
 	}
 
-	if f.dirent.Mode.IsDir() {
-		if f.dirdat == nil {
-			ents, err := fs.ReadDir(srv.store, f.dirent.Data)
-			if err != nil {
-				return &proto9.Rerror{
-					Tag: msg.Tag,
-					Err: err.Error(),
-				}
-			}
-			f.dirdat = srv.packDir(ents[:])
-		}
-		if uint64(len(f.dirdat)) < msg.Offset+nbytes {
-			nbytes = uint64(len(f.dirdat)) - msg.Offset
-		}
-		buf := f.dirdat[msg.Offset : msg.Offset+nbytes]
-		return &proto9.Rread{
-			Tag:  msg.Tag,
-			Data: buf,
+	if fh.file.dirent.Mode.IsDir() {
+		return &proto9.Rerror{
+			Tag: msg.Tag,
+			Err: "unimplemented dir read",
 		}
 	} else {
-		if f.rdr == nil {
-			rdr, err := fs.Open(srv.store, f.dirhash, f.dirent.Name)
-			if err != nil {
-				return &proto9.Rerror{
-					Tag: msg.Tag,
-					Err: err.Error(),
-				}
+		if fh.rdr == nil {
+			return &proto9.Rerror{
+				Tag: msg.Tag,
+				Err: ErrFileNotOpen.Error(),
 			}
-			f.rdr = rdr
 		}
-
 		buf := make([]byte, nbytes, nbytes)
-		n, err := f.rdr.ReadAt(buf, int64(msg.Offset))
+		n, err := fh.rdr.ReadAt(buf, int64(msg.Offset))
 		if err != nil && err != io.EOF {
 			return &proto9.Rerror{
 				Tag: msg.Tag,
@@ -427,7 +417,7 @@ func (srv *proto9Server) handleClunk(msg *proto9.Tclunk) proto9.Msg {
 
 func (srv *proto9Server) serveConn(c net.Conn) {
 	defer c.Close()
-	srv.fids = make(map[proto9.Fid]*File)
+	srv.fids = make(map[proto9.Fid]*FileHandle)
 	srv.inbuf = make([]byte, srv.maxMessageSize, srv.maxMessageSize)
 	srv.outbuf = make([]byte, srv.maxMessageSize, srv.maxMessageSize)
 	for {
