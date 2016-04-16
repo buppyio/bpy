@@ -25,6 +25,7 @@ var (
 	ErrNotExist         = errors.New("no such file")
 	ErrFileNotOpen      = errors.New("file not open")
 	ErrBadReadOffset    = errors.New("bad read offset")
+	ErrReadOnly         = errors.New("read only")
 )
 
 type File struct {
@@ -32,7 +33,7 @@ type File struct {
 	dirhash [32]byte
 	diridx  int
 	dirent  fs.DirEnt
-	qid     proto9.Qid
+	stat    proto9.Stat
 }
 
 type FileHandle struct {
@@ -117,7 +118,7 @@ func (srv *proto9Server) makeRoot(hash [32]byte) (*File, error) {
 	return &File{
 		dirhash: hash,
 		dirent:  ents[0],
-		qid:     srv.makeQid(ents[0]),
+		stat:    srv.dirEntToStat(&ents[0]),
 	}, nil
 }
 
@@ -227,7 +228,7 @@ func (srv *proto9Server) handleAttach(msg *proto9.Tattach) proto9.Msg {
 
 	return &proto9.Rattach{
 		Tag: msg.Tag,
-		Qid: rootFile.qid,
+		Qid: rootFile.stat.Qid,
 	}
 }
 
@@ -261,7 +262,7 @@ func (srv *proto9Server) handleWalk(msg *proto9.Twalk) proto9.Msg {
 				werr = ErrBadPath
 				goto walkerr
 			}
-			wqids = append(wqids, f.qid)
+			wqids = append(wqids, f.stat.Qid)
 			continue
 		}
 
@@ -282,9 +283,9 @@ func (srv *proto9Server) handleWalk(msg *proto9.Twalk) proto9.Msg {
 					dirhash: f.dirent.Data,
 					diridx:  diridx,
 					dirent:  dirents[diridx],
-					qid:     srv.makeQid(dirents[diridx]),
+					stat:    srv.dirEntToStat(&dirents[diridx]),
 				}
-				wqids = append(wqids, f.qid)
+				wqids = append(wqids, f.stat.Qid)
 				break
 			}
 		}
@@ -346,7 +347,7 @@ func (srv *proto9Server) handleOpen(msg *proto9.Topen) proto9.Msg {
 	}
 	return &proto9.Ropen{
 		Tag:    msg.Tag,
-		Qid:    fh.file.qid,
+		Qid:    fh.file.stat.Qid,
 		Iounit: srv.negMessageSize - proto9.WriteOverhead,
 	}
 }
@@ -459,6 +460,20 @@ func (srv *proto9Server) handleClunk(msg *proto9.Tclunk) proto9.Msg {
 	}
 }
 
+func (srv *proto9Server) handleStat(msg *proto9.Tstat) proto9.Msg {
+	f, ok := srv.fids[msg.Fid]
+	if !ok {
+		return &proto9.Rerror{
+			Tag: msg.Tag,
+			Err: ErrNoSuchFid.Error(),
+		}
+	}
+	return &proto9.Rstat{
+		Tag:  msg.Tag,
+		Stat: f.file.stat,
+	}
+}
+
 func (srv *proto9Server) serveConn(c net.Conn) {
 	defer c.Close()
 	srv.fids = make(map[proto9.Fid]*FileHandle)
@@ -485,6 +500,18 @@ func (srv *proto9Server) serveConn(c net.Conn) {
 			resp = srv.handleRead(msg)
 		case *proto9.Tclunk:
 			resp = srv.handleClunk(msg)
+		case *proto9.Tstat:
+			resp = srv.handleStat(msg)
+		case *proto9.Twrite:
+			resp = &proto9.Rerror{
+				Tag: msg.Tag,
+				Err: ErrReadOnly.Error(),
+			}
+		case *proto9.Twstat:
+			resp = &proto9.Rerror{
+				Tag: msg.Tag,
+				Err: ErrReadOnly.Error(),
+			}
 		default:
 			log.Println("unhandled message type")
 			return
