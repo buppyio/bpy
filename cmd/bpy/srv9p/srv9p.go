@@ -1,4 +1,4 @@
-package main
+package srv9p
 
 import (
 	"acha.ninja/bpy"
@@ -526,7 +526,7 @@ func (srv *proto9Server) serveConn(c net.Conn) {
 
 }
 
-func srv9p() {
+func Srv9p() {
 
 	var hash [32]byte
 	store, err := cstore.NewReader("/home/ac/.bpy/store", "/home/ac/.bpy/cache")
