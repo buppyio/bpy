@@ -5,6 +5,7 @@ import (
 	"acha.ninja/bpy/cmd/bpy/get"
 	"acha.ninja/bpy/cmd/bpy/ls"
 	"acha.ninja/bpy/cmd/bpy/put"
+	"acha.ninja/bpy/cmd/bpy/remote"
 	"acha.ninja/bpy/cmd/bpy/srv9p"
 	"os"
 )
@@ -21,6 +22,8 @@ func main() {
 		ls.Ls()
 	case "9p":
 		srv9p.Srv9p()
+	case "remote":
+		remote.Remote()
 	case "dbg":
 		dbg()
 	}
