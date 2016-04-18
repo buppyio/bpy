@@ -1,20 +1,24 @@
 package server9
 
 import (
+	"acha.ninja/bpy/proto9"
+	"encoding/binary"
 	"errors"
+	"io"
+	"strings"
+	"sync"
 )
 
 var (
-	ErrNoSuchFid        = errors.New("no such fid")
-	ErrFidInUse         = errors.New("fid in use")
-	ErrBadFid           = errors.New("bad fid")
-	ErrBadTag           = errors.New("bad tag")
-	ErrBadPath          = errors.New("bad path")
-	ErrNotDir           = errors.New("not a directory path")
-	ErrNotExist         = errors.New("no such file")
-	ErrFileNotOpen      = errors.New("file not open")
-	ErrBadReadOffset    = errors.New("bad read offset")
-	
+	ErrNoSuchFid     = errors.New("no such fid")
+	ErrFidInUse      = errors.New("fid in use")
+	ErrBadFid        = errors.New("bad fid")
+	ErrBadTag        = errors.New("bad tag")
+	ErrBadPath       = errors.New("bad path")
+	ErrNotDir        = errors.New("not a directory path")
+	ErrNotExist      = errors.New("no such file")
+	ErrFileNotOpen   = errors.New("file not open")
+	ErrBadReadOffset = errors.New("bad read offset")
 )
 
 type File interface {
@@ -24,16 +28,15 @@ type File interface {
 	Stat() (proto9.Stat, error)
 }
 
-func Walk(f File , names []string) (File, []proto9.Qid, error) {
+func Walk(f File, names []string) (File, []proto9.Qid, error) {
 	var werr error
 	wqids := make([]proto9.Qid, 0, len(names))
 
 	i := 0
 	name := ""
-	for i, name = names {
-		found := false
+	for i, name = range names {
 		if name == "." || name == "" || strings.Index(name, "/") != -1 {
-			return wqids, ErrBadPath
+			return nil, nil, ErrBadPath
 		}
 		if name == ".." {
 			f, err := f.Parent()
@@ -44,7 +47,7 @@ func Walk(f File , names []string) (File, []proto9.Qid, error) {
 				werr = ErrBadPath
 				goto walkerr
 			}
-			wqids = append(wqids, f.stat.Qid)
+			wqids = append(wqids, f.Qid())
 			continue
 		}
 
@@ -59,49 +62,47 @@ func Walk(f File , names []string) (File, []proto9.Qid, error) {
 		f = child
 	}
 	return f, wqids, nil
-	
-	walkerr:
+
+walkerr:
 	if i == 0 {
-		return nil,nil, werr
+		return nil, nil, werr
 	}
 	return nil, wqids, nil
 }
 
-
 func ReadMsg(r io.Reader, buf []byte) (proto9.Msg, error) {
-	if len(srv.inbuf) < 5 {
+	if len(buf) < 5 {
 		return nil, proto9.ErrBuffTooSmall
 	}
-	_, err := r.Read(srv.inbuf[0:5])
+	_, err := r.Read(buf[0:5])
 	if err != nil {
 		return nil, err
 	}
-	sz := int(binary.LittleEndian.Uint16(srv.buf[0:4]))
+	sz := int(binary.LittleEndian.Uint16(buf[0:4]))
 	if len(buf) < sz {
 		return nil, proto9.ErrBuffTooSmall
 	}
-	_, err = c.Read(buf[5:sz])
+	_, err = r.Read(buf[5:sz])
 	if err != nil {
 		return nil, err
 	}
-	return proto9.UnpackMsg(srv.inbuf[0:sz])
+	return proto9.UnpackMsg(buf[0:sz])
 }
-
 
 func WriteMsg(w io.Writer, buf []byte, msg proto9.Msg) error {
 	packed, err := proto9.PackMsg(buf, msg)
 	if err != nil {
 		return err
 	}
-	_, err = c.Write(packed)
+	_, err = w.Write(packed)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func MakeError(t proto9.Tag, err error) {
-	return &proto9.Rerror {
+func MakeError(t proto9.Tag, err error) proto9.Msg {
+	return &proto9.Rerror{
 		Tag: t,
 		Err: err.Error(),
 	}
@@ -114,17 +115,17 @@ func NextPath() uint64 {
 	pathMutex.Lock()
 	r := pathCount
 	pathCount++
-	pathMutex.Unlock()	
+	pathMutex.Unlock()
 	return r
 }
 
 type StatList struct {
 	Offset uint64
-	Stats []proto9.Stat
+	Stats  []proto9.Stat
 }
 
-func (sl *StatList) ReadAt(buf []byte , off int64) (int, error) {
-	if off != sl.Offset {
+func (sl *StatList) ReadAt(buf []byte, off int64) (int, error) {
+	if off != int64(sl.Offset) {
 		return 0, ErrBadReadOffset
 	}
 	n := 0
@@ -134,7 +135,7 @@ func (sl *StatList) ReadAt(buf []byte , off int64) (int, error) {
 		}
 		curstat := sl.Stats[0]
 		statlen := proto9.StatLen(&curstat)
-		if uint64(statlen+n) > nbytes {
+		if uint64(statlen+n) > uint64(len(buf)) {
 			if n == 0 {
 				return 0, proto9.ErrBuffTooSmall
 			}
@@ -145,5 +146,5 @@ func (sl *StatList) ReadAt(buf []byte , off int64) (int, error) {
 		sl.Stats = sl.Stats[1:]
 	}
 	sl.Offset += uint64(n)
-	return n, nil	
+	return n, nil
 }
