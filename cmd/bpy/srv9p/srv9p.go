@@ -250,7 +250,7 @@ func (srv *proto9Server) handleWalk(msg *proto9.Twalk) proto9.Msg {
 	name := ""
 	for i, name = range msg.Names {
 		found := false
-		if name == "." || name == "" {
+		if name == "." || name == "" || strings.Index(name. "/") != -1 {
 			return &proto9.Rerror{
 				Tag: msg.Tag,
 				Err: ErrBadPath.Error(),
@@ -502,6 +502,11 @@ func (srv *proto9Server) serveConn(c net.Conn) {
 			resp = srv.handleClunk(msg)
 		case *proto9.Tstat:
 			resp = srv.handleStat(msg)
+		case *proto9.Tauth:
+			resp = &proto9.Rerror{
+				Tag: msg.Tag,
+				Err: ErrAuthNotSupported.Error(),
+			}
 		case *proto9.Twrite:
 			resp = &proto9.Rerror{
 				Tag: msg.Tag,
