@@ -24,7 +24,7 @@ var (
 type File interface {
 	Parent() (File, error)
 	Child(name string) (File, error)
-	Qid() proto9.Qid
+	Qid() (proto9.Qid, error)
 	Stat() (proto9.Stat, error)
 }
 
@@ -39,18 +39,22 @@ func Walk(f File, names []string) (File, []proto9.Qid, error) {
 			return nil, nil, ErrBadPath
 		}
 		if name == ".." {
-			f, err := f.Parent()
+			parent, err := f.Parent()
 			if err != nil {
 				return nil, nil, err
 			}
-			if f == nil {
-				werr = ErrBadPath
-				goto walkerr
+			qid, err := parent.Qid()
+			if err != nil {
+				return nil, nil, err
 			}
-			wqids = append(wqids, f.Qid())
+			f = parent
+			wqids = append(wqids, qid)
 			continue
 		}
-		qid := f.Qid()
+		qid, err := f.Qid()
+		if err != nil {
+			return nil, nil, err
+		}
 		if !qid.IsDir() {
 			werr = ErrNotDir
 			goto walkerr

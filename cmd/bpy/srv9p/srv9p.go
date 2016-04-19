@@ -29,6 +29,9 @@ type File struct {
 }
 
 func (f *File) Parent() (server9.File, error) {
+	if f.parent == nil {
+		return nil, server9.ErrBadPath
+	}
 	return f.parent, nil
 }
 
@@ -62,8 +65,8 @@ func (f *File) Stat() (proto9.Stat, error) {
 	return f.stat, nil
 }
 
-func (f *File) Qid() proto9.Qid {
-	return f.stat.Qid
+func (f *File) Qid() (proto9.Qid, error) {
+	return f.stat.Qid, nil
 }
 
 type FileHandle struct {
@@ -95,7 +98,7 @@ type proto9Server struct {
 	fids           map[proto9.Fid]*FileHandle
 }
 
-func makeQid(ent fs.DirEnt) proto9.Qid {
+func makeQid(ent *fs.DirEnt) proto9.Qid {
 	ty := proto9.QTFILE
 	if ent.Mode.IsDir() {
 		ty = proto9.QTDIR
@@ -109,19 +112,15 @@ func makeQid(ent fs.DirEnt) proto9.Qid {
 
 func dirEntToStat(ent *fs.DirEnt) proto9.Stat {
 	mode := proto9.FileMode(0777)
-	qtype := proto9.QidType(0)
 	if ent.Mode.IsDir() {
 		mode |= proto9.DMDIR
-		qtype |= proto9.QTDIR
-	} else {
-		qtype |= proto9.QTFILE
 	}
 	return proto9.Stat{
 		Mode:   mode,
 		Atime:  0,
 		Mtime:  0,
 		Name:   ent.Name,
-		Qid:    makeQid(*ent),
+		Qid:    makeQid(ent),
 		Length: uint64(ent.Size),
 		UID:    "nobody",
 		GID:    "nobody",
@@ -371,6 +370,8 @@ func (srv *proto9Server) serveConn(c net.Conn) {
 		case *proto9.Twrite:
 			resp = server9.MakeError(msg.Tag, ErrReadOnly)
 		case *proto9.Twstat:
+			resp = server9.MakeError(msg.Tag, ErrReadOnly)
+		case *proto9.Tcreate:
 			resp = server9.MakeError(msg.Tag, ErrReadOnly)
 		default:
 			log.Println("unhandled message type")

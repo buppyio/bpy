@@ -24,7 +24,11 @@ type Qid struct {
 }
 
 func (q *Qid) IsDir() bool {
-	return q.Type&QTDIR != 0
+	return q.Type == QTDIR
+}
+
+func (q *Qid) IsFile() bool {
+	return q.Type == QTFILE
 }
 
 type Stat struct {
