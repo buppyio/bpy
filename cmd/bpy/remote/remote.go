@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 var (
@@ -57,7 +58,7 @@ func (f *File) Qid() (proto9.Qid, error) {
 	if err != nil {
 		return proto9.Qid{}, err
 	}
-	return makeQid(stat), nil
+	return makeQid(stat.Mode().IsDir()), nil
 }
 
 type FileHandle struct {
@@ -90,15 +91,15 @@ type proto9Server struct {
 	fids           map[proto9.Fid]*FileHandle
 }
 
-func makeQid(ent os.FileInfo) proto9.Qid {
+func makeQid(isdir bool) proto9.Qid {
 	ty := proto9.QTFILE
-	if ent.Mode().IsDir() {
+	if isdir {
 		ty = proto9.QTDIR
 	}
 	return proto9.Qid{
 		Type:    ty,
 		Path:    server9.NextPath(),
-		Version: uint32(ent.ModTime().UnixNano() / 1000000),
+		Version: uint32(time.Now().UnixNano() / 1000000),
 	}
 }
 
@@ -112,7 +113,7 @@ func osToStat(ent os.FileInfo) proto9.Stat {
 		Atime:  0,
 		Mtime:  0,
 		Name:   ent.Name(),
-		Qid:    makeQid(ent),
+		Qid:    makeQid(ent.Mode().IsDir()),
 		Length: uint64(ent.Size()),
 		UID:    "nobody",
 		GID:    "nobody",
@@ -261,6 +262,55 @@ func (srv *proto9Server) handleOpen(msg *proto9.Topen) proto9.Msg {
 	}
 }
 
+func (srv *proto9Server) handleCreate(msg *proto9.Tcreate) proto9.Msg {
+	fh, ok := srv.fids[msg.Fid]
+	if !ok {
+		return server9.MakeError(msg.Tag, server9.ErrNoSuchFid)
+	}
+	stat, err := fh.file.Stat()
+	if err != nil {
+		return server9.MakeError(msg.Tag, err)
+	}
+	if !stat.Qid.IsDir() {
+		return server9.MakeError(msg.Tag, server9.ErrNotDir)
+	}
+	path := filepath.Join(fh.file.path, msg.Name)
+	fh.Close()
+	if msg.Perm&proto9.DMDIR != 0 {
+		err := os.Mkdir(path, 0755)
+		if err != nil {
+			return server9.MakeError(msg.Tag, err)
+		}
+		srv.fids[msg.Fid] = &FileHandle{
+			file: &File{
+				parent: fh.file.parent,
+				path:   path,
+			},
+			isdir:  true,
+			isopen: true,
+		}
+	} else {
+		f, err := os.Create(path)
+		if err != nil {
+			return server9.MakeError(msg.Tag, err)
+		}
+		srv.fids[msg.Fid] = &FileHandle{
+			file: &File{
+				parent: fh.file.parent,
+				path:   path,
+			},
+			osfile: f,
+			isdir:  false,
+			isopen: true,
+		}
+	}
+	return &proto9.Rcreate{
+		Tag:    msg.Tag,
+		Qid:    stat.Qid,
+		Iounit: srv.negMessageSize - proto9.WriteOverhead,
+	}
+}
+
 func (srv *proto9Server) handleRead(msg *proto9.Tread) proto9.Msg {
 	fh, ok := srv.fids[msg.Fid]
 	if !ok {
@@ -377,10 +427,12 @@ func (srv *proto9Server) serveConn(c net.Conn) {
 			resp = server9.MakeError(msg.Tag, ErrAuthNotSupported)
 		case *proto9.Twrite:
 			resp = server9.MakeError(msg.Tag, errors.New("unimplemented"))
+		case *proto9.Tremove:
+			resp = server9.MakeError(msg.Tag, errors.New("unimplemented"))
 		case *proto9.Twstat:
 			resp = server9.MakeError(msg.Tag, errors.New("unimplemented"))
 		case *proto9.Tcreate:
-			resp = server9.MakeError(msg.Tag, errors.New("unimplemented"))
+			resp = srv.handleCreate(msg)
 		default:
 			log.Println("unhandled message type")
 			return

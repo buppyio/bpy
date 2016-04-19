@@ -369,6 +369,8 @@ func (srv *proto9Server) serveConn(c net.Conn) {
 			resp = server9.MakeError(msg.Tag, ErrAuthNotSupported)
 		case *proto9.Twrite:
 			resp = server9.MakeError(msg.Tag, ErrReadOnly)
+		case *proto9.Tremove:
+			resp = server9.MakeError(msg.Tag, ErrReadOnly)
 		case *proto9.Twstat:
 			resp = server9.MakeError(msg.Tag, ErrReadOnly)
 		case *proto9.Tcreate:
