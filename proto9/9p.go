@@ -23,6 +23,10 @@ type Qid struct {
 	Path    uint64
 }
 
+func (q *Qid) IsDir() bool {
+	return q.Type&QTDIR != 0
+}
+
 type Stat struct {
 	Type   uint16
 	Dev    uint32

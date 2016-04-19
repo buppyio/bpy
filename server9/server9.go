@@ -50,16 +50,21 @@ func Walk(f File, names []string) (File, []proto9.Qid, error) {
 			wqids = append(wqids, f.Qid())
 			continue
 		}
-
-		child, err := f.Child(name)
-		if err != nil {
-			return nil, nil, err
-		}
-		if child == nil {
-			werr = ErrNotExist
+		qid := f.Qid()
+		if !qid.IsDir() {
+			werr = ErrNotDir
 			goto walkerr
 		}
+		child, err := f.Child(name)
+		if err != nil {
+			if err == ErrNotExist {
+				werr = ErrNotExist
+				goto walkerr
+			}
+			return nil, nil, err
+		}
 		f = child
+		wqids = append(wqids, qid)
 	}
 	return f, wqids, nil
 
@@ -124,8 +129,8 @@ type StatList struct {
 	Stats  []proto9.Stat
 }
 
-func (sl *StatList) ReadAt(buf []byte, off int64) (int, error) {
-	if off != int64(sl.Offset) {
+func (sl *StatList) ReadAt(buf []byte, off uint64) (int, error) {
+	if off != sl.Offset {
 		return 0, ErrBadReadOffset
 	}
 	n := 0

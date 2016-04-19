@@ -6,14 +6,12 @@ import (
 	"acha.ninja/bpy/fs"
 	"acha.ninja/bpy/proto9"
 	"acha.ninja/bpy/server9"
-	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"io"
 	"log"
 	"net"
 	"os"
-	"strings"
 )
 
 var (
@@ -22,6 +20,7 @@ var (
 )
 
 type File struct {
+	store   bpy.CStoreReader
 	parent  *File
 	dirhash [32]byte
 	diridx  int
@@ -29,22 +28,41 @@ type File struct {
 	stat    proto9.Stat
 }
 
-func (f *File) Parent() (*File,error) {
-	return f.Parent(), nil
+func (f *File) Parent() (server9.File, error) {
+	return f.parent, nil
 }
 
-func (f *File) Child(name string) (*File,error) {
-	if !f.dirent.Mode().IsDir() {
+func (f *File) Child(name string) (server9.File, error) {
+	if !f.dirent.Mode.IsDir() {
 		return nil, server9.ErrNotDir
 	}
-	return f.Child(), nil
+
+	dirents, err := fs.ReadDir(f.store, f.dirhash)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for idx, ent := range dirents {
+		if ent.Name == name {
+			return &File{
+				store:   f.store,
+				parent:  f,
+				dirhash: f.dirent.Data,
+				diridx:  idx,
+				dirent:  ent,
+				stat:    dirEntToStat(&ent),
+			}, nil
+		}
+	}
+	return nil, server9.ErrNotExist
 }
 
 func (f *File) Stat() (proto9.Stat, error) {
 	return f.stat, nil
 }
 
-func (f *File) Qid() (proto9.Qid) {
+func (f *File) Qid() proto9.Qid {
 	return f.stat.Qid
 }
 
@@ -53,7 +71,7 @@ type FileHandle struct {
 
 	rdr *fs.FileReader
 
-	statlist server9.StatList
+	stats server9.StatList
 }
 
 func (f *FileHandle) Close() error {
@@ -77,7 +95,19 @@ type proto9Server struct {
 	fids           map[proto9.Fid]*FileHandle
 }
 
-func (srv *proto9Server) dirEntToStat(ent *fs.DirEnt) proto9.Stat {
+func makeQid(ent fs.DirEnt) proto9.Qid {
+	ty := proto9.QTFILE
+	if ent.Mode.IsDir() {
+		ty = proto9.QTDIR
+	}
+	return proto9.Qid{
+		Type:    ty,
+		Path:    server9.NextPath(),
+		Version: 0,
+	}
+}
+
+func dirEntToStat(ent *fs.DirEnt) proto9.Stat {
 	mode := proto9.FileMode(0777)
 	qtype := proto9.QidType(0)
 	if ent.Mode.IsDir() {
@@ -91,25 +121,11 @@ func (srv *proto9Server) dirEntToStat(ent *fs.DirEnt) proto9.Stat {
 		Atime:  0,
 		Mtime:  0,
 		Name:   ent.Name,
-		Qid:    srv.makeQid(*ent),
+		Qid:    makeQid(*ent),
 		Length: uint64(ent.Size),
 		UID:    "nobody",
 		GID:    "nobody",
 		MUID:   "nobody",
-	}
-}
-
-func (srv *proto9Server) makeQid(ent fs.DirEnt) proto9.Qid {
-	path := srv.qidPathCount
-	srv.qidPathCount++
-	ty := proto9.QTFILE
-	if ent.Mode.IsDir() {
-		ty = proto9.QTDIR
-	}
-	return proto9.Qid{
-		Type:    ty,
-		Path:    path,
-		Version: 0,
 	}
 }
 
@@ -119,9 +135,11 @@ func (srv *proto9Server) makeRoot(hash [32]byte) (*File, error) {
 		return nil, err
 	}
 	return &File{
+		store:   srv.store,
 		dirhash: hash,
+		diridx:  0,
 		dirent:  ents[0],
-		stat:    srv.dirEntToStat(&ents[0]),
+		stat:    dirEntToStat(&ents[0]),
 	}, nil
 }
 
@@ -171,19 +189,18 @@ func (srv *proto9Server) handleVersion(msg *proto9.Tversion) proto9.Msg {
 func (srv *proto9Server) handleAttach(msg *proto9.Tattach) proto9.Msg {
 	if msg.Afid != proto9.NOFID {
 		return server9.MakeError(msg.Tag, ErrAuthNotSupported)
-		}
 	}
 
 	rootFile, err := srv.makeRoot(srv.Root)
 	if err != nil {
-		return server9.MakeError(msg.Tag, err.Error())
+		return server9.MakeError(msg.Tag, err)
 	}
 	f := &FileHandle{
 		file: rootFile,
 	}
 	err = srv.AddFid(msg.Fid, f)
 	if err != nil {
-		return server9.MakeError(msg.Tag, err.Error())
+		return server9.MakeError(msg.Tag, err)
 	}
 
 	return &proto9.Rattach{
@@ -197,7 +214,7 @@ func (srv *proto9Server) handleWalk(msg *proto9.Twalk) proto9.Msg {
 	if !ok {
 		return server9.MakeError(msg.Tag, server9.ErrNoSuchFid)
 	}
-	f, qids, err := server9.Walk(fh.file, msg.Names)
+	f, wqids, err := server9.Walk(fh.file, msg.Names)
 	if err != nil {
 		return server9.MakeError(msg.Tag, err)
 	}
@@ -207,7 +224,7 @@ func (srv *proto9Server) handleWalk(msg *proto9.Twalk) proto9.Msg {
 			delete(srv.fids, msg.Fid)
 		}
 		fh = &FileHandle{
-			file: f,
+			file: f.(*File),
 		}
 		err = srv.AddFid(msg.NewFid, fh)
 		if err != nil {
@@ -264,13 +281,13 @@ func (srv *proto9Server) handleRead(msg *proto9.Tread) proto9.Msg {
 			n := len(dirents)
 			stats := make([]proto9.Stat, n, n)
 			for i := range dirents {
-				stats[i] = srv.dirEntToStat(&dirents[i])
+				stats[i] = dirEntToStat(&dirents[i])
 			}
 			fh.stats = server9.StatList{
 				Stats: stats,
 			}
 		}
-		
+
 		n, err := fh.stats.ReadAt(buf, msg.Offset)
 		if err != nil {
 			return server9.MakeError(msg.Tag, err)
@@ -350,7 +367,7 @@ func (srv *proto9Server) serveConn(c net.Conn) {
 		case *proto9.Tstat:
 			resp = srv.handleStat(msg)
 		case *proto9.Tauth:
-			resp =  server9.MakeError(msg.Tag, ErrAuthNotSupported)
+			resp = server9.MakeError(msg.Tag, ErrAuthNotSupported)
 		case *proto9.Twrite:
 			resp = server9.MakeError(msg.Tag, ErrReadOnly)
 		case *proto9.Twstat:
