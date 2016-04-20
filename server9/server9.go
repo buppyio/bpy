@@ -10,15 +10,16 @@ import (
 )
 
 var (
-	ErrNoSuchFid     = errors.New("no such fid")
-	ErrFidInUse      = errors.New("fid in use")
-	ErrBadFid        = errors.New("bad fid")
-	ErrBadTag        = errors.New("bad tag")
-	ErrBadPath       = errors.New("bad path")
-	ErrNotDir        = errors.New("not a directory path")
-	ErrNotExist      = errors.New("no such file")
-	ErrFileNotOpen   = errors.New("file not open")
-	ErrBadReadOffset = errors.New("bad read offset")
+	ErrNoSuchFid   = errors.New("no such fid")
+	ErrFidInUse    = errors.New("fid in use")
+	ErrBadFid      = errors.New("bad fid")
+	ErrBadTag      = errors.New("bad tag")
+	ErrBadPath     = errors.New("bad path")
+	ErrNotDir      = errors.New("not a directory path")
+	ErrNotExist    = errors.New("no such file")
+	ErrFileNotOpen = errors.New("file not open")
+	ErrBadRead     = errors.New("bad read")
+	ErrBadWrite    = errors.New("bad write")
 )
 
 type File interface {
@@ -135,7 +136,7 @@ type StatList struct {
 
 func (sl *StatList) ReadAt(buf []byte, off uint64) (int, error) {
 	if off != sl.Offset {
-		return 0, ErrBadReadOffset
+		return 0, ErrBadRead
 	}
 	n := 0
 	for {

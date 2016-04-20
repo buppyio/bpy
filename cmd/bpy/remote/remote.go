@@ -276,7 +276,8 @@ func (srv *proto9Server) handleCreate(msg *proto9.Tcreate) proto9.Msg {
 	}
 	path := filepath.Join(fh.file.path, msg.Name)
 	fh.Close()
-	if msg.Perm&proto9.DMDIR != 0 {
+	isdir := msg.Perm&proto9.DMDIR != 0
+	if isdir {
 		err := os.Mkdir(path, 0755)
 		if err != nil {
 			return server9.MakeError(msg.Tag, err)
@@ -306,7 +307,7 @@ func (srv *proto9Server) handleCreate(msg *proto9.Tcreate) proto9.Msg {
 	}
 	return &proto9.Rcreate{
 		Tag:    msg.Tag,
-		Qid:    stat.Qid,
+		Qid:    makeQid(isdir),
 		Iounit: srv.negMessageSize - proto9.WriteOverhead,
 	}
 }
@@ -362,6 +363,31 @@ func (srv *proto9Server) handleRead(msg *proto9.Tread) proto9.Msg {
 			Tag:  msg.Tag,
 			Data: buf[0:n],
 		}
+	}
+}
+
+func (srv *proto9Server) handleWrite(msg *proto9.Twrite) proto9.Msg {
+	fh, ok := srv.fids[msg.Fid]
+	if !ok {
+		return server9.MakeError(msg.Tag, server9.ErrNoSuchFid)
+	}
+	if !fh.isopen {
+		return server9.MakeError(msg.Tag, server9.ErrFileNotOpen)
+	}
+	if fh.isdir {
+		return server9.MakeError(msg.Tag, server9.ErrBadWrite)
+	}
+	if fh.osfile == nil {
+		return server9.MakeError(msg.Tag, errors.New("internal error"))
+	}
+
+	n, err := fh.osfile.WriteAt(msg.Data, int64(msg.Offset))
+	if err != nil {
+		return server9.MakeError(msg.Tag, err)
+	}
+	return &proto9.Rwrite{
+		Tag:   msg.Tag,
+		Count: uint32(n),
 	}
 }
 
@@ -423,10 +449,10 @@ func (srv *proto9Server) serveConn(c net.Conn) {
 			resp = srv.handleClunk(msg)
 		case *proto9.Tstat:
 			resp = srv.handleStat(msg)
+		case *proto9.Twrite:
+			resp = srv.handleWrite(msg)
 		case *proto9.Tauth:
 			resp = server9.MakeError(msg.Tag, ErrAuthNotSupported)
-		case *proto9.Twrite:
-			resp = server9.MakeError(msg.Tag, errors.New("unimplemented"))
 		case *proto9.Tremove:
 			resp = server9.MakeError(msg.Tag, errors.New("unimplemented"))
 		case *proto9.Twstat:
