@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"net"
 	"os"
 	"path/filepath"
 	"time"
@@ -440,17 +439,15 @@ func (srv *proto9Server) handleStat(msg *proto9.Tstat) proto9.Msg {
 	}
 }
 
-func (srv *proto9Server) serveConn(c net.Conn) {
-	defer c.Close()
+func (srv *proto9Server) serveConn(in io.Reader, out io.Writer) error {
 	srv.fids = make(map[proto9.Fid]*FileHandle)
 	srv.inbuf = make([]byte, srv.maxMessageSize, srv.maxMessageSize)
 	srv.outbuf = make([]byte, srv.maxMessageSize, srv.maxMessageSize)
 	for {
 		var resp proto9.Msg
-		msg, err := server9.ReadMsg(c, srv.inbuf)
+		msg, err := server9.ReadMsg(in, srv.inbuf)
 		if err != nil {
-			log.Printf("error reading message: %s", err.Error())
-			return
+			return err
 		}
 		log.Printf("%#v", msg)
 		switch msg := msg.(type) {
@@ -479,14 +476,12 @@ func (srv *proto9Server) serveConn(c net.Conn) {
 		case *proto9.Tcreate:
 			resp = srv.handleCreate(msg)
 		default:
-			log.Println("unhandled message type")
-			return
+			return errors.New("bad message")
 		}
 		log.Printf("%#v", resp)
-		err = server9.WriteMsg(c, srv.outbuf, resp)
+		err = server9.WriteMsg(out, srv.outbuf, resp)
 		if err != nil {
-			log.Printf("error sending message: %s", err.Error())
-			return
+			return err
 		}
 	}
 }
@@ -494,19 +489,9 @@ func (srv *proto9Server) serveConn(c net.Conn) {
 func Remote() {
 	root := "/home/ac/.bpy/store"
 	log.Println("Serving 9p...")
-	l, err := net.Listen("tcp", "127.0.0.1:9001")
-	if err != nil {
-		log.Fatal(err)
+	srv := &proto9Server{
+		Root:           root,
+		maxMessageSize: 4096,
 	}
-	for {
-		c, err := l.Accept()
-		if err != nil {
-			log.Fatal(err)
-		}
-		srv := &proto9Server{
-			Root:           root,
-			maxMessageSize: 4096,
-		}
-		go srv.serveConn(c)
-	}
+	log.Fatal(srv.serveConn(os.Stdin, os.Stdout))
 }
