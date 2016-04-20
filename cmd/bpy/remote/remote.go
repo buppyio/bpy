@@ -391,13 +391,32 @@ func (srv *proto9Server) handleWrite(msg *proto9.Twrite) proto9.Msg {
 	}
 }
 
-func (srv *proto9Server) handleClunk(msg *proto9.Tclunk) proto9.Msg {
-	f, ok := srv.fids[msg.Fid]
+func (srv *proto9Server) handleRemove(msg *proto9.Tremove) proto9.Msg {
+	fh, ok := srv.fids[msg.Fid]
 	if !ok {
 		return server9.MakeError(msg.Tag, server9.ErrNoSuchFid)
 	}
 	delete(srv.fids, msg.Fid)
-	err := f.Close()
+	err := fh.Close()
+	if err != nil {
+		return server9.MakeError(msg.Tag, err)
+	}
+	err = os.Remove(fh.file.path)
+	if err != nil {
+		return server9.MakeError(msg.Tag, err)
+	}
+	return &proto9.Rremove{
+		Tag: msg.Tag,
+	}
+}
+
+func (srv *proto9Server) handleClunk(msg *proto9.Tclunk) proto9.Msg {
+	fh, ok := srv.fids[msg.Fid]
+	if !ok {
+		return server9.MakeError(msg.Tag, server9.ErrNoSuchFid)
+	}
+	delete(srv.fids, msg.Fid)
+	err := fh.Close()
 	if err != nil {
 		return server9.MakeError(msg.Tag, err)
 	}
@@ -451,10 +470,10 @@ func (srv *proto9Server) serveConn(c net.Conn) {
 			resp = srv.handleStat(msg)
 		case *proto9.Twrite:
 			resp = srv.handleWrite(msg)
+		case *proto9.Tremove:
+			resp = srv.handleRemove(msg)
 		case *proto9.Tauth:
 			resp = server9.MakeError(msg.Tag, ErrAuthNotSupported)
-		case *proto9.Tremove:
-			resp = server9.MakeError(msg.Tag, errors.New("unimplemented"))
 		case *proto9.Twstat:
 			resp = server9.MakeError(msg.Tag, errors.New("unimplemented"))
 		case *proto9.Tcreate:
