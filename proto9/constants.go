@@ -1,7 +1,7 @@
 package proto9
 
 const (
-	HeaderSize     = 4 + 1
+	HeaderSize     = 2 + 1 + 2
 	ReadOverhead   = HeaderSize + 2 + 4
 	WriteOverhead  = HeaderSize + 2 + 4 + 8 + 4
 	QidSize        = 13
