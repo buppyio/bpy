@@ -97,6 +97,121 @@ func (c *Client) readMsg() (proto9.Msg, error) {
 	return msg, nil
 }
 
+func (c *Client) Tversion(msize uint32, version string) (*proto9.Rversion, error) {
+	tag := c.nextTag()
+	msg, err := c.sendMsg(&Tversion{
+		Tag:         tag,
+		MessageSize: msize,
+		Version:     version,
+	})
+	if err != nil {
+		return nil, err
+	}
+	resp, ok := msg.(*proto9.Rversion)
+	if !ok {
+		return nil, ErrBadResponse
+	}
+	return resp, nil
+}
+
+func (c *Client) Tauth(afid proto9.Fid, uname string, aname string) (*proto9.Rauth, error) {
+	tag := c.nextTag()
+	msg, err := c.sendMsg(&Tauth{
+		Tag:   tag,
+		Afid:  afid,
+		Uname: uname,
+		Aname: aname,
+	})
+	if err != nil {
+		return nil, err
+	}
+	resp, ok := msg.(*proto9.Rauth)
+	if !ok {
+		return nil, ErrBadResponse
+	}
+	return resp, nil
+}
+
+func (c *Client) Tflush(oldtag proto9.Tag) (*proto9.Rflush, error) {
+	tag := c.nextTag()
+	msg, err := c.sendMsg(&Tflush{
+		Tag:    tag,
+		OldTag: oldtag,
+	})
+	if err != nil {
+		return nil, err
+	}
+	resp, ok := msg.(*proto9.Rflush)
+	if !ok {
+		return nil, ErrBadResponse
+	}
+	return resp, nil
+}
+
+func (c *Client) Tattach(fid, afid proto9.Fid, uname, aname string) (*proto9.Rattach, error) {
+	tag := c.nextTag()
+	msg, err := c.sendMsg(&Tattach{
+		Tag:   tag,
+		Fid:   fid,
+		Afid:  afid,
+		Uname: uname,
+		Aname: aname,
+	})
+	if err != nil {
+		return nil, err
+	}
+	resp, ok := msg.(*proto9.Rattach)
+	if !ok {
+		return nil, ErrBadResponse
+	}
+	return resp, nil
+}
+
+func (c *Client) Twalk(fid, newfid proto9.Fid, names []string) (*proto9.Rwalk, error) {
+	if len(names) > 16 {
+		return nil, errors.New("cannot walk with more than 16 names")
+	}
+	tag := c.nextTag()
+	msg, err := c.sendMsg(&Twalk{
+		Tag:    tag,
+		Fid:    fid,
+		NewFid: newfid,
+		Names:  names,
+	})
+	if err != nil {
+		return nil, err
+	}
+	resp, ok := msg.(*proto9.Rwalk)
+	if !ok {
+		return nil, ErrBadResponse
+	}
+	return resp, nil
+}
+func (c *Client) Topen() (*proto9.Ropen, error) {
+	return nil, errors.New("unimplemented")
+}
+func (c *Client) Tcreate() (*proto9.Rcreate, error) {
+	return nil, errors.New("unimplemented")
+}
+func (c *Client) Tread() (*proto9.Rread, error) {
+	return nil, errors.New("unimplemented")
+}
+func (c *Client) Twrite() (*proto9.Rwrite, error) {
+	return nil, errors.New("unimplemented")
+}
+func (c *Client) Tclunk() (*proto9.Rclunk, error) {
+	return nil, errors.New("unimplemented")
+}
+func (c *Client) Tremove() (*proto9.Rremove, error) {
+	return nil, errors.New("unimplemented")
+}
+func (c *Client) Tstat() (*proto9.Rstat, error) {
+	return nil, errors.New("unimplemented")
+}
+func (c *Client) Twstat() (*proto9.Rwstat, error) {
+	return nil, errors.New("unimplemented")
+}
+
 func (c *Client) negotiateVersion() error {
 	bufsz := uint32(65536)
 	c.buf = make([]byte, bufsz, bufsz)
@@ -124,46 +239,20 @@ func (c *Client) Attach() error {
 }
 
 func (c *Client) Open(path string, mode proto9.OpenMode) (*File, error) {
-	tag := c.nextTag()
 	fid := c.nextFid()
-	resp, err := c.sendMsg(&proto9.Topen{
-		Tag:  tag,
-		Fid:  fid,
-		Mode: mode,
-	})
+	resp, err := c.Topen(fid, mode)
 	if err != nil {
 		c.clunkFid(fid)
 		return nil, err
 	}
-	openresp, ok := resp.(*proto9.Ropen)
-	if !ok {
-		return nil, ErrBadResponse
-	}
 	return &File{
 		c:      c,
-		Iounit: openresp.Iounit,
+		Iounit: resp.Iounit,
 	}, nil
 }
 
 func (c *Client) walk(root proto9.Fid, path string) (*File, error) {
 	return nil, errors.New("unimplemented...")
-}
-
-func (c *Client) openFid(fid proto9.Fid, mode proto9.OpenMode) (*File, error) {
-	tag := c.nextTag()
-	resp, err := c.sendMsg(&proto9.Topen{
-		Tag:  tag,
-		Fid:  fid,
-		Mode: mode,
-	})
-	openresp, ok := resp.(*Ropen)
-	if !ok {
-		return nil, ErrBadResponse
-	}
-	return &File{
-		c:      c,
-		Iounit: openresp.Iounit,
-	}
 }
 
 func (f *File) Read(buf []byte) (int, error) {
@@ -174,24 +263,16 @@ func (f *File) Read(buf []byte) (int, error) {
 		if amnt > maxamnt {
 			amnt = maxamnt
 		}
-		tag := f.c.nextTag()
-		resp, err := f.c.sendMsg(&Tread{
-			Tag:   tag,
-			Count: amnt,
-		})
+		resp, err := f.c.Tread(amnt)
 		if err != nil {
 			return n, err
 		}
-		readresp, ok := resp.(*Rread)
-		if !ok {
+		copy(buf[n:len(buf)], resp.Data)
+		n += len(resp.Data)
+		if len(resp.Data) > amnt {
 			return n, ErrBadResponse
 		}
-		copy(buf[n:len(buf)], readresp)
-		n += len(readresp.data)
-		if len(readresp.data) > amnt {
-			return n, ErrBadResponse
-		}
-		if len(readresp.data) == 0 {
+		if len(resp.Data) == 0 {
 			return n, io.Eof
 		}
 	}
@@ -203,11 +284,7 @@ func (f *File) Write([]byte) (int, error) {
 }
 
 func (f *File) Close() error {
-	tag := f.c.nextTag()
-	_, err := f.c.sendMsg(&Tclunk{
-		Tag: tag,
-		Fid: f.fid,
-	})
+	_, err := f.c.Tclunk(f.fid)
 	f.c.clunkFid(f.fid)
 	return err
 }
