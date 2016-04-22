@@ -223,12 +223,38 @@ func (c *Client) Tcreate(fid proto9.Fid, name string, perm proto9.FileMode, mode
 	return resp, nil
 }
 
-func (c *Client) Tread() (*proto9.Rread, error) {
-	return nil, errors.New("unimplemented")
+func (c *Client) Tread(fid proto9.Fid, count uint32) (*proto9.Rread, error) {
+	tag := c.nextTag()
+	msg, err := c.sendMsg(&Twalk{
+		Tag:   tag,
+		Fid:   fid,
+		Count: count,
+	})
+	if err != nil {
+		return nil, err
+	}
+	resp, ok := msg.(*proto9.Rread)
+	if !ok {
+		return nil, ErrBadResponse
+	}
+	return resp, nil
 }
 
-func (c *Client) Twrite() (*proto9.Rwrite, error) {
-	return nil, errors.New("unimplemented")
+func (c *Client) Twrite(fid proto9.Fid, offset uint64, buf []byte) (*proto9.Rwrite, error) {
+	tag := c.nextTag()
+	msg, err := c.sendMsg(&Twalk{
+		Tag:  tag,
+		Fid:  fid,
+		Data: buf,
+	})
+	if err != nil {
+		return nil, err
+	}
+	resp, ok := msg.(*proto9.Rwrite)
+	if !ok {
+		return nil, ErrBadResponse
+	}
+	return resp, nil
 }
 
 func (c *Client) Tclunk() (*proto9.Rclunk, error) {
