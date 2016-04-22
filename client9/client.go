@@ -187,27 +187,62 @@ func (c *Client) Twalk(fid, newfid proto9.Fid, names []string) (*proto9.Rwalk, e
 	}
 	return resp, nil
 }
-func (c *Client) Topen() (*proto9.Ropen, error) {
-	return nil, errors.New("unimplemented")
+func (c *Client) Topen(fid proto9.Fid, mode proto9.OpenMode) (*proto9.Ropen, error) {
+	tag := c.nextTag()
+	msg, err := c.sendMsg(&Twalk{
+		Tag:  tag,
+		Fid:  fid,
+		Mode: mode,
+	})
+	if err != nil {
+		return nil, err
+	}
+	resp, ok := msg.(*proto9.Ropen)
+	if !ok {
+		return nil, ErrBadResponse
+	}
+	return resp, nil
 }
-func (c *Client) Tcreate() (*proto9.Rcreate, error) {
-	return nil, errors.New("unimplemented")
+
+func (c *Client) Tcreate(fid proto9.Fid, name string, perm proto9.FileMode, mode proto9.OpenMode) (*proto9.Rcreate, error) {
+	tag := c.nextTag()
+	msg, err := c.sendMsg(&Twalk{
+		Tag:  tag,
+		Fid:  fid,
+		Name: name,
+		Perm: perm,
+		Mode: mode,
+	})
+	if err != nil {
+		return nil, err
+	}
+	resp, ok := msg.(*proto9.Rcreate)
+	if !ok {
+		return nil, ErrBadResponse
+	}
+	return resp, nil
 }
+
 func (c *Client) Tread() (*proto9.Rread, error) {
 	return nil, errors.New("unimplemented")
 }
+
 func (c *Client) Twrite() (*proto9.Rwrite, error) {
 	return nil, errors.New("unimplemented")
 }
+
 func (c *Client) Tclunk() (*proto9.Rclunk, error) {
 	return nil, errors.New("unimplemented")
 }
+
 func (c *Client) Tremove() (*proto9.Rremove, error) {
 	return nil, errors.New("unimplemented")
 }
+
 func (c *Client) Tstat() (*proto9.Rstat, error) {
 	return nil, errors.New("unimplemented")
 }
+
 func (c *Client) Twstat() (*proto9.Rwstat, error) {
 	return nil, errors.New("unimplemented")
 }
