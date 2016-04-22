@@ -15,7 +15,9 @@ var (
 
 type Client struct {
 	maxfid proto9.Fid
+	maxtag proto9.Tag
 	fids   map[proto9.Fid]struct{}
+	tags   map[proto9.Tag]struct{}
 	in     io.Reader
 	out    io.Writer
 	buf    []byte
@@ -32,22 +34,49 @@ func NewClient(in io.Reader, out io.Writer) (*Client, error) {
 		in:   in,
 		out:  out,
 		fids: make(map[proto9.Fid]struct{}),
+		tags: make(map[proto9.Tag]struct{}),
 	}
 	return c, c.negotiateVersion()
 }
 
 func (c *Client) nextTag() proto9.Tag {
-	panic("...")
-	return 0
+	for {
+		tag := c.maxtag
+		c.maxtag++
+		if tag == proto9.NOTAG {
+			continue
+		}
+		_, hastag := c.tags[tag]
+		if hastag {
+			continue
+		}
+		c.tags[tag] = struct{}{}
+		return tag
+	}
+}
+
+func (c *Client) clunkTag(tag proto9.Tag) {
+	delete(c.tags, tag)
 }
 
 func (c *Client) nextFid() proto9.Fid {
-	panic("...")
-	return 0
+	for {
+		fid := c.maxfid
+		c.maxfid++
+		if fid == proto9.NOFID {
+			continue
+		}
+		_, hasfid := c.fids[fid]
+		if hasfid {
+			continue
+		}
+		c.fids[fid] = struct{}{}
+		return fid
+	}
 }
 
 func (c *Client) clunkFid(fid proto9.Fid) {
-	panic("...")
+	delete(c.fids, fid)
 }
 
 func (c *Client) sendMsg(msg proto9.Msg) (proto9.Msg, error) {
@@ -115,6 +144,7 @@ func (c *Client) Tversion(msize uint32, version string) (*proto9.Rversion, error
 
 func (c *Client) Tauth(afid proto9.Fid, uname string, aname string) (*proto9.Rauth, error) {
 	tag := c.nextTag()
+	defer c.clunkTag(tag)
 	msg, err := c.sendMsg(&proto9.Tauth{
 		Tag:   tag,
 		Afid:  afid,
@@ -133,6 +163,7 @@ func (c *Client) Tauth(afid proto9.Fid, uname string, aname string) (*proto9.Rau
 
 func (c *Client) Tflush(oldtag proto9.Tag) (*proto9.Rflush, error) {
 	tag := c.nextTag()
+	defer c.clunkTag(tag)
 	msg, err := c.sendMsg(&proto9.Tflush{
 		Tag:    tag,
 		OldTag: oldtag,
@@ -149,6 +180,7 @@ func (c *Client) Tflush(oldtag proto9.Tag) (*proto9.Rflush, error) {
 
 func (c *Client) Tattach(fid, afid proto9.Fid, uname, aname string) (*proto9.Rattach, error) {
 	tag := c.nextTag()
+	defer c.clunkTag(tag)
 	msg, err := c.sendMsg(&proto9.Tattach{
 		Tag:   tag,
 		Fid:   fid,
@@ -171,6 +203,7 @@ func (c *Client) Twalk(fid, newfid proto9.Fid, names []string) (*proto9.Rwalk, e
 		return nil, errors.New("cannot walk with more than 16 names")
 	}
 	tag := c.nextTag()
+	defer c.clunkTag(tag)
 	msg, err := c.sendMsg(&proto9.Twalk{
 		Tag:    tag,
 		Fid:    fid,
@@ -188,6 +221,7 @@ func (c *Client) Twalk(fid, newfid proto9.Fid, names []string) (*proto9.Rwalk, e
 }
 func (c *Client) Topen(fid proto9.Fid, mode proto9.OpenMode) (*proto9.Ropen, error) {
 	tag := c.nextTag()
+	defer c.clunkTag(tag)
 	msg, err := c.sendMsg(&proto9.Topen{
 		Tag:  tag,
 		Fid:  fid,
@@ -205,6 +239,7 @@ func (c *Client) Topen(fid proto9.Fid, mode proto9.OpenMode) (*proto9.Ropen, err
 
 func (c *Client) Tcreate(fid proto9.Fid, name string, perm proto9.FileMode, mode proto9.OpenMode) (*proto9.Rcreate, error) {
 	tag := c.nextTag()
+	defer c.clunkTag(tag)
 	msg, err := c.sendMsg(&proto9.Tcreate{
 		Tag:  tag,
 		Fid:  fid,
@@ -224,6 +259,7 @@ func (c *Client) Tcreate(fid proto9.Fid, name string, perm proto9.FileMode, mode
 
 func (c *Client) Tread(fid proto9.Fid, offset uint64, count uint32) (*proto9.Rread, error) {
 	tag := c.nextTag()
+	defer c.clunkTag(tag)
 	msg, err := c.sendMsg(&proto9.Tread{
 		Tag:    tag,
 		Fid:    fid,
@@ -242,6 +278,7 @@ func (c *Client) Tread(fid proto9.Fid, offset uint64, count uint32) (*proto9.Rre
 
 func (c *Client) Twrite(fid proto9.Fid, offset uint64, buf []byte) (*proto9.Rwrite, error) {
 	tag := c.nextTag()
+	defer c.clunkTag(tag)
 	msg, err := c.sendMsg(&proto9.Twrite{
 		Tag:  tag,
 		Fid:  fid,
@@ -259,6 +296,7 @@ func (c *Client) Twrite(fid proto9.Fid, offset uint64, buf []byte) (*proto9.Rwri
 
 func (c *Client) Tclunk(fid proto9.Fid) (*proto9.Rclunk, error) {
 	tag := c.nextTag()
+	defer c.clunkTag(tag)
 	msg, err := c.sendMsg(&proto9.Twalk{
 		Tag: tag,
 		Fid: fid,
@@ -275,6 +313,7 @@ func (c *Client) Tclunk(fid proto9.Fid) (*proto9.Rclunk, error) {
 
 func (c *Client) Tremove(fid proto9.Fid) (*proto9.Rremove, error) {
 	tag := c.nextTag()
+	defer c.clunkTag(tag)
 	msg, err := c.sendMsg(&proto9.Twalk{
 		Tag: tag,
 		Fid: fid,
@@ -291,6 +330,7 @@ func (c *Client) Tremove(fid proto9.Fid) (*proto9.Rremove, error) {
 
 func (c *Client) Tstat(fid proto9.Fid) (*proto9.Rstat, error) {
 	tag := c.nextTag()
+	defer c.clunkTag(tag)
 	msg, err := c.sendMsg(&proto9.Tstat{
 		Tag: tag,
 		Fid: fid,
@@ -307,6 +347,7 @@ func (c *Client) Tstat(fid proto9.Fid) (*proto9.Rstat, error) {
 
 func (c *Client) Twstat(fid proto9.Fid, stat proto9.Stat) (*proto9.Rwstat, error) {
 	tag := c.nextTag()
+	defer c.clunkTag(tag)
 	msg, err := c.sendMsg(&proto9.Twstat{
 		Tag:  tag,
 		Fid:  fid,
