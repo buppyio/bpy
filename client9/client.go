@@ -289,12 +289,37 @@ func (c *Client) Tremove(fid proto9.Fid) (*proto9.Rremove, error) {
 	return resp, nil
 }
 
-func (c *Client) Tstat() (*proto9.Rstat, error) {
-	return nil, errors.New("unimplemented")
+func (c *Client) Tstat(fid proto9.Fid) (*proto9.Rstat, error) {
+	tag := c.nextTag()
+	msg, err := c.sendMsg(&Twalk{
+		Tag: tag,
+		Fid: fid,
+	})
+	if err != nil {
+		return nil, err
+	}
+	resp, ok := msg.(*proto9.Rstat)
+	if !ok {
+		return nil, ErrBadResponse
+	}
+	return resp, nil
 }
 
-func (c *Client) Twstat() (*proto9.Rwstat, error) {
-	return nil, errors.New("unimplemented")
+func (c *Client) Twstat(fid proto9.Fid, stat proto9.Stat) (*proto9.Rwstat, error) {
+	tag := c.nextTag()
+	msg, err := c.sendMsg(&Twalk{
+		Tag:  tag,
+		Fid:  fid,
+		Stat: stat,
+	})
+	if err != nil {
+		return nil, err
+	}
+	resp, ok := msg.(*proto9.Twstat)
+	if !ok {
+		return nil, ErrBadResponse
+	}
+	return resp, nil
 }
 
 func (c *Client) negotiateVersion() error {
