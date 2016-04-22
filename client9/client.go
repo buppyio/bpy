@@ -189,7 +189,7 @@ func (c *Client) Twalk(fid, newfid proto9.Fid, names []string) (*proto9.Rwalk, e
 }
 func (c *Client) Topen(fid proto9.Fid, mode proto9.OpenMode) (*proto9.Ropen, error) {
 	tag := c.nextTag()
-	msg, err := c.sendMsg(&Twalk{
+	msg, err := c.sendMsg(&Topen{
 		Tag:  tag,
 		Fid:  fid,
 		Mode: mode,
@@ -206,7 +206,7 @@ func (c *Client) Topen(fid proto9.Fid, mode proto9.OpenMode) (*proto9.Ropen, err
 
 func (c *Client) Tcreate(fid proto9.Fid, name string, perm proto9.FileMode, mode proto9.OpenMode) (*proto9.Rcreate, error) {
 	tag := c.nextTag()
-	msg, err := c.sendMsg(&Twalk{
+	msg, err := c.sendMsg(&Tcreate{
 		Tag:  tag,
 		Fid:  fid,
 		Name: name,
@@ -225,7 +225,7 @@ func (c *Client) Tcreate(fid proto9.Fid, name string, perm proto9.FileMode, mode
 
 func (c *Client) Tread(fid proto9.Fid, count uint32) (*proto9.Rread, error) {
 	tag := c.nextTag()
-	msg, err := c.sendMsg(&Twalk{
+	msg, err := c.sendMsg(&Tread{
 		Tag:   tag,
 		Fid:   fid,
 		Count: count,
@@ -242,7 +242,7 @@ func (c *Client) Tread(fid proto9.Fid, count uint32) (*proto9.Rread, error) {
 
 func (c *Client) Twrite(fid proto9.Fid, offset uint64, buf []byte) (*proto9.Rwrite, error) {
 	tag := c.nextTag()
-	msg, err := c.sendMsg(&Twalk{
+	msg, err := c.sendMsg(&Twrite{
 		Tag:  tag,
 		Fid:  fid,
 		Data: buf,
@@ -257,12 +257,36 @@ func (c *Client) Twrite(fid proto9.Fid, offset uint64, buf []byte) (*proto9.Rwri
 	return resp, nil
 }
 
-func (c *Client) Tclunk() (*proto9.Rclunk, error) {
-	return nil, errors.New("unimplemented")
+func (c *Client) Tclunk(fid proto9.Fid) (*proto9.Rclunk, error) {
+	tag := c.nextTag()
+	msg, err := c.sendMsg(&Twalk{
+		Tag: tag,
+		Fid: fid,
+	})
+	if err != nil {
+		return nil, err
+	}
+	resp, ok := msg.(*proto9.Rclunk)
+	if !ok {
+		return nil, ErrBadResponse
+	}
+	return resp, nil
 }
 
-func (c *Client) Tremove() (*proto9.Rremove, error) {
-	return nil, errors.New("unimplemented")
+func (c *Client) Tremove(fid proto9.Fid) (*proto9.Rremove, error) {
+	tag := c.nextTag()
+	msg, err := c.sendMsg(&Twalk{
+		Tag: tag,
+		Fid: fid,
+	})
+	if err != nil {
+		return nil, err
+	}
+	resp, ok := msg.(*proto9.Rremove)
+	if !ok {
+		return nil, ErrBadResponse
+	}
+	return resp, nil
 }
 
 func (c *Client) Tstat() (*proto9.Rstat, error) {
