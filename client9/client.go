@@ -92,16 +92,26 @@ func (c *Client) Open(path string, mode proto9.OpenMode) (*File, error) {
 	}, nil
 }
 
-func (c *Client) walk(f *File, path string) (*File, error) {
+func (c *Client) walk(path string) (proto9.Fid, error) {
 	path := path.Clean(path)
 	names := strings.Split(path, "/")
-	if names[0] == "" {
+	if len(names) != 0 && names[0] == "" {
 		names = names[1:]
 	}
-	if names[len(names)-1] == "" {
-		names = names[1:len(names)-1]
+	if len(names) != 0 && names[len(names)-1] == "" {
+		names = names[:len(names)-1]
 	}
-	return nil, errors.New("unimplemented...")
+	fid := c.nextFid()
+	resp, err := c.c.Twalk(c.rootfid, fid, names)
+	if err != nil {
+		c.clunkFid(fid)
+		return nil, err
+	}
+	if len(resp.Qids) != len(names) {
+		c.clunkFid(fid)
+		return nil, errors.New("walk failed")
+	}
+	return fid, nil 
 }
 
 func (f *File) Read(buf []byte) (int, error) {
