@@ -75,8 +75,15 @@ func (c *Client) negotiateVersion() error {
 	return nil
 }
 
-func (c *Client) Attach() error {
-	return errors.New("unimplemented")
+func (c *Client) Attach(name, aname string) error {
+	fid := c.nextFid()
+	resp, err := c.Tattach(fid, proto9.NOFID, name, aname)
+	if err != nil {
+		c.clunkFid(fid)
+		return nil, err
+	}
+	c.root = fid
+	return nil
 }
 
 func (c *Client) Open(path string, mode proto9.OpenMode) (*File, error) {

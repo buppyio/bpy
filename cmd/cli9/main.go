@@ -11,7 +11,11 @@ func dial(addr string) (*client9.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	c, err := client9.NewClient(con, con)
+	c, err := client9.NewClient(proto9.NewConn(con, con, 65536))
+	if err != nil {
+		return nil, err
+	}
+	err = c.Attach()
 	if err != nil {
 		return nil, err
 	}
@@ -23,6 +27,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	
 	f, err := c.Open(os.Args[2])
 	if err != nil {
 		panic(err)
