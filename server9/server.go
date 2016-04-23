@@ -2,9 +2,7 @@ package server9
 
 import (
 	"acha.ninja/bpy/proto9"
-	"encoding/binary"
 	"errors"
-	"io"
 	"strings"
 	"sync"
 )
@@ -80,36 +78,6 @@ walkerr:
 	return nil, wqids, nil
 }
 
-func ReadMsg(r io.Reader, buf []byte) (proto9.Msg, error) {
-	if len(buf) < 5 {
-		return nil, proto9.ErrBuffTooSmall
-	}
-	_, err := r.Read(buf[0:5])
-	if err != nil {
-		return nil, err
-	}
-	sz := int(binary.LittleEndian.Uint16(buf[0:4]))
-	if len(buf) < sz {
-		return nil, proto9.ErrBuffTooSmall
-	}
-	_, err = r.Read(buf[5:sz])
-	if err != nil {
-		return nil, err
-	}
-	return proto9.UnpackMsg(buf[0:sz])
-}
-
-func WriteMsg(w io.Writer, buf []byte, msg proto9.Msg) error {
-	packed, err := proto9.PackMsg(buf, msg)
-	if err != nil {
-		return err
-	}
-	_, err = w.Write(packed)
-	if err != nil {
-		return err
-	}
-	return nil
-}
 
 func MakeError(t proto9.Tag, err error) proto9.Msg {
 	return &proto9.Rerror{

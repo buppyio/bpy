@@ -3,6 +3,7 @@ package proto9
 import (
 	"encoding/binary"
 	"errors"
+	"io"
 )
 
 var (
@@ -1109,6 +1110,37 @@ func (msg *Rwalk) UnpackBody(b []byte) error {
 	for i := 0; i < n; i++ {
 		UnpackQid(b[4+offset:4+offset+QidSize], &msg.Qids[i])
 		offset += QidSize
+	}
+	return nil
+}
+
+func ReadMsg(r io.Reader, buf []byte) (Msg, error) {
+	if len(buf) < 5 {
+		return nil, ErrBuffTooSmall
+	}
+	_, err := r.Read(buf[0:5])
+	if err != nil {
+		return nil, err
+	}
+	sz := int(binary.LittleEndian.Uint16(buf[0:4]))
+	if len(buf) < sz {
+		return nil, ErrBuffTooSmall
+	}
+	_, err = r.Read(buf[5:sz])
+	if err != nil {
+		return nil, err
+	}
+	return UnpackMsg(buf[0:sz])
+}
+
+func WriteMsg(w io.Writer, buf []byte, msg Msg) error {
+	packed, err := PackMsg(buf, msg)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(packed)
+	if err != nil {
+		return err
 	}
 	return nil
 }

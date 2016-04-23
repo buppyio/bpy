@@ -344,7 +344,7 @@ func (srv *proto9Server) serveConn(c net.Conn) {
 	srv.outbuf = make([]byte, srv.maxMessageSize, srv.maxMessageSize)
 	for {
 		var resp proto9.Msg
-		msg, err := server9.ReadMsg(c, srv.inbuf)
+		msg, err := proto9.ReadMsg(c, srv.inbuf)
 		if err != nil {
 			log.Printf("error reading message: %s", err.Error())
 			return
@@ -380,7 +380,7 @@ func (srv *proto9Server) serveConn(c net.Conn) {
 			return
 		}
 		log.Printf("%#v", resp)
-		err = server9.WriteMsg(c, srv.outbuf, resp)
+		err = proto9.WriteMsg(c, srv.outbuf, resp)
 		if err != nil {
 			log.Printf("error sending message: %s", err.Error())
 			return

@@ -445,7 +445,7 @@ func (srv *proto9Server) serveConn(in io.Reader, out io.Writer) error {
 	srv.outbuf = make([]byte, srv.maxMessageSize, srv.maxMessageSize)
 	for {
 		var resp proto9.Msg
-		msg, err := server9.ReadMsg(in, srv.inbuf)
+		msg, err := proto9.ReadMsg(in, srv.inbuf)
 		if err != nil {
 			return err
 		}
@@ -479,7 +479,7 @@ func (srv *proto9Server) serveConn(in io.Reader, out io.Writer) error {
 			return errors.New("bad message")
 		}
 		log.Printf("%#v", resp)
-		err = server9.WriteMsg(out, srv.outbuf, resp)
+		err = proto9.WriteMsg(out, srv.outbuf, resp)
 		if err != nil {
 			return err
 		}
