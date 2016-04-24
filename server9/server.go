@@ -78,7 +78,6 @@ walkerr:
 	return nil, wqids, nil
 }
 
-
 func MakeError(t proto9.Tag, err error) proto9.Msg {
 	return &proto9.Rerror{
 		Tag: t,

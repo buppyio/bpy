@@ -376,7 +376,7 @@ func (msg *Tattach) PackBody(b []byte) {
 	binary.LittleEndian.PutUint32(b[6:10], uint32(msg.Afid))
 	unamelen := uint16(len(msg.Uname))
 	binary.LittleEndian.PutUint16(b[10:12], unamelen)
-	copy(b[8:], []byte(msg.Uname)[:unamelen])
+	copy(b[12:], []byte(msg.Uname)[:unamelen])
 	anamelen := uint16(len(msg.Aname))
 	binary.LittleEndian.PutUint16(b[12+unamelen:14+unamelen], anamelen)
 	copy(b[14+unamelen:], []byte(msg.Aname)[:anamelen])

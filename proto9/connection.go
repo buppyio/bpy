@@ -25,7 +25,7 @@ type Conn struct {
 	buf    []byte
 }
 
-func NewConn(in io.Reader, out io.Writer, sz int) *Conn {
+func NewConn(in io.Reader, out io.Writer, sz uint32) *Conn {
 	c := &Conn{
 		in:   in,
 		out:  out,
@@ -35,7 +35,11 @@ func NewConn(in io.Reader, out io.Writer, sz int) *Conn {
 	return c
 }
 
-func (c *Conn) SetMaxMessageSize(sz int) {
+func (c *Conn) MaxMessageSize() uint32 {
+	return uint32(len(c.buf))
+}
+
+func (c *Conn) SetMaxMessageSize(sz uint32) {
 	c.buf = make([]byte, sz, sz)
 }
 

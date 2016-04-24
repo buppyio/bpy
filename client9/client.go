@@ -2,9 +2,7 @@ package client9
 
 import (
 	"acha.ninja/bpy/proto9"
-	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
 	"path"
 	"strings"
@@ -16,6 +14,7 @@ var (
 
 type Client struct {
 	c      *proto9.Conn
+	root   proto9.Fid
 	maxfid proto9.Fid
 	fids   map[proto9.Fid]struct{}
 }
@@ -24,15 +23,15 @@ type File struct {
 	c      *Client
 	Iounit uint32
 	Fid    proto9.Fid
-	offset int64
+	offset uint64
 }
 
 func NewClient(c *proto9.Conn) (*Client, error) {
-	c := &Client{
+	cl := &Client{
 		c:    c,
 		fids: make(map[proto9.Fid]struct{}),
 	}
-	return c, c.negotiateVersion()
+	return cl, cl.negotiateVersion()
 }
 
 func (c *Client) nextFid() proto9.Fid {
@@ -56,9 +55,9 @@ func (c *Client) clunkFid(fid proto9.Fid) {
 }
 
 func (c *Client) negotiateVersion() error {
-	maxsize := 65536
+	maxsize := uint32(65536)
 	c.c.SetMaxMessageSize(maxsize)
-	resp, err := c.Tversion(bufsz, "9P2000")
+	resp, err := c.c.Tversion(maxsize, "9P2000")
 	if err != nil {
 		return err
 	}
@@ -71,24 +70,27 @@ func (c *Client) negotiateVersion() error {
 	if resp.MessageSize < 1024 {
 		return proto9.ErrBuffTooSmall
 	}
-	c.SetMaxMessageSize(maxsize)
+	c.c.SetMaxMessageSize(maxsize)
 	return nil
 }
 
 func (c *Client) Attach(name, aname string) error {
 	fid := c.nextFid()
-	resp, err := c.Tattach(fid, proto9.NOFID, name, aname)
+	_, err := c.c.Tattach(fid, proto9.NOFID, name, aname)
 	if err != nil {
 		c.clunkFid(fid)
-		return nil, err
+		return err
 	}
 	c.root = fid
 	return nil
 }
 
 func (c *Client) Open(path string, mode proto9.OpenMode) (*File, error) {
-	fid := c.nextFid()
-	resp, err := c.Topen(fid, mode)
+	fid, err := c.walk(path)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.c.Topen(fid, mode)
 	if err != nil {
 		c.clunkFid(fid)
 		return nil, err
@@ -99,9 +101,9 @@ func (c *Client) Open(path string, mode proto9.OpenMode) (*File, error) {
 	}, nil
 }
 
-func (c *Client) walk(path string) (proto9.Fid, error) {
-	path := path.Clean(path)
-	names := strings.Split(path, "/")
+func (c *Client) walk(wpath string) (proto9.Fid, error) {
+	wpath = path.Clean(wpath)
+	names := strings.Split(wpath, "/")
 	if len(names) != 0 && names[0] == "" {
 		names = names[1:]
 	}
@@ -109,21 +111,21 @@ func (c *Client) walk(path string) (proto9.Fid, error) {
 		names = names[:len(names)-1]
 	}
 	fid := c.nextFid()
-	resp, err := c.c.Twalk(c.rootfid, fid, names)
+	resp, err := c.c.Twalk(c.root, fid, names)
 	if err != nil {
 		c.clunkFid(fid)
-		return nil, err
+		return proto9.NOFID, err
 	}
 	if len(resp.Qids) != len(names) {
 		c.clunkFid(fid)
-		return nil, errors.New("walk failed")
+		return proto9.NOFID, errors.New("walk failed")
 	}
-	return fid, nil 
+	return fid, nil
 }
 
 func (f *File) Read(buf []byte) (int, error) {
 	n, err := f.ReadAt(f.offset, buf)
-	f.offset += int64(n)
+	f.offset += uint64(n)
 	return n, err
 }
 
@@ -131,18 +133,18 @@ func (f *File) ReadAt(offset uint64, buf []byte) (int, error) {
 	n := 0
 	for len(buf) != 0 {
 		amnt := uint32(len(buf))
-		maxamnt := uint32(len(f.c.buf) - proto9.ReadOverhead)
+		maxamnt := f.c.c.MaxMessageSize() - proto9.ReadOverhead
 		if amnt > maxamnt {
 			amnt = maxamnt
 		}
-		resp, err := f.c.Tread(f.Fid, offset+uint64(n), amnt)
+		resp, err := f.c.c.Tread(f.Fid, offset+uint64(n), amnt)
 		if err != nil {
 			return n, err
 		}
 		copy(buf[n:len(buf)], resp.Data)
 		n += len(resp.Data)
 		if uint32(len(resp.Data)) > amnt {
-			return n, ErrBadResponse
+			return n, proto9.ErrBadResponse
 		}
 		if len(resp.Data) == 0 {
 			return n, io.EOF
@@ -153,7 +155,7 @@ func (f *File) ReadAt(offset uint64, buf []byte) (int, error) {
 
 func (f *File) Write(buf []byte) (int, error) {
 	n, err := f.WriteAt(f.offset, buf)
-	f.offset += int64(n)
+	f.offset += uint64(n)
 	return n, err
 }
 
@@ -161,11 +163,11 @@ func (f *File) WriteAt(offset uint64, buf []byte) (int, error) {
 	n := 0
 	for len(buf) != 0 {
 		amnt := uint32(len(buf))
-		maxamnt := uint32(len(f.c.buf) - proto9.WriteOverhead)
+		maxamnt := f.c.c.MaxMessageSize() - proto9.WriteOverhead
 		if amnt > maxamnt {
 			amnt = maxamnt
 		}
-		resp, err := f.c.Twrite(f.Fid, offset+uint64(n), buf[0:amnt])
+		resp, err := f.c.c.Twrite(f.Fid, offset+uint64(n), buf[0:amnt])
 		if err != nil {
 			return n, err
 		}
@@ -175,16 +177,16 @@ func (f *File) WriteAt(offset uint64, buf []byte) (int, error) {
 	return n, nil
 }
 
-func (f *File) Seek(offset int64, int whence) (int, error) {
+func (f *File) Seek(offset int64, whence int) (int64, error) {
 	if whence != 0 {
-		return f.offset, errors.New("unsupported seek")
+		return int64(f.offset), errors.New("unsupported seek")
 	}
-	f.offset = offset
+	f.offset = uint64(offset)
 	return offset, nil
 }
 
 func (f *File) Close() error {
-	_, err := f.c.Tclunk(f.Fid)
+	_, err := f.c.c.Tclunk(f.Fid)
 	f.c.clunkFid(f.Fid)
 	return err
 }
