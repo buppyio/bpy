@@ -1,7 +1,7 @@
 package put
 
 import (
-	"acha.ninja/bpy/cstore"
+	"acha.ninja/bpy/cmd/bpy/common"
 	"acha.ninja/bpy/fs/fsutil"
 	"encoding/hex"
 	"fmt"
@@ -9,7 +9,7 @@ import (
 )
 
 func Put() {
-	store, err := cstore.NewWriter("/home/ac/.bpy/store", "/home/ac/.bpy/cache")
+	store, err := common.GetCStoreWriter()
 	if err != nil {
 		panic(err)
 	}
