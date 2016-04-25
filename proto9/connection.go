@@ -250,7 +250,7 @@ func (c *Conn) Twrite(fid Fid, offset uint64, buf []byte) (*Rwrite, error) {
 func (c *Conn) Tclunk(fid Fid) (*Rclunk, error) {
 	tag := c.nextTag()
 	defer c.clunkTag(tag)
-	msg, err := c.sendMsg(&Twalk{
+	msg, err := c.sendMsg(&Tclunk{
 		Tag: tag,
 		Fid: fid,
 	})

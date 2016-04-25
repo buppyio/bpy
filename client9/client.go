@@ -67,7 +67,7 @@ func (c *Client) negotiateVersion() error {
 	if resp.MessageSize > maxsize {
 		return proto9.ErrBadResponse
 	}
-	if resp.MessageSize < 1024 {
+	if resp.MessageSize < 512 {
 		return proto9.ErrBuffTooSmall
 	}
 	c.c.SetMaxMessageSize(maxsize)
@@ -85,6 +85,39 @@ func (c *Client) Attach(name, aname string) error {
 	return nil
 }
 
+func (c *Client) Ls(path string) ([]proto9.Stat, error) {
+	f, err := c.Open(path, proto9.OREAD)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	offset := uint64(0)
+	stats := make([]proto9.Stat, 0, 32)
+	// We cannot use something like io.Readall to read a directory
+	// because we need to ensure the read count can hold an integral number
+	// of stat entries (a requirement of 9p).
+	for {
+		resp, err := f.Tread(offset, f.Iounit)
+		if err != nil {
+			return nil, err
+		}
+		if len(resp.Data) == 0 {
+			break
+		}
+		offset += uint64(len(resp.Data))
+		for len(resp.Data) > 0 {
+			stat := proto9.Stat{}
+			statsz, err := proto9.UnpackStat(resp.Data, &stat)
+			if err != nil {
+				return nil, err
+			}
+			stats = append(stats, stat)
+			resp.Data = resp.Data[statsz:]
+		}
+	}
+	return stats, nil
+}
+
 func (c *Client) Open(path string, mode proto9.OpenMode) (*File, error) {
 	fid, err := c.walk(path)
 	if err != nil {
@@ -97,6 +130,7 @@ func (c *Client) Open(path string, mode proto9.OpenMode) (*File, error) {
 	}
 	return &File{
 		c:      c,
+		Fid:    fid,
 		Iounit: resp.Iounit,
 	}, nil
 }
@@ -129,26 +163,34 @@ func (f *File) Read(buf []byte) (int, error) {
 	return n, err
 }
 
+func (f *File) Tread(offset uint64, amnt uint32) (*proto9.Rread, error) {
+	resp, err := f.c.c.Tread(f.Fid, offset, amnt)
+	if err != nil {
+		return nil, err
+	}
+	if uint32(len(resp.Data)) > amnt {
+		return nil, proto9.ErrBadResponse
+	}
+	return resp, nil
+}
+
 func (f *File) ReadAt(offset uint64, buf []byte) (int, error) {
 	n := 0
-	for len(buf) != 0 {
-		amnt := uint32(len(buf))
+	for n != len(buf) {
+		amnt := uint32(len(buf) - n)
 		maxamnt := f.c.c.MaxMessageSize() - proto9.ReadOverhead
 		if amnt > maxamnt {
 			amnt = maxamnt
 		}
-		resp, err := f.c.c.Tread(f.Fid, offset+uint64(n), amnt)
+		resp, err := f.Tread(offset+uint64(n), amnt)
 		if err != nil {
 			return n, err
-		}
-		copy(buf[n:len(buf)], resp.Data)
-		n += len(resp.Data)
-		if uint32(len(resp.Data)) > amnt {
-			return n, proto9.ErrBadResponse
 		}
 		if len(resp.Data) == 0 {
 			return n, io.EOF
 		}
+		copy(buf[n:len(buf)], resp.Data)
+		n += len(resp.Data)
 	}
 	return n, nil
 }

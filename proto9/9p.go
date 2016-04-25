@@ -158,10 +158,22 @@ func UnpackStat(buf []byte, st *Stat) (int, error) {
 	st.Mtime = binary.LittleEndian.Uint32(buf[29:33])
 	st.Length = binary.LittleEndian.Uint64(buf[33:41])
 	namelen := int(binary.LittleEndian.Uint16(buf[41:43]))
+	sz += namelen
+	if len(buf) < sz {
+		return 0, ErrMsgCorrupt
+	}
 	uidlen := int(binary.LittleEndian.Uint16(buf[43+namelen : 45+namelen]))
+	sz += uidlen
+	if len(buf) < sz {
+		return 0, ErrMsgCorrupt
+	}
 	gidlen := int(binary.LittleEndian.Uint16(buf[45+namelen+uidlen : 47+namelen+uidlen]))
+	sz += gidlen
+	if len(buf) < sz {
+		return 0, ErrMsgCorrupt
+	}
 	muidlen := int(binary.LittleEndian.Uint16(buf[47+namelen+uidlen+gidlen : 49+namelen+uidlen+gidlen]))
-	sz += namelen + uidlen + gidlen + muidlen
+	sz += muidlen
 	if len(buf) < sz {
 		return 0, ErrMsgCorrupt
 	}

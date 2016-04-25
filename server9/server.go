@@ -106,10 +106,7 @@ func (sl *StatList) ReadAt(buf []byte, off uint64) (int, error) {
 		return 0, ErrBadRead
 	}
 	n := 0
-	for {
-		if len(sl.Stats) == 0 {
-			break
-		}
+	for len(sl.Stats) != 0 {
 		curstat := sl.Stats[0]
 		statlen := proto9.StatLen(&curstat)
 		if uint64(statlen+n) > uint64(len(buf)) {

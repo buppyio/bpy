@@ -5,6 +5,8 @@ import (
 	"acha.ninja/bpy/proto9"
 	"net"
 	"os"
+	// "io"
+	"fmt"
 )
 
 func main() {
@@ -24,12 +26,27 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	f, err := c.Open(os.Args[2], proto9.OREAD)
+	/*
+		f, err := c.Open(os.Args[2], proto9.OREAD)
+		if err != nil {
+			panic(err)
+		}
+		_, err = io.Copy(os.Stdout, f)
+		if err != nil {
+			panic(err)
+		}
+		err = f.Close()
+		if err != nil {
+			panic(err)
+		} */
+	stats, err := c.Ls(os.Args[2])
 	if err != nil {
 		panic(err)
 	}
-	err = f.Close()
-	if err != nil {
-		panic(err)
+	for _, stat := range stats {
+		_, err := fmt.Printf("%s\n", stat.Name)
+		if err != nil {
+			panic(err)
+		}
 	}
 }

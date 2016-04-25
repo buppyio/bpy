@@ -487,7 +487,10 @@ func (srv *proto9Server) serveConn(in io.Reader, out io.Writer) error {
 }
 
 func Remote() {
-	root := "/home/ac/.bpy/store"
+	root, err := filepath.Abs(os.Args[2])
+	if err != nil {
+		log.Fatal(err)
+	}
 	log.Println("Serving 9p...")
 	srv := &proto9Server{
 		Root:           root,
