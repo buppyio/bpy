@@ -2,11 +2,10 @@ package srv9p
 
 import (
 	"acha.ninja/bpy"
-	"acha.ninja/bpy/cstore"
+	"acha.ninja/bpy/cmd/bpy/common"
 	"acha.ninja/bpy/fs"
 	"acha.ninja/bpy/proto9"
 	"acha.ninja/bpy/server9"
-	"encoding/hex"
 	"errors"
 	"io"
 	"log"
@@ -391,17 +390,14 @@ func (srv *proto9Server) serveConn(c net.Conn) {
 
 func Srv9p() {
 
-	var hash [32]byte
-	store, err := cstore.NewReader("/home/ac/.bpy/store", "/home/ac/.bpy/cache")
+	store, err := common.GetCStoreReader()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-	hbytes, err := hex.DecodeString(os.Args[2])
+	hash, err := bpy.ParseHash(os.Args[1])
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-	copy(hash[:], hbytes)
-
 	log.Println("Serving 9p...")
 	l, err := net.Listen("tcp", "127.0.0.1:9001")
 	if err != nil {
