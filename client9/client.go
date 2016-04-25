@@ -50,7 +50,13 @@ func (c *Client) nextFid() proto9.Fid {
 	}
 }
 
-func (c *Client) clunkFid(fid proto9.Fid) {
+func (c *Client) clunkFid(fid proto9.Fid) error {
+	err := c.c.Tclunk(fid)
+	c.freeFid(fid)
+	return err
+}
+
+func (c *Client) freeFid(fid proto9.Fid) {
 	delete(c.fids, fid)
 }
 
@@ -78,7 +84,7 @@ func (c *Client) Attach(name, aname string) error {
 	fid := c.nextFid()
 	_, err := c.c.Tattach(fid, proto9.NOFID, name, aname)
 	if err != nil {
-		c.clunkFid(fid)
+		c.freeFid(fid)
 		return err
 	}
 	c.root = fid
@@ -135,6 +141,45 @@ func (c *Client) Open(path string, mode proto9.OpenMode) (*File, error) {
 	}, nil
 }
 
+func (c *Client) Mkdir(fullpath string, mode proto9.FileMode) error {
+	name := path.Base(fullpath)
+	dir := path.Dir(fullpath)
+
+	dirfid, err := c.walk(dir)
+	if err != nil {
+		return err
+	}
+	defer c.clunkFid(dirfid)
+	fid := c.nextFid()
+	resp, err := c.c.Tcreate(fid, name, mode|proto9.DMDIR, proto9.ORDWR)
+	if err != nil {
+		return err
+	}
+	c.clunkFid(fid)
+	return nil
+}
+
+func (c *Client) Create(fullpath string, mode proto9.FileMode, omode proto9.OpenMode) error {
+	name := path.Base(fullpath)
+	dir := path.Dir(fullpath)
+	dirfid, err := c.walk(dir)
+	if err != nil {
+		return nil, err
+	}
+	defer c.clunkFid(dirfid)
+	fid := c.nextFid()
+	resp, err := c.c.Tcreate(fid, name, mode, proto9.ORDWR)
+	if err != nil {
+		return nil, err
+	}
+	c.clunkFid(fid)
+	return &File{
+		c:      c,
+		Fid:    fid,
+		Iounit: resp.Iounit,
+	}, nil
+}
+
 func (c *Client) walk(wpath string) (proto9.Fid, error) {
 	wpath = path.Clean(wpath)
 	names := strings.Split(wpath, "/")
@@ -147,11 +192,11 @@ func (c *Client) walk(wpath string) (proto9.Fid, error) {
 	fid := c.nextFid()
 	resp, err := c.c.Twalk(c.root, fid, names)
 	if err != nil {
-		c.clunkFid(fid)
+		c.freeFid(fid)
 		return proto9.NOFID, err
 	}
 	if len(resp.Qids) != len(names) {
-		c.clunkFid(fid)
+		c.freeFid(fid)
 		return proto9.NOFID, errors.New("walk failed")
 	}
 	return fid, nil
@@ -228,7 +273,5 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 }
 
 func (f *File) Close() error {
-	_, err := f.c.c.Tclunk(f.Fid)
-	f.c.clunkFid(f.Fid)
-	return err
+	return f.c.clunkFid(f.Fid)
 }
