@@ -13,13 +13,15 @@ type ReadSeekCloser interface {
 }
 
 type Reader struct {
-	r   ReadSeekCloser
-	Idx Index
+	r    ReadSeekCloser
+	size uint64
+	Idx  Index
 }
 
-func NewReader(r ReadSeekCloser) *Reader {
+func NewReader(r ReadSeekCloser, size uint64) *Reader {
 	return &Reader{
-		r: r,
+		r:    r,
+		size: size,
 	}
 }
 
@@ -41,7 +43,7 @@ func (r *Reader) Close() error {
 }
 
 func (r *Reader) ReadIndex() error {
-	_, err := r.r.Seek(-8, 2)
+	_, err := r.r.Seek(int64(r.size)-8, 0)
 	if err != nil {
 		return err
 	}

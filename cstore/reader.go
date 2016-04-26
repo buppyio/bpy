@@ -80,11 +80,15 @@ func (r *Reader) getPackReader(packname string, idx bpack.Index) (*bpack.Reader,
 			return ent.pack, nil
 		}
 	}
+	stat, err := r.store.Stat(packname)
+	if err != nil {
+		return nil, err
+	}
 	f, err := r.store.Open(packname, proto9.OREAD)
 	if err != nil {
 		return nil, err
 	}
-	pack := bpack.NewReader(f)
+	pack := bpack.NewReader(f, stat.Length)
 	pack.Idx = idx
 	r.lru.PushFront(lruent{packname: packname, pack: pack})
 	if r.lru.Len() > 5 {
@@ -109,11 +113,15 @@ func getAndCacheIndex(store *client9.Client, packname, cachepath string) (bpack.
 	if !os.IsNotExist(err) {
 		return nil, err
 	}
+	stat, err := store.Stat(packname)
+	if err != nil {
+		return nil, err
+	}
 	f, err := store.Open(packname, proto9.OREAD)
 	if err != nil {
 		return nil, err
 	}
-	pack := bpack.NewReader(f)
+	pack := bpack.NewReader(f, stat.Length)
 	defer pack.Close()
 	err = pack.ReadIndex()
 	if err != nil {

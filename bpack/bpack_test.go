@@ -8,7 +8,7 @@ import (
 )
 
 type bufwriter struct {
-	off int64
+	off uint64
 	buf []byte
 }
 
@@ -16,7 +16,7 @@ func (b *bufwriter) Write(buf []byte) (int, error) {
 	for i := range buf {
 		b.buf[int(b.off)+i] = buf[i]
 	}
-	b.off += int64(len(buf))
+	b.off += uint64(len(buf))
 	return len(buf), nil
 }
 
@@ -74,7 +74,7 @@ func TestBpack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := NewReader(&bufreader{buf: bytes.NewReader(buf[:bufw.off])})
+	r := NewReader(&bufreader{buf: bytes.NewReader(buf[:bufw.off])}, bufw.off)
 	err = r.ReadIndex()
 	if err != nil {
 		t.Fatal(err)
