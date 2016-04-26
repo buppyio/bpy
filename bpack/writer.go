@@ -1,6 +1,7 @@
 package bpack
 
 import (
+	"bufio"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -9,6 +10,7 @@ import (
 
 type Writer struct {
 	w      io.WriteCloser
+	bufw   *bufio.Writer
 	keys   map[string]struct{}
 	index  Index
 	offset uint64
@@ -17,6 +19,7 @@ type Writer struct {
 func NewWriter(w io.WriteCloser) (*Writer, error) {
 	return &Writer{
 		w:      w,
+		bufw:   bufio.NewWriter(w),
 		keys:   make(map[string]struct{}),
 		index:  make(Index, 0, 2048),
 		offset: 0,
@@ -52,7 +55,7 @@ func (w *Writer) Add(key string, val []byte) error {
 	if has {
 		return nil
 	}
-	err := writeSlice(w.w, val)
+	err := writeSlice(w.bufw, val)
 	if err != nil {
 		return err
 	}
@@ -83,11 +86,15 @@ func WriteIndex(w io.Writer, idx Index) error {
 
 func (w *Writer) Close() (Index, error) {
 	idxoffset := w.offset
-	err := WriteIndex(w.w, w.index)
+	err := WriteIndex(w.bufw, w.index)
 	if err != nil {
 		return nil, err
 	}
-	err = writeUInt64(w.w, idxoffset)
+	err = writeUInt64(w.bufw, idxoffset)
+	if err != nil {
+		return nil, err
+	}
+	err = w.bufw.Flush()
 	if err != nil {
 		return nil, err
 	}
