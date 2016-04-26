@@ -1,25 +1,22 @@
 package cat
 
 import (
-	"acha.ninja/bpy/cstore"
+	"acha.ninja/bpy"
+	"acha.ninja/bpy/cmd/bpy/common"
 	"acha.ninja/bpy/fs"
-	"encoding/hex"
 	"io"
 	"os"
 )
 
 func Cat() {
-	var hash [32]byte
-	store, err := cstore.NewReader("/home/ac/.bpy/store", "/home/ac/.bpy/cache")
+	store, err := common.GetCStoreReader()
 	if err != nil {
 		panic(err)
 	}
-	hbytes, err := hex.DecodeString(os.Args[2])
+	hash, err := bpy.ParseHash(os.Args[2])
 	if err != nil {
 		panic(err)
 	}
-	copy(hash[:], hbytes)
-
 	for _, fpath := range os.Args[3:] {
 		rdr, err := fs.Open(store, hash, fpath)
 		if err != nil {

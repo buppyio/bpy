@@ -2,9 +2,10 @@ package cstore
 
 import (
 	"acha.ninja/bpy/bpack"
+	"acha.ninja/bpy/client9"
+	"acha.ninja/bpy/proto9"
 	"container/list"
 	"errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,26 +22,26 @@ type metaIndexEnt struct {
 }
 
 type Reader struct {
-	storepath string
+	store     *client9.Client
 	cachepath string
 	midx      []metaIndexEnt
 	lru       *list.List
 }
 
-func NewReader(storepath string, cachepath string) (*Reader, error) {
-	dirents, err := ioutil.ReadDir(storepath)
+func NewReader(store *client9.Client, cachepath string) (*Reader, error) {
+	dirents, err := store.Ls("/")
 	if err != nil {
 		return nil, err
 	}
 	midx := make([]metaIndexEnt, 0, 16)
 	for _, dirent := range dirents {
-		if strings.HasSuffix(dirent.Name(), ".bpack") {
-			idx, err := getAndCacheIndex(storepath, dirent.Name(), cachepath)
+		if strings.HasSuffix(dirent.Name, ".bpack") {
+			idx, err := getAndCacheIndex(store, dirent.Name, cachepath)
 			if err != nil {
 				return nil, err
 			}
 			midxent := metaIndexEnt{
-				packname: dirent.Name(),
+				packname: dirent.Name,
 				idx:      idx,
 			}
 			midx = append(midx, midxent)
@@ -49,7 +50,7 @@ func NewReader(storepath string, cachepath string) (*Reader, error) {
 	return &Reader{
 		midx:      midx,
 		lru:       list.New(),
-		storepath: storepath,
+		store:     store,
 		cachepath: cachepath,
 	}, nil
 }
@@ -79,7 +80,7 @@ func (r *Reader) getPackReader(packname string, idx bpack.Index) (*bpack.Reader,
 			return ent.pack, nil
 		}
 	}
-	f, err := os.Open(filepath.Join(r.storepath, packname))
+	f, err := r.store.Open(packname, proto9.OREAD)
 	if err != nil {
 		return nil, err
 	}
@@ -93,9 +94,8 @@ func (r *Reader) getPackReader(packname string, idx bpack.Index) (*bpack.Reader,
 	return pack, nil
 }
 
-func getAndCacheIndex(storepath, packbasename, cachepath string) (bpack.Index, error) {
-	packpath := filepath.Join(storepath, packbasename)
-	idxpath := filepath.Join(cachepath, packbasename+".index")
+func getAndCacheIndex(store *client9.Client, packname, cachepath string) (bpack.Index, error) {
+	idxpath := filepath.Join(cachepath, packname+".index")
 
 	_, err := os.Stat(idxpath)
 	if err == nil {
@@ -109,7 +109,7 @@ func getAndCacheIndex(storepath, packbasename, cachepath string) (bpack.Index, e
 	if !os.IsNotExist(err) {
 		return nil, err
 	}
-	f, err := os.Open(packpath)
+	f, err := store.Open(packname, proto9.OREAD)
 	if err != nil {
 		return nil, err
 	}

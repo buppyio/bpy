@@ -2,10 +2,10 @@ package cstore
 
 import (
 	"acha.ninja/bpy/bpack"
+	"acha.ninja/bpy/client9"
+	"acha.ninja/bpy/proto9"
 	"crypto/sha256"
 	"encoding/hex"
-	"os"
-	"path/filepath"
 	"sort"
 )
 
@@ -13,18 +13,18 @@ type Writer struct {
 	rdr          *Reader
 	workingSet   map[[32]byte][]byte
 	workingSetSz uint64
-	storepath    string
+	store        *client9.Client
 }
 
-func NewWriter(storepath string, cachepath string) (*Writer, error) {
-	rdr, err := NewReader(storepath, cachepath)
+func NewWriter(store *client9.Client, cachepath string) (*Writer, error) {
+	rdr, err := NewReader(store, cachepath)
 	if err != nil {
 		return nil, err
 	}
 	return &Writer{
 		workingSet: make(map[[32]byte][]byte),
 		rdr:        rdr,
-		storepath:  storepath,
+		store:      store,
 	}, nil
 }
 
@@ -57,14 +57,13 @@ func (w *Writer) flushWorkingSet() error {
 			return err
 		}
 	}
-	bpackbasename := hex.EncodeToString(dgst.Sum(nil)) + ".bpack"
-	bpackname := filepath.Join(w.storepath, bpackbasename)
-	_, err := os.Stat(bpackname)
+	bpackname := hex.EncodeToString(dgst.Sum(nil)) + ".bpack"
+	_, err := w.store.Stat(bpackname)
 	if err == nil {
 		return nil
 	}
-	tmppath := filepath.Join(w.storepath, "XXXTODO.bpack")
-	f, err := os.Create(tmppath)
+	tmppath := "XXXTODO"
+	f, err := w.store.Create(tmppath, 0777, proto9.OWRITE)
 	if err != nil {
 		return err
 	}
@@ -82,12 +81,14 @@ func (w *Writer) flushWorkingSet() error {
 	if err != nil {
 		return err
 	}
-	err = os.Rename(tmppath, bpackname)
+	st := proto9.MaskedStat
+	st.Name = bpackname
+	err = w.store.Wstat(tmppath, st)
 	if err != nil {
 		return err
 	}
 	midxent := metaIndexEnt{
-		packname: bpackbasename,
+		packname: bpackname,
 		idx:      packidx,
 	}
 	w.rdr.midx = append(w.rdr.midx, midxent)

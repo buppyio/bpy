@@ -51,7 +51,7 @@ func (c *Client) nextFid() proto9.Fid {
 }
 
 func (c *Client) clunkFid(fid proto9.Fid) error {
-	err := c.c.Tclunk(fid)
+	_, err := c.c.Tclunk(fid)
 	c.freeFid(fid)
 	return err
 }
@@ -76,7 +76,7 @@ func (c *Client) negotiateVersion() error {
 	if resp.MessageSize < 512 {
 		return proto9.ErrBuffTooSmall
 	}
-	c.c.SetMaxMessageSize(maxsize)
+	c.c.SetMaxMessageSize(resp.MessageSize)
 	return nil
 }
 
@@ -103,7 +103,7 @@ func (c *Client) Ls(path string) ([]proto9.Stat, error) {
 	// because we need to ensure the read count can hold an integral number
 	// of stat entries (a requirement of 9p).
 	for {
-		resp, err := f.Tread(offset, f.Iounit)
+		resp, err := f.Tread(offset, f.c.c.MaxMessageSize()-proto9.ReadOverhead)
 		if err != nil {
 			return nil, err
 		}
@@ -141,6 +141,32 @@ func (c *Client) Open(path string, mode proto9.OpenMode) (*File, error) {
 	}, nil
 }
 
+func (c *Client) Stat(path string) (proto9.Stat, error) {
+	fid, err := c.walk(path)
+	if err != nil {
+		return proto9.Stat{}, err
+	}
+	defer c.clunkFid(fid)
+	resp, err := c.c.Tstat(fid)
+	if err != nil {
+		return proto9.Stat{}, err
+	}
+	return resp.Stat, nil
+}
+
+func (c *Client) Wstat(path string, wstat proto9.Stat) error {
+	fid, err := c.walk(path)
+	if err != nil {
+		return err
+	}
+	defer c.clunkFid(fid)
+	_, err = c.c.Twstat(fid, wstat)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (c *Client) Mkdir(fullpath string, mode proto9.FileMode) error {
 	name := path.Base(fullpath)
 	dir := path.Dir(fullpath)
@@ -151,7 +177,7 @@ func (c *Client) Mkdir(fullpath string, mode proto9.FileMode) error {
 	}
 	defer c.clunkFid(dirfid)
 	fid := c.nextFid()
-	resp, err := c.c.Tcreate(fid, name, mode|proto9.DMDIR, proto9.ORDWR)
+	_, err = c.c.Tcreate(fid, name, mode|proto9.DMDIR, proto9.ORDWR)
 	if err != nil {
 		return err
 	}
@@ -159,20 +185,21 @@ func (c *Client) Mkdir(fullpath string, mode proto9.FileMode) error {
 	return nil
 }
 
-func (c *Client) Create(fullpath string, mode proto9.FileMode, omode proto9.OpenMode) error {
+func (c *Client) Create(fullpath string, mode proto9.FileMode, omode proto9.OpenMode) (*File, error) {
 	name := path.Base(fullpath)
 	dir := path.Dir(fullpath)
-	dirfid, err := c.walk(dir)
+	if dir == "." {
+		dir = "/"
+	}
+	fid, err := c.walk(dir)
 	if err != nil {
 		return nil, err
 	}
-	defer c.clunkFid(dirfid)
-	fid := c.nextFid()
 	resp, err := c.c.Tcreate(fid, name, mode, proto9.ORDWR)
 	if err != nil {
+		c.clunkFid(fid)
 		return nil, err
 	}
-	c.clunkFid(fid)
 	return &File{
 		c:      c,
 		Fid:    fid,

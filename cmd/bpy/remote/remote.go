@@ -379,7 +379,6 @@ func (srv *proto9Server) handleWrite(msg *proto9.Twrite) proto9.Msg {
 	if fh.osfile == nil {
 		return server9.MakeError(msg.Tag, errors.New("internal error"))
 	}
-
 	n, err := fh.osfile.WriteAt(msg.Data, int64(msg.Offset))
 	if err != nil {
 		return server9.MakeError(msg.Tag, err)
@@ -439,6 +438,29 @@ func (srv *proto9Server) handleStat(msg *proto9.Tstat) proto9.Msg {
 	}
 }
 
+func (srv *proto9Server) handleWStat(msg *proto9.Twstat) proto9.Msg {
+	f, ok := srv.fids[msg.Fid]
+	if !ok {
+		return server9.MakeError(msg.Tag, server9.ErrNoSuchFid)
+	}
+	if msg.Stat.Name == ".." || msg.Stat.Name == "." || msg.Stat.Name == "" {
+		return server9.MakeError(msg.Tag, server9.ErrBadPath)
+	}
+	oldpath := f.file.path
+	dir := filepath.Dir(oldpath)
+	newpath := filepath.Join(dir, msg.Stat.Name)
+	if newpath != oldpath {
+		err := os.Rename(oldpath, newpath)
+		if err != nil {
+			return server9.MakeError(msg.Tag, err)
+		}
+		f.file.path = newpath
+	}
+	return &proto9.Rwstat{
+		Tag: msg.Tag,
+	}
+}
+
 func (srv *proto9Server) serveConn(in io.Reader, out io.Writer) error {
 	srv.fids = make(map[proto9.Fid]*FileHandle)
 	srv.inbuf = make([]byte, srv.maxMessageSize, srv.maxMessageSize)
@@ -465,14 +487,14 @@ func (srv *proto9Server) serveConn(in io.Reader, out io.Writer) error {
 			resp = srv.handleClunk(msg)
 		case *proto9.Tstat:
 			resp = srv.handleStat(msg)
+		case *proto9.Twstat:
+			resp = srv.handleWStat(msg)
 		case *proto9.Twrite:
 			resp = srv.handleWrite(msg)
 		case *proto9.Tremove:
 			resp = srv.handleRemove(msg)
 		case *proto9.Tauth:
 			resp = server9.MakeError(msg.Tag, ErrAuthNotSupported)
-		case *proto9.Twstat:
-			resp = server9.MakeError(msg.Tag, errors.New("unimplemented"))
 		case *proto9.Tcreate:
 			resp = srv.handleCreate(msg)
 		default:

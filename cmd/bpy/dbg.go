@@ -1,7 +1,8 @@
 package main
 
 import (
-	"acha.ninja/bpy/cstore"
+	"acha.ninja/bpy"
+	"acha.ninja/bpy/cmd/bpy/common"
 	"acha.ninja/bpy/htree"
 	"encoding/binary"
 	"encoding/hex"
@@ -11,18 +12,14 @@ import (
 )
 
 func inspecthtree() {
-	var hash [32]byte
-	store, err := cstore.NewReader("/home/ac/.bpy/store", "/home/ac/.bpy/cache")
+	store, err := common.GetCStoreReader()
 	if err != nil {
 		panic(err)
 	}
-	defer store.Close()
-	hbytes, err := hex.DecodeString(os.Args[3])
+	hash, err := bpy.ParseHash(os.Args[2])
 	if err != nil {
 		panic(err)
 	}
-	copy(hash[:], hbytes)
-
 	data, err := store.Get(hash)
 	if err != nil {
 		panic(err)
@@ -47,7 +44,7 @@ func inspecthtree() {
 }
 
 func writehtree() {
-	store, err := cstore.NewWriter("/home/ac/.bpy/store", "/home/ac/.bpy/cache")
+	store, err := common.GetCStoreWriter()
 	if err != nil {
 		panic(err)
 	}

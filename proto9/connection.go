@@ -233,9 +233,10 @@ func (c *Conn) Twrite(fid Fid, offset uint64, buf []byte) (*Rwrite, error) {
 	tag := c.nextTag()
 	defer c.clunkTag(tag)
 	msg, err := c.sendMsg(&Twrite{
-		Tag:  tag,
-		Fid:  fid,
-		Data: buf,
+		Tag:    tag,
+		Fid:    fid,
+		Data:   buf,
+		Offset: offset,
 	})
 	if err != nil {
 		return nil, err

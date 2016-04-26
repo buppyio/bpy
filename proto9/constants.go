@@ -78,6 +78,19 @@ const (
 	QTDIR    QidType = 0x80
 )
 
+var MaskedStat Stat = Stat{
+	Name:   "",
+	UID:    "",
+	GID:    "",
+	MUID:   "",
+	Type:   0xffff,
+	Dev:    0xffffffff,
+	Length: 0xffffffffffffffff,
+	Mode:   0xffffffff,
+	Atime:  0xffffffff,
+	Mtime:  0xffffffff,
+}
+
 type MessageType byte
 type Tag uint16
 type Fid uint32
