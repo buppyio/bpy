@@ -3,6 +3,7 @@ package fs
 import (
 	"acha.ninja/bpy/htree"
 	"acha.ninja/bpy/testhelp"
+	"io"
 	"math/rand"
 	"os"
 	"reflect"
@@ -84,7 +85,7 @@ func TestSeek(t *testing.T) {
 	for n := 0; n < 10; n++ {
 		nbytes := r.Int31() % 16
 		data := make([]byte, nbytes, nbytes)
-		r.Read(data)
+		io.ReadFull(r, data)
 		tw := htree.NewWriter(store)
 		_, err := tw.Write(data)
 		if err != nil {
@@ -117,7 +118,7 @@ func TestSeek(t *testing.T) {
 			}
 			expected := data[i:]
 			result := make([]byte, len(expected), len(expected))
-			_, err = f.Read(result)
+			_, err = io.ReadFull(f, result)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -136,7 +137,7 @@ func TestSeek(t *testing.T) {
 			}
 			expected := data[i:]
 			result := make([]byte, len(expected), len(expected))
-			_, err = f.Read(result)
+			_, err = io.ReadFull(f, result)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -151,7 +152,7 @@ func TestSeek(t *testing.T) {
 			}
 			expected := data[len(data)-i:]
 			result := make([]byte, len(expected), len(expected))
-			_, err = f.Read(result)
+			_, err = io.ReadFull(f, result)
 			if err != nil {
 				t.Fatal(err)
 			}

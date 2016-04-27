@@ -476,7 +476,7 @@ func (srv *proto9Server) serveConn(in io.Reader, out io.Writer) error {
 		}
 		if verbose {
 			log.Printf("%#v", msg)
-	    }
+		}
 		switch msg := msg.(type) {
 		case *proto9.Tversion:
 			resp = srv.handleVersion(msg)
