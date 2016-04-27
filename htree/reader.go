@@ -80,26 +80,20 @@ func (r *Reader) Seek(absoff uint64) (uint64, error) {
 }
 
 func (r *Reader) Read(buf []byte) (int, error) {
-	nread := 0
-	for len(buf) != 0 {
-		src := r.lvls[0][r.pos[0]:r.length[0]]
-		if len(src) == 0 {
-			eof, err := r.next(0)
-			if err != nil {
-				return nread, err
-			}
-			if eof {
-				return nread, io.EOF
-			}
-			continue
+	src := r.lvls[0][r.pos[0]:r.length[0]]
+	if len(src) == 0 {
+		eof, err := r.next(0)
+		if err != nil {
+			return 0, err
 		}
-		n := min(len(buf), len(src))
-		copy(buf, src)
-		buf = buf[n:]
-		r.pos[0] += n
-		nread += n
+		if eof {
+			return 0, io.EOF
+		}
+		src = r.lvls[0][r.pos[0]:r.length[0]]
 	}
-	return nread, nil
+	n := copy(buf, src)
+	r.pos[0] += n
+	return n, nil
 }
 
 func (r *Reader) next(lvl int) (bool, error) {
