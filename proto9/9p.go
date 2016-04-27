@@ -1130,7 +1130,7 @@ func ReadMsg(r io.Reader, buf []byte) (Msg, error) {
 	if len(buf) < 5 {
 		return nil, ErrBuffTooSmall
 	}
-	_, err := r.Read(buf[0:5])
+	_, err := io.ReadFull(r, buf[0:5])
 	if err != nil {
 		return nil, err
 	}
@@ -1138,7 +1138,7 @@ func ReadMsg(r io.Reader, buf []byte) (Msg, error) {
 	if len(buf) < sz {
 		return nil, ErrBuffTooSmall
 	}
-	_, err = r.Read(buf[5:sz])
+	_, err = io.ReadFull(r, buf[5:sz])
 	if err != nil {
 		return nil, err
 	}

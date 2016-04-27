@@ -11,11 +11,14 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"flag"
 )
 
 var (
 	ErrAuthNotSupported = errors.New("auth not supported")
 )
+
+var verbose bool
 
 type File struct {
 	path   string
@@ -517,7 +520,6 @@ func Remote() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("Serving 9p...")
 	srv := &proto9Server{
 		Root:           root,
 		maxMessageSize: 4096,
