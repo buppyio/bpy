@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -442,6 +443,9 @@ func (srv *proto9Server) handleWStat(msg *proto9.Twstat) proto9.Msg {
 	f, ok := srv.fids[msg.Fid]
 	if !ok {
 		return server9.MakeError(msg.Tag, server9.ErrNoSuchFid)
+	}
+	if strings.Index(msg.Stat.Name, "/") != -1 || strings.Index(msg.Stat.Name, "\\") != -1 {
+		return server9.MakeError(msg.Tag, server9.ErrBadPath)
 	}
 	if msg.Stat.Name == ".." || msg.Stat.Name == "." || msg.Stat.Name == "" {
 		return server9.MakeError(msg.Tag, server9.ErrBadPath)

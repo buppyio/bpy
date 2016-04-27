@@ -17,11 +17,11 @@ func Put() {
 	if err != nil {
 		panic(err)
 	}
-	_, err = fmt.Println(hex.EncodeToString(hash[:]))
+	err = store.Close()
 	if err != nil {
 		panic(err)
 	}
-	err = store.Close()
+	_, err = fmt.Println(hex.EncodeToString(hash[:]))
 	if err != nil {
 		panic(err)
 	}

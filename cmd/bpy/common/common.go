@@ -5,10 +5,52 @@ import (
 	"acha.ninja/bpy/client9"
 	"acha.ninja/bpy/cstore"
 	"acha.ninja/bpy/proto9"
-	"net"
+	"io"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 )
+
+type slave struct {
+	in  io.ReadCloser
+	out io.WriteCloser
+	cmd *exec.Cmd
+}
+
+func (s *slave) Read(buf []byte) (int, error) {
+	return s.in.Read(buf)
+}
+
+func (s *slave) Write(buf []byte) (int, error) {
+	return s.out.Write(buf)
+}
+
+func (s *slave) Close() error {
+	s.in.Close()
+	s.out.Close()
+	return s.cmd.Process.Kill()
+}
+
+func dialRemote(url, path string) (io.ReadWriteCloser, error) {
+	cmd := exec.Command("ssh", url, "/home/ac/bin/bpy", "remote", path)
+	out, err := cmd.StdinPipe()
+	if err != nil {
+		return nil, err
+	}
+	in, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+	err = cmd.Start()
+	if err != nil {
+		return nil, err
+	}
+	return &slave{
+		in:  in,
+		out: out,
+		cmd: cmd,
+	}, nil
+}
 
 func GetBuppyDir() (string, error) {
 	u, err := user.Current()
@@ -27,18 +69,16 @@ func GetCacheDir() (string, error) {
 }
 
 func GetStore() (*client9.Client, error) {
-	con, err := net.Dial("tcp", "localhost:9001")
+	slv, err := dialRemote("acha.ninja", "/home/ac/bpy")
 	if err != nil {
 		return nil, err
 	}
-	store, err := client9.NewClient(proto9.NewConn(con, con, 65536))
+	store, err := client9.NewClient(proto9.NewConn(slv, slv, 65536))
 	if err != nil {
-		con.Close()
 		return nil, err
 	}
 	err = store.Attach("ac", "")
 	if err != nil {
-		con.Close()
 		return nil, err
 	}
 	return store, nil
