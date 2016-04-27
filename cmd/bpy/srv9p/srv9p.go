@@ -389,12 +389,11 @@ func (srv *proto9Server) serveConn(c net.Conn) {
 }
 
 func Srv9p() {
-
 	store, err := common.GetCStoreReader()
 	if err != nil {
 		log.Fatal(err)
 	}
-	hash, err := bpy.ParseHash(os.Args[1])
+	hash, err := bpy.ParseHash(os.Args[2])
 	if err != nil {
 		log.Fatal(err)
 	}
