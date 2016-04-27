@@ -11,14 +11,10 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-	"flag"
 )
 
-var (
-	ErrAuthNotSupported = errors.New("auth not supported")
-)
-
-var verbose bool
+var ErrAuthNotSupported = errors.New("auth not supported")
+var verbose = false
 
 type File struct {
 	path   string
@@ -478,7 +474,9 @@ func (srv *proto9Server) serveConn(in io.Reader, out io.Writer) error {
 		if err != nil {
 			return err
 		}
-		log.Printf("%#v", msg)
+		if verbose {
+			log.Printf("%#v", msg)
+	    }
 		switch msg := msg.(type) {
 		case *proto9.Tversion:
 			resp = srv.handleVersion(msg)
@@ -507,7 +505,9 @@ func (srv *proto9Server) serveConn(in io.Reader, out io.Writer) error {
 		default:
 			return errors.New("bad message")
 		}
-		log.Printf("%#v", resp)
+		if verbose {
+			log.Printf("%#v", resp)
+		}
 		err = proto9.WriteMsg(out, srv.outbuf, resp)
 		if err != nil {
 			return err

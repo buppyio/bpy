@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"bufio"
 )
 
 type ReadSeekCloser interface {
@@ -62,13 +63,13 @@ func (r *Reader) ReadIndex() error {
 func readSlice(r io.Reader) ([]byte, error) {
 	var ret []byte
 	var buf [2]byte
-	_, err := r.Read(buf[:])
+	_, err := io.ReadFull(r, buf[:])
 	if err != nil {
 		return ret, err
 	}
 	l := binary.LittleEndian.Uint16(buf[:2])
 	ret = make([]byte, l, l)
-	_, err = r.Read(ret)
+	_, err = io.ReadFull(r, ret)
 	if err != nil {
 		return ret, err
 	}
@@ -77,7 +78,7 @@ func readSlice(r io.Reader) ([]byte, error) {
 
 func readUint64(r io.Reader) (uint64, error) {
 	var buf [8]byte
-	_, err := r.Read(buf[:])
+	_, err := io.ReadFull(r, buf[:])
 	if err != nil {
 		return 0, err
 	}
@@ -86,6 +87,7 @@ func readUint64(r io.Reader) (uint64, error) {
 }
 
 func ReadIndex(r io.Reader) (Index, error) {
+	r = bufio.NewReader(r)
 	idx := make(Index, 0, 2048)
 	n, err := readUint64(r)
 	if err != nil {
