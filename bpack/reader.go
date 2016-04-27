@@ -1,10 +1,10 @@
 package bpack
 
 import (
+	"bufio"
 	"encoding/binary"
 	"errors"
 	"io"
-	"bufio"
 )
 
 type ReadSeekCloser interface {
@@ -34,9 +34,11 @@ func (r *Reader) Get(key string) ([]byte, error) {
 		return nil, NotFound
 	}
 	off := r.Idx[idx].Offset
+	sz := r.Idx[idx].Size
+	buf := make([]byte, sz, sz)
 	r.r.Seek(int64(off), 0)
-	b, err := readSlice(r.r)
-	return b, err
+	_, err := io.ReadFull(r.r, buf)
+	return buf, err
 }
 
 func (r *Reader) Close() error {
@@ -61,17 +63,14 @@ func (r *Reader) ReadIndex() error {
 }
 
 func readSlice(r io.Reader) ([]byte, error) {
-	var ret []byte
-	var buf [2]byte
-	_, err := io.ReadFull(r, buf[:])
+	l, err := readUint24(r)
 	if err != nil {
-		return ret, err
+		return nil, err
 	}
-	l := binary.LittleEndian.Uint16(buf[:2])
-	ret = make([]byte, l, l)
+	ret := make([]byte, l, l)
 	_, err = io.ReadFull(r, ret)
 	if err != nil {
-		return ret, err
+		return nil, err
 	}
 	return ret, nil
 }
@@ -83,6 +82,16 @@ func readUint64(r io.Reader) (uint64, error) {
 		return 0, err
 	}
 	n := binary.LittleEndian.Uint64(buf[:])
+	return n, nil
+}
+
+func readUint24(r io.Reader) (uint32, error) {
+	var buf [4]byte
+	_, err := io.ReadFull(r, buf[0:3])
+	if err != nil {
+		return 0, err
+	}
+	n := binary.LittleEndian.Uint32(buf[:])
 	return n, nil
 }
 
@@ -98,11 +107,15 @@ func ReadIndex(r io.Reader) (Index, error) {
 		if err != nil {
 			return idx, err
 		}
+		sz, err := readUint24(r)
+		if err != nil {
+			return idx, err
+		}
 		offset, err := readUint64(r)
 		if err != nil {
 			return idx, err
 		}
-		idx = append(idx, IndexEnt{Key: string(ksl), Offset: offset})
+		idx = append(idx, IndexEnt{Key: string(ksl), Offset: offset, Size: sz})
 		n--
 	}
 	return idx, nil

@@ -2,6 +2,7 @@ package bpack
 
 type IndexEnt struct {
 	Key    string
+	Size   uint32
 	Offset uint64
 }
 

@@ -8,6 +8,8 @@ import (
 	"sort"
 )
 
+const MaxPackEntrySize = 16777215
+
 type Writer struct {
 	w      io.WriteCloser
 	bufw   *bufio.Writer
@@ -34,15 +36,19 @@ func writeUInt64(w io.Writer, v uint64) error {
 	return err
 }
 
-func writeSlice(w io.Writer, v []byte) error {
-	var lbuf [2]byte
+func writeUInt24(w io.Writer, v uint32) error {
+	var buf [4]byte
 
-	if len(v) > 65535 {
+	binary.LittleEndian.PutUint32(buf[:], v)
+	_, err := w.Write(buf[0:3])
+	return err
+}
+
+func writeSlice(w io.Writer, v []byte) error {
+	if len(v) > MaxPackEntrySize {
 		return errors.New("value too large for bpack")
 	}
-	binary.LittleEndian.PutUint16(lbuf[:], uint16(len(v)))
-
-	_, err := w.Write(lbuf[:])
+	err := writeUInt24(w, uint32(len(v)))
 	if err != nil {
 		return err
 	}
@@ -55,13 +61,16 @@ func (w *Writer) Add(key string, val []byte) error {
 	if has {
 		return nil
 	}
-	err := writeSlice(w.bufw, val)
+	if len(val) > MaxPackEntrySize {
+		return errors.New("value too large for bpack")
+	}
+	_, err := w.bufw.Write(val)
 	if err != nil {
 		return err
 	}
 	w.keys[key] = struct{}{}
-	w.index = append(w.index, IndexEnt{Key: key, Offset: w.offset})
-	w.offset += 2 + uint64(len(val))
+	w.index = append(w.index, IndexEnt{Key: key, Offset: w.offset, Size: uint32(len(val))})
+	w.offset += uint64(len(val))
 	return nil
 }
 
@@ -73,6 +82,10 @@ func WriteIndex(w io.Writer, idx Index) error {
 	}
 	for i := range idx {
 		err = writeSlice(w, []byte(idx[i].Key))
+		if err != nil {
+			return err
+		}
+		err = writeUInt24(w, idx[i].Size)
 		if err != nil {
 			return err
 		}
