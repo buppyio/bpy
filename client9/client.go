@@ -247,24 +247,19 @@ func (f *File) Tread(offset uint64, amnt uint32) (*proto9.Rread, error) {
 }
 
 func (f *File) ReadAt(offset uint64, buf []byte) (int, error) {
-	n := 0
-	for n != len(buf) {
-		amnt := uint32(len(buf) - n)
-		maxamnt := f.c.c.MaxMessageSize() - proto9.ReadOverhead
-		if amnt > maxamnt {
-			amnt = maxamnt
-		}
-		resp, err := f.Tread(offset+uint64(n), amnt)
-		if err != nil {
-			return n, err
-		}
-		if len(resp.Data) == 0 {
-			return n, io.EOF
-		}
-		copy(buf[n:len(buf)], resp.Data)
-		n += len(resp.Data)
+	amnt := uint32(len(buf))
+	maxamnt := f.c.c.MaxMessageSize() - proto9.ReadOverhead
+	if amnt > maxamnt {
+		amnt = maxamnt
 	}
-	return n, nil
+	resp, err := f.Tread(offset, amnt)
+	if err != nil {
+		return 0, err
+	}
+	if len(resp.Data) == 0 {
+		return 0, io.EOF
+	}
+	return copy(buf, resp.Data), nil
 }
 
 func (f *File) Write(buf []byte) (int, error) {
