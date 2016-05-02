@@ -8,6 +8,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"snappy"
 	"strings"
 )
 
@@ -66,7 +67,11 @@ func (r *Reader) Get(hash [32]byte) ([]byte, error) {
 			if err != nil {
 				return nil, err
 			}
-			return packrdr.Get(k)
+			buf, err := packrdr.Get(k)
+			if err != nil {
+				return nil, err
+			}
+			return snappy.Decode(nil, buf)
 		}
 	}
 	return nil, NotFound

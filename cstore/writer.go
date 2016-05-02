@@ -6,6 +6,7 @@ import (
 	"acha.ninja/bpy/proto9"
 	"crypto/sha256"
 	"encoding/hex"
+	"snappy"
 	"sort"
 )
 
@@ -14,6 +15,7 @@ type Writer struct {
 	workingSet   map[[32]byte][]byte
 	workingSetSz uint64
 	store        *client9.Client
+	snappybuf    [65536]byte
 }
 
 func NewWriter(store *client9.Client, cachepath string) (*Writer, error) {
@@ -103,14 +105,15 @@ func (w *Writer) Put(data []byte) ([32]byte, error) {
 	if ok {
 		return h, nil
 	}
+	compressed := snappy.Encode(w.snappybuf[:], data)
 	_, err := w.rdr.Get(h)
 	if err != NotFound {
 		return h, err
 	}
-	v := make([]byte, len(data), len(data))
-	copy(v, data)
+	v := make([]byte, len(compressed), len(compressed))
+	copy(v, compressed)
 	w.workingSet[h] = v
-	w.workingSetSz += uint64(len(data))
+	w.workingSetSz += uint64(len(compressed))
 	if w.workingSetSz > 1024*1024*128 {
 		return h, w.flushWorkingSet()
 	} else {
