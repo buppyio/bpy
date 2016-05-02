@@ -96,8 +96,8 @@ func readUint24(r io.Reader) (uint32, error) {
 }
 
 func ReadIndex(r io.Reader) (Index, error) {
-	r = bufio.NewReader(r)
-	idx := make(Index, 0, 2048)
+	r = bufio.NewReaderSize(r, 65536)
+	idx := make(Index, 0, 4096)
 	n, err := readUint64(r)
 	if err != nil {
 		return idx, err

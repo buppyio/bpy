@@ -21,7 +21,7 @@ type Writer struct {
 func NewWriter(w io.WriteCloser) (*Writer, error) {
 	return &Writer{
 		w:      w,
-		bufw:   bufio.NewWriter(w),
+		bufw:   bufio.NewWriterSize(w, 65536),
 		keys:   make(map[string]struct{}),
 		index:  make(Index, 0, 2048),
 		offset: 0,
