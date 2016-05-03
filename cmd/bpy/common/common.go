@@ -73,7 +73,7 @@ func GetStore() (*client9.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	store, err := client9.NewClient(proto9.NewConn(slv, slv, 65536))
+	store, err := client9.NewClient(proto9.NewConn(slv, slv))
 	if err != nil {
 		return nil, err
 	}

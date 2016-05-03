@@ -1,7 +1,11 @@
 package cstore
 
 import (
+	"acha.ninja/bpy/client9"
+	"acha.ninja/bpy/cstore/export"
+	"acha.ninja/bpy/proto9"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -9,6 +13,29 @@ import (
 	"reflect"
 	"testing"
 )
+
+type testPipe struct {
+	in  *io.PipeReader
+	out *io.PipeWriter
+}
+
+func (p *testPipe) Read(buf []byte) (int, error)  { return p.in.Read(buf) }
+func (p *testPipe) Write(buf []byte) (int, error) { return p.out.Write(buf) }
+func (p *testPipe) Close() error                  { p.in.Close(); p.out.Close(); return nil }
+
+func MakeConnection() (io.ReadWriteCloser, io.ReadWriteCloser) {
+	r1, w1 := io.Pipe()
+	r2, w2 := io.Pipe()
+	c1 := &testPipe{
+		in:  r2,
+		out: w1,
+	}
+	c2 := &testPipe{
+		in:  r1,
+		out: w2,
+	}
+	return c1, c2
+}
 
 func TestCStore(t *testing.T) {
 	r := rand.New(rand.NewSource(1234))
@@ -27,14 +54,33 @@ func TestCStore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	clientcon, servercon := MakeConnection()
+	defer clientcon.Close()
+	defer servercon.Close()
+
+	srv, err := export.NewExportServer(servercon, storepath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	go srv.Serve()
+
+	store, err := client9.NewClient(proto9.NewConn(clientcon, clientcon))
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = store.Attach("", "")
+	if err != nil {
+		t.Fatal(err)
+	}
 	testvals := make(map[[32]byte][]byte)
-	for i := 0; i < 10; i++ {
-		w, err := NewWriter(storepath, cachepath)
+	for i := 0; i < 100; i++ {
+		w, err := NewWriter(store, cachepath)
 		if err != nil {
 			t.Fatal(err)
 		}
 		for j := 0; j < int(r.Int31())%500; j++ {
-			nbytes := r.Int31() % 10
+			nbytes := r.Int31() % 50
 			rbytes := make([]byte, nbytes, nbytes)
 			_, err = r.Read(rbytes)
 			if err != nil {
@@ -51,7 +97,7 @@ func TestCStore(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	rdr, err := NewReader(storepath, cachepath)
+	rdr, err := NewReader(store, cachepath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,8 +106,11 @@ func TestCStore(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		if len(v) == 0 && len(gotv) == 0 {
+			continue
+		}
 		if !reflect.DeepEqual(v, gotv) {
-			t.Fatal(fmt.Errorf("values differ"))
+			t.Fatal(fmt.Errorf("values differ %v != %v", v, gotv))
 		}
 	}
 }

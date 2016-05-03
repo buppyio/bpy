@@ -25,13 +25,13 @@ type Conn struct {
 	buf    []byte
 }
 
-func NewConn(in io.Reader, out io.Writer, sz uint32) *Conn {
+func NewConn(in io.Reader, out io.Writer) *Conn {
 	c := &Conn{
 		in:   in,
 		out:  out,
 		tags: make(map[Tag]struct{}),
 	}
-	c.SetMaxMessageSize(sz)
+	c.SetMaxMessageSize(65536)
 	return c
 }
 
