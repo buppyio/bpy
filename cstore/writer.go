@@ -11,7 +11,7 @@ import (
 )
 
 type Writer struct {
-	rdr          *Reader
+	midx         []metaIndexEnt
 	workingSet   map[[32]byte][]byte
 	workingSetSz uint64
 	store        *client9.Client
@@ -19,19 +19,18 @@ type Writer struct {
 }
 
 func NewWriter(store *client9.Client, cachepath string) (*Writer, error) {
-	rdr, err := NewReader(store, cachepath)
+	midx, err := readAndCacheMetaIndex(store, cachepath)
 	if err != nil {
 		return nil, err
 	}
 	return &Writer{
 		workingSet: make(map[[32]byte][]byte),
-		rdr:        rdr,
+		midx:       midx,
 		store:      store,
 	}, nil
 }
 
 func (w *Writer) Close() error {
-	w.rdr.Close()
 	return w.flushWorkingSet()
 }
 
@@ -93,7 +92,7 @@ func (w *Writer) flushWorkingSet() error {
 		packname: bpackname,
 		idx:      packidx,
 	}
-	w.rdr.midx = append(w.rdr.midx, midxent)
+	w.midx = append(w.midx, midxent)
 	w.workingSet = make(map[[32]byte][]byte)
 	w.workingSetSz = 0
 	return nil
@@ -105,11 +104,11 @@ func (w *Writer) Put(data []byte) ([32]byte, error) {
 	if ok {
 		return h, nil
 	}
-	compressed := snappy.Encode(w.snappybuf[:], data)
-	_, err := w.rdr.Get(h)
-	if err != NotFound {
-		return h, err
+	_, _, ok = searchMetaIndex(w.midx, h)
+	if ok {
+		return h, nil
 	}
+	compressed := snappy.Encode(w.snappybuf[:], data)
 	v := make([]byte, len(compressed), len(compressed))
 	copy(v, compressed)
 	w.workingSet[h] = v

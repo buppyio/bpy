@@ -35,8 +35,13 @@ func (r *Reader) Get(key string) ([]byte, error) {
 	}
 	off := r.Idx[idx].Offset
 	sz := r.Idx[idx].Size
+	return r.GetAt(off, sz)
+
+}
+
+func (r *Reader) GetAt(offset uint64, sz uint32) ([]byte, error) {
 	buf := make([]byte, sz, sz)
-	r.r.Seek(int64(off), 0)
+	r.r.Seek(int64(offset), 0)
 	_, err := io.ReadFull(r.r, buf)
 	return buf, err
 }
