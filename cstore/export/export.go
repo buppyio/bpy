@@ -523,7 +523,7 @@ func NewExportServer(rwc io.ReadWriteCloser, path string) (*ExportServer, error)
 	srv := &ExportServer{
 		root:           root,
 		rwc:            rwc,
-		maxMessageSize: 65536,
+		maxMessageSize: 131072,
 	}
 	return srv, nil
 }

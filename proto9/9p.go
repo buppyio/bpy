@@ -1134,8 +1134,11 @@ func ReadMsg(r io.Reader, buf []byte) (Msg, error) {
 	if err != nil {
 		return nil, err
 	}
-	sz := int(binary.LittleEndian.Uint16(buf[0:4]))
-	if len(buf) < sz {
+	sz := binary.LittleEndian.Uint32(buf[0:4])
+	if sz < 5 {
+		return nil, ErrMsgCorrupt
+	}
+	if uint32(len(buf)) < sz {
 		return nil, ErrBuffTooSmall
 	}
 	_, err = io.ReadFull(r, buf[5:sz])

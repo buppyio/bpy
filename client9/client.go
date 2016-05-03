@@ -61,7 +61,7 @@ func (c *Client) freeFid(fid proto9.Fid) {
 }
 
 func (c *Client) negotiateVersion() error {
-	maxsize := uint32(65536)
+	maxsize := uint32(131072)
 	c.c.SetMaxMessageSize(maxsize)
 	resp, err := c.c.Tversion(maxsize, "9P2000")
 	if err != nil {
