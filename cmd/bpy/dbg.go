@@ -16,7 +16,7 @@ func inspecthtree() {
 	if err != nil {
 		panic(err)
 	}
-	hash, err := bpy.ParseHash(os.Args[2])
+	hash, err := bpy.ParseHash(os.Args[3])
 	if err != nil {
 		panic(err)
 	}

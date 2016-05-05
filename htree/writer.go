@@ -76,6 +76,7 @@ func (w *Writer) flushLvl(lvl int) error {
 }
 
 func (w *Writer) Close() ([32]byte, error) {
+
 	highest := 0
 	for i := nlevels - 1; ; i-- {
 		if w.nbytes[i] != 0 {
@@ -92,6 +93,12 @@ func (w *Writer) Close() ([32]byte, error) {
 		if err != nil {
 			return [32]byte{}, err
 		}
+	}
+
+	if w.nbytes[highest+1] == 41 {
+		var hash [32]byte
+		copy(hash[:], w.lvls[highest+1][9:41])
+		return hash, nil
 	}
 
 	finalbuf := w.lvls[highest+1][0:w.nbytes[highest+1]]
