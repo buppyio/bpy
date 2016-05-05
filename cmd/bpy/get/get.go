@@ -8,11 +8,11 @@ import (
 )
 
 func Get() {
-	store, err := common.GetCStoreReader()
+	hash, err := bpy.ParseHash(os.Args[2])
 	if err != nil {
 		panic(err)
 	}
-	hash, err := bpy.ParseHash(os.Args[2])
+	store, err := common.GetCStoreReader()
 	if err != nil {
 		panic(err)
 	}

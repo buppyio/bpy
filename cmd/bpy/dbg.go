@@ -12,11 +12,11 @@ import (
 )
 
 func inspecthtree() {
-	store, err := common.GetCStoreReader()
+	hash, err := bpy.ParseHash(os.Args[3])
 	if err != nil {
 		panic(err)
 	}
-	hash, err := bpy.ParseHash(os.Args[3])
+	store, err := common.GetCStoreReader()
 	if err != nil {
 		panic(err)
 	}
