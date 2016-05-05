@@ -32,7 +32,7 @@ func (s *slave) Close() error {
 }
 
 func dialRemote(url, path string) (io.ReadWriteCloser, error) {
-	cmd := exec.Command("ssh", url, "/home/ac/bin/bpy", "remote", path)
+	cmd := exec.Command("ssh", url, "bpy", "remote", path)
 	out, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, err
