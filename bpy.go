@@ -3,7 +3,6 @@ package bpy
 import (
 	"encoding/hex"
 	"errors"
-	"fmt"
 )
 
 type CStoreReader interface {
@@ -19,11 +18,11 @@ type CStoreWriter interface {
 func ParseHash(hashstr string) ([32]byte, error) {
 	var hash [32]byte
 	if len(hashstr) != 64 {
-		return hash, errors.New("cannot parse hash: bad length")
+		return hash, errors.New("bad length")
 	}
 	_, err := hex.Decode(hash[:], []byte(hashstr))
 	if err != nil {
-		return hash, fmt.Errorf("cannot parse hash: %s", err.Error())
+		return hash, err
 	}
 	return hash, nil
 }

@@ -4,25 +4,30 @@ import (
 	"acha.ninja/bpy/cmd/bpy/common"
 	"acha.ninja/bpy/fs/fsutil"
 	"encoding/hex"
+	"flag"
 	"fmt"
 	"os"
 )
 
 func Put() {
+	flag.Parse()
+	if len(os.Args) < 2 {
+		common.Die("please specify the dir to put\n")
+	}
 	store, err := common.GetCStoreWriter()
 	if err != nil {
-		panic(err)
+		common.Die("error connecting to remote: %s\n", err.Error())
 	}
-	hash, err := fsutil.CpHostDirToFs(store, os.Args[2])
+	hash, err := fsutil.CpHostDirToFs(store, os.Args[1])
 	if err != nil {
-		panic(err)
+		common.Die("error copying data: %s\n", err.Error())
 	}
 	err = store.Close()
 	if err != nil {
-		panic(err)
+		common.Die("error closing remote: %s\n", err.Error())
 	}
 	_, err = fmt.Println(hex.EncodeToString(hash[:]))
 	if err != nil {
-		panic(err)
+		common.Die("error printing hash: %s\n", err.Error())
 	}
 }

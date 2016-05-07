@@ -5,7 +5,9 @@ import (
 	"acha.ninja/bpy/client9"
 	"acha.ninja/bpy/cstore"
 	"acha.ninja/bpy/proto9"
+	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"os/user"
 	"path/filepath"
@@ -77,7 +79,7 @@ func GetStore() (*client9.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = store.Attach("ac", "")
+	err = store.Attach("nobody", "")
 	if err != nil {
 		return nil, err
 	}
@@ -106,4 +108,9 @@ func GetCStoreWriter() (bpy.CStoreWriter, error) {
 		return nil, err
 	}
 	return cstore.NewWriter(store, cache)
+}
+
+func Die(msg string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, msg, args...)
+	os.Exit(1)
 }
