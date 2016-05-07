@@ -4,35 +4,45 @@ import (
 	"acha.ninja/bpy"
 	"acha.ninja/bpy/cmd/bpy/common"
 	"acha.ninja/bpy/fs"
+	"flag"
 	"fmt"
-	"os"
 )
 
 func Ls() {
-	hash, err := bpy.ParseHash(os.Args[2])
+	flag.Parse()
+	if len(flag.Args()) < 3 {
+		common.Die("please specify a directory hash and path\n")
+	}
+	hash, err := bpy.ParseHash(flag.Args()[1])
 	if err != nil {
-		panic(err)
+		common.Die("error parsing root hash: %s\n", err.Error())
 	}
 	store, err := common.GetCStoreReader()
 	if err != nil {
-		panic(err)
+		common.Die("error connecting to remote: %s\n", err.Error())
 	}
-	ents, err := fs.Ls(store, hash, os.Args[3])
+	ents, err := fs.Ls(store, hash, flag.Args()[2])
 	if err != nil {
-		panic(err)
+		common.Die("error reading directory: %s\n", err.Error())
 	}
 	for _, ent := range ents[1:] {
 		if ent.Mode.IsDir() {
 			_, err = fmt.Printf("%s/\n", ent.Name)
+			if err != nil {
+				common.Die("io error: %s\n", err.Error())
+			}
 		}
 	}
 	for _, ent := range ents[1:] {
 		if !ent.Mode.IsDir() {
 			_, err = fmt.Printf("%s\n", ent.Name)
+			if err != nil {
+				common.Die("io error: %s\n", err.Error())
+			}
 		}
 	}
 	err = store.Close()
 	if err != nil {
-		panic(err)
+		common.Die("error closing remote: %s\n", err.Error())
 	}
 }

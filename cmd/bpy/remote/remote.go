@@ -2,6 +2,7 @@ package remote
 
 import (
 	"acha.ninja/bpy/cstore/export"
+	"flag"
 	"io"
 	"log"
 	"os"
@@ -17,10 +18,14 @@ func (p *remoteInputOutput) Write(buf []byte) (int, error) { return p.stdout.Wri
 func (p *remoteInputOutput) Close() error                  { p.stdin.Close(); p.stdout.Close(); return nil }
 
 func Remote() {
+	flag.Parse()
+	if len(flag.Args()) < 2 {
+		log.Fatal("please specify a directory\n")
+	}
 	export, err := export.NewExportServer(&remoteInputOutput{
 		stdin:  os.Stdin,
 		stdout: os.Stdout,
-	}, os.Args[2])
+	}, flag.Args()[1])
 	if err != nil {
 		log.Fatal(err)
 	}

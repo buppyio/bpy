@@ -7,10 +7,10 @@ import (
 	"acha.ninja/bpy/proto9"
 	"acha.ninja/bpy/server9"
 	"errors"
+	"flag"
 	"io"
 	"log"
 	"net"
-	"os"
 )
 
 var (
@@ -389,7 +389,13 @@ func (srv *proto9Server) serveConn(c net.Conn) {
 }
 
 func Srv9p() {
-	hash, err := bpy.ParseHash(os.Args[2])
+	addr := flag.String("addr", "localhost:9001", "address to listen on")
+
+	flag.Parse()
+	if len(flag.Args()) < 2 {
+		log.Fatal("please specify the root to serve\n")
+	}
+	hash, err := bpy.ParseHash(flag.Args()[1])
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -397,8 +403,8 @@ func Srv9p() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("Serving 9p...")
-	l, err := net.Listen("tcp", "127.0.0.1:9001")
+	log.Println("Serving 9p on %s", *addr)
+	l, err := net.Listen("tcp", *addr)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -410,7 +416,7 @@ func Srv9p() {
 		srv := &proto9Server{
 			store:          store,
 			Root:           hash,
-			maxMessageSize: 4096,
+			maxMessageSize: 65536,
 		}
 		go srv.serveConn(c)
 	}

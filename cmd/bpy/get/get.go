@@ -5,15 +5,14 @@ import (
 	"acha.ninja/bpy/cmd/bpy/common"
 	"acha.ninja/bpy/fs/fsutil"
 	"flag"
-	"os"
 )
 
 func Get() {
 	flag.Parse()
-	if len(os.Args) < 3 {
+	if len(flag.Args()) < 3 {
 		common.Die("please specify the hash to get and the destination directory\n")
 	}
-	hash, err := bpy.ParseHash(os.Args[1])
+	hash, err := bpy.ParseHash(flag.Args()[1])
 	if err != nil {
 		common.Die("error parsing given hash: %s\n", err.Error())
 	}
@@ -21,7 +20,7 @@ func Get() {
 	if err != nil {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
-	err = fsutil.CpFsDirToHost(store, hash, os.Args[2])
+	err = fsutil.CpFsDirToHost(store, hash, flag.Args()[2])
 	if err != nil {
 		common.Die("error copying directory: %s\n", err.Error())
 	}
