@@ -4,8 +4,10 @@ import (
 	"acha.ninja/bpy/bpack"
 	"acha.ninja/bpy/client9"
 	"acha.ninja/bpy/proto9"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"io"
 	"snappy"
 	"sort"
 )
@@ -63,7 +65,12 @@ func (w *Writer) flushWorkingSet() error {
 	if err == nil {
 		return nil
 	}
-	tmppath := "XXXTODO"
+	namebuf := [32]byte{}
+	_, err = io.ReadFull(rand.Reader, namebuf[:])
+	if err != nil {
+		return err
+	}
+	tmppath := hex.EncodeToString(namebuf[:])
 	f, err := w.store.Create(tmppath, 0777, proto9.OWRITE)
 	if err != nil {
 		return err
