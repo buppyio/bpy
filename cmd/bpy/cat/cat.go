@@ -4,31 +4,36 @@ import (
 	"acha.ninja/bpy"
 	"acha.ninja/bpy/cmd/bpy/common"
 	"acha.ninja/bpy/fs"
+	"flag"
 	"io"
 	"os"
 )
 
 func Cat() {
-	hash, err := bpy.ParseHash(os.Args[2])
+	flag.Parse()
+	if len(os.Args) < 3 {
+		common.Die("please specify the hash to get and the destination directory\n")
+	}
+	hash, err := bpy.ParseHash(os.Args[1])
 	if err != nil {
-		panic(err)
+		common.Die("error parsing given hash: %s\n", err.Error())
 	}
 	store, err := common.GetCStoreReader()
 	if err != nil {
-		panic(err)
+		common.Die("error connecting to remote: %s\n", err.Error())
 	}
-	for _, fpath := range os.Args[3:] {
+	for _, fpath := range os.Args[2:] {
 		rdr, err := fs.Open(store, hash, fpath)
 		if err != nil {
-			panic(err)
+			common.Die("error opening %s: %s\n", fpath, err.Error())
 		}
 		_, err = io.Copy(os.Stdout, rdr)
 		if err != nil {
-			panic(err)
+			common.Die("io error: %s\n", err.Error())
 		}
 	}
 	err = store.Close()
 	if err != nil {
-		panic(err)
+		common.Die("error closing remote: %s\n", err.Error())
 	}
 }
