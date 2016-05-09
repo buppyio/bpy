@@ -11,10 +11,10 @@ import (
 
 func Cat() {
 	flag.Parse()
-	if len(flag.Args()) < 3 {
+	if len(flag.Args()) < 2 {
 		common.Die("please specify the hash to get and the destination directory\n")
 	}
-	hash, err := bpy.ParseHash(flag.Args()[1])
+	hash, err := bpy.ParseHash(flag.Args()[0])
 	if err != nil {
 		common.Die("error parsing given hash: %s\n", err.Error())
 	}
@@ -22,7 +22,7 @@ func Cat() {
 	if err != nil {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
-	for _, fpath := range flag.Args()[2:] {
+	for _, fpath := range flag.Args()[1:] {
 		rdr, err := fs.Open(store, hash, fpath)
 		if err != nil {
 			common.Die("error opening %s: %s\n", fpath, err.Error())

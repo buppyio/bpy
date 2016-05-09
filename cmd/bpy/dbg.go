@@ -23,7 +23,7 @@ func inspecthtree() {
 	if len(flag.Args()) != 1 {
 		common.Die("please specify a single hash\n")
 	}
-	hash, err := bpy.ParseHash(flag.Args()[1])
+	hash, err := bpy.ParseHash(flag.Args()[0])
 	if err != nil {
 		common.Die("error parsing hash: %s\n", err.Error())
 	}

@@ -19,13 +19,13 @@ func (p *remoteInputOutput) Close() error                  { p.stdin.Close(); p.
 
 func Remote() {
 	flag.Parse()
-	if len(flag.Args()) < 2 {
+	if len(flag.Args()) != 1 {
 		log.Fatal("please specify a directory\n")
 	}
 	export, err := export.NewExportServer(&remoteInputOutput{
 		stdin:  os.Stdin,
 		stdout: os.Stdout,
-	}, flag.Args()[1])
+	}, flag.Args()[0])
 	if err != nil {
 		log.Fatal(err)
 	}

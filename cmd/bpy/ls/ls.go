@@ -10,10 +10,10 @@ import (
 
 func Ls() {
 	flag.Parse()
-	if len(flag.Args()) < 3 {
+	if len(flag.Args()) != 2 {
 		common.Die("please specify a directory hash and path\n")
 	}
-	hash, err := bpy.ParseHash(flag.Args()[1])
+	hash, err := bpy.ParseHash(flag.Args()[0])
 	if err != nil {
 		common.Die("error parsing root hash: %s\n", err.Error())
 	}
@@ -21,7 +21,7 @@ func Ls() {
 	if err != nil {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
-	ents, err := fs.Ls(store, hash, flag.Args()[2])
+	ents, err := fs.Ls(store, hash, flag.Args()[1])
 	if err != nil {
 		common.Die("error reading directory: %s\n", err.Error())
 	}

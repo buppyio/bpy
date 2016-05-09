@@ -392,10 +392,10 @@ func Srv9p() {
 	addr := flag.String("addr", "localhost:9001", "address to listen on")
 
 	flag.Parse()
-	if len(flag.Args()) < 2 {
+	if len(flag.Args()) != 1 {
 		log.Fatal("please specify the root to serve\n")
 	}
-	hash, err := bpy.ParseHash(flag.Args()[1])
+	hash, err := bpy.ParseHash(flag.Args()[0])
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -403,7 +403,7 @@ func Srv9p() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("Serving 9p on %s", *addr)
+	log.Printf("Serving 9p on %s\n", *addr)
 	l, err := net.Listen("tcp", *addr)
 	if err != nil {
 		log.Fatal(err)
