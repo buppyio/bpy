@@ -36,7 +36,6 @@ func (r *Reader) Get(key string) ([]byte, error) {
 	off := r.Idx[idx].Offset
 	sz := r.Idx[idx].Size
 	return r.GetAt(off, sz)
-
 }
 
 func (r *Reader) GetAt(offset uint64, sz uint32) ([]byte, error) {

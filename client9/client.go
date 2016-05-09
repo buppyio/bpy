@@ -167,6 +167,20 @@ func (c *Client) Wstat(path string, wstat proto9.Stat) error {
 	return nil
 }
 
+func (c *Client) Remove(path string) error {
+	fid, err := c.walk(path)
+	if err != nil {
+		return err
+	}
+	_, err = c.c.Tremove(fid)
+	c.freeFid(fid)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+
 func (c *Client) Mkdir(fullpath string, mode proto9.FileMode) error {
 	name := path.Base(fullpath)
 	dir := path.Dir(fullpath)

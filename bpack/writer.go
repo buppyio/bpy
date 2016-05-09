@@ -56,6 +56,11 @@ func writeSlice(w io.Writer, v []byte) error {
 	return err
 }
 
+func (w *Writer) Has(key string) bool {
+	_, has := w.keys[key]
+	return has
+}
+
 func (w *Writer) Add(key string, val []byte) error {
 	_, has := w.keys[key]
 	if has {

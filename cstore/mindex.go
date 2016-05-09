@@ -4,6 +4,9 @@ import (
 	"acha.ninja/bpy/bpack"
 	"acha.ninja/bpy/client9"
 	"acha.ninja/bpy/proto9"
+	"crypto/rand"
+	"encoding/hex"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,9 +45,53 @@ func readAndCacheMetaIndex(store *client9.Client, cachepath string) ([]metaIndex
 	return midx, nil
 }
 
+func randFileName() (string, error) {
+	namebuf := [32]byte{}
+	_, err := io.ReadFull(rand.Reader, namebuf[:])
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(namebuf[:]), nil
+}
+
+func cacheIndex(packname, cachepath string, index bpack.Index) error {
+	idxpath := filepath.Join(cachepath, packname+".index")
+	_, err := os.Stat(idxpath)
+	if err == nil {
+		return nil
+	}
+	if !os.IsNotExist(err) {
+		return err
+	}
+	tmpname, err := randFileName()
+	if err != nil {
+		return err
+	}
+	tmppath := filepath.Join(cachepath, tmpname)
+	tmpf, err := os.Create(tmppath)
+	if err != nil {
+		return err
+	}
+	err = bpack.WriteIndex(tmpf, index)
+	if err != nil {
+		tmpf.Close()
+		os.Remove(tmppath)
+		return err
+	}
+	err = tmpf.Close()
+	if err != nil {
+		os.Remove(tmppath)
+	}
+	err = os.Rename(tmppath, idxpath)
+	if err != nil {
+		os.Remove(tmppath)
+		return err
+	}
+	return nil
+}
+
 func getAndCacheIndex(store *client9.Client, packname, cachepath string) (bpack.Index, error) {
 	idxpath := filepath.Join(cachepath, packname+".index")
-
 	_, err := os.Stat(idxpath)
 	if err == nil {
 		f, err := os.Open(idxpath)
@@ -71,13 +118,9 @@ func getAndCacheIndex(store *client9.Client, packname, cachepath string) (bpack.
 	if err != nil {
 		return nil, err
 	}
-	idxf, err := os.Create(idxpath)
+	err = cacheIndex(packname, cachepath, pack.Idx)
 	if err != nil {
 		return nil, err
 	}
-	err = bpack.WriteIndex(idxf, pack.Idx)
-	if err != nil {
-		return nil, err
-	}
-	return pack.Idx, idxf.Close()
+	return pack.Idx, nil
 }
