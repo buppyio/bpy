@@ -6,14 +6,23 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
-	// "log"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
 var ErrAuthNotSupported = errors.New("auth not supported")
+
+type ExportServer struct {
+	root           string
+	rwc            io.ReadWriteCloser
+	maxMessageSize uint32
+	negMessageSize uint32
+	inbuf          []byte
+	outbuf         []byte
+	qidPathCount   uint64
+	fids           map[proto9.Fid]server9.Handle
+}
 
 type File struct {
 	path   string
@@ -43,6 +52,19 @@ func (f *File) Child(name string) (server9.File, error) {
 	return nil, server9.ErrNotExist
 }
 
+func (f *File) NewHandle() (server9.Handle, error) {
+	stat, err := os.Stat(f.path)
+	if err != nil {
+		return nil, err
+	}
+	if stat.Mode().IsDir() {
+		return nil, errors.New("unimplemented DirHandle")
+	}
+	return &FileHandle{
+		file: f,
+	}, nil
+}
+
 func (f *File) Stat() (proto9.Stat, error) {
 	stat, err := os.Stat(f.path)
 	if err != nil {
@@ -59,6 +81,102 @@ func (f *File) Qid() (proto9.Qid, error) {
 	return makeQid(stat.Mode().IsDir()), nil
 }
 
+type FileHandle struct {
+	file   *File
+	osfile *os.File
+}
+
+func (fh *FileHandle) GetFile() (server9.File, error) {
+	return fh.file, nil
+}
+
+func (fh *FileHandle) GetIounit(maxMessageSize uint32) uint32 {
+	return maxMessageSize - proto9.WriteOverhead
+}
+
+func (fh *FileHandle) Tcreate(msg *proto9.Tcreate) (server9.File, error) {
+	return nil, server9.ErrNotDir
+}
+
+func (fh *FileHandle) Twalk(msg *proto9.Twalk) (server9.File, []proto9.Qid, error) {
+	return nil, nil, server9.ErrNotDir
+}
+
+func (fh *FileHandle) Tstat(msg *proto9.Tstat) (proto9.Stat, error) {
+	return fh.file.Stat()
+}
+
+func (fh *FileHandle) Twstat(msg *proto9.Twstat) error {
+	return errors.New("unimplemented")
+}
+
+func (fh *FileHandle) Topen(msg *proto9.Topen) (proto9.Qid, error) {
+	return proto9.Qid{}, errors.New("unimplemented")
+}
+
+func (fh *FileHandle) Tread(msg *proto9.Tread) (uint32, error) {
+	return 0, errors.New("unimplemented")
+}
+
+func (fh *FileHandle) Twrite(msg *proto9.Twrite) (uint32, error) {
+	return 0, errors.New("unimplemented")
+}
+
+func (fh *FileHandle) Clunk() error {
+	if fh.osfile != nil {
+		fh.osfile.Close()
+		fh.osfile = nil
+	}
+	return nil
+}
+
+type DirHandle struct {
+	file  *File
+	stats server9.StatList
+}
+
+func (dh *DirHandle) GetFile() (server9.File, error) {
+	return dh.file, nil
+}
+
+func (dh *DirHandle) GetIounit(maxMessageSize uint32) uint32 {
+	return maxMessageSize - proto9.WriteOverhead
+}
+
+func (dh *DirHandle) Tcreate(msg *proto9.Tcreate) (server9.File, error) {
+	return nil, errors.New("unimplemented")
+}
+
+func (dh *DirHandle) Twalk(msg *proto9.Twalk) (server9.File, []proto9.Qid, error) {
+	return nil, nil, server9.ErrNotDir
+}
+
+func (dh *DirHandle) Tstat(msg *proto9.Tstat) (proto9.Stat, error) {
+	return dh.file.Stat()
+}
+
+func (dh *DirHandle) Twstat(msg *proto9.Twstat) error {
+	return errors.New("unimplemented")
+}
+
+func (dh *DirHandle) Topen(msg *proto9.Topen) (proto9.Qid, error) {
+	return proto9.Qid{}, errors.New("unimplemented")
+}
+
+func (dh *DirHandle) Tread(msg *proto9.Tread) (uint32, error) {
+	return 0, errors.New("unimplemented")
+}
+
+func (dh *DirHandle) Twrite(msg *proto9.Twrite) (uint32, error) {
+	return 0, errors.New("unimplemented")
+}
+
+func (dh *DirHandle) Clunk() error {
+	dh.stats = server9.StatList{}
+	return nil
+}
+
+/*
 type FileHandle struct {
 	file *File
 
@@ -79,16 +197,7 @@ func (f *FileHandle) Close() error {
 	return nil
 }
 
-type ExportServer struct {
-	root           string
-	rwc            io.ReadWriteCloser
-	maxMessageSize uint32
-	negMessageSize uint32
-	inbuf          []byte
-	outbuf         []byte
-	qidPathCount   uint64
-	fids           map[proto9.Fid]*FileHandle
-}
+*/
 
 func makeQid(isdir bool) proto9.Qid {
 	ty := proto9.QTFILE
@@ -120,7 +229,7 @@ func osToStat(ent os.FileInfo) proto9.Stat {
 	}
 }
 
-func (srv *ExportServer) makeroot(path string) (*File, error) {
+func (srv *ExportServer) makeroot(path string) (server9.File, error) {
 	stat, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -133,7 +242,7 @@ func (srv *ExportServer) makeroot(path string) (*File, error) {
 	}, nil
 }
 
-func (srv *ExportServer) AddFid(fid proto9.Fid, fh *FileHandle) error {
+func (srv *ExportServer) AddFid(fid proto9.Fid, fh server9.Handle) error {
 	if fid == proto9.NOFID {
 		return server9.ErrBadFid
 	}
@@ -142,19 +251,6 @@ func (srv *ExportServer) AddFid(fid proto9.Fid, fh *FileHandle) error {
 		return server9.ErrFidInUse
 	}
 	srv.fids[fid] = fh
-	return nil
-}
-
-func (srv *ExportServer) ClunkFid(fid proto9.Fid) error {
-	f, ok := srv.fids[fid]
-	if !ok {
-		return server9.ErrNoSuchFid
-	}
-	err := f.Close()
-	if err != nil {
-		return err
-	}
-	delete(srv.fids, fid)
 	return nil
 }
 
@@ -185,10 +281,11 @@ func (srv *ExportServer) handleAttach(msg *proto9.Tattach) proto9.Msg {
 	if err != nil {
 		return server9.MakeError(msg.Tag, err)
 	}
-	f := &FileHandle{
-		file: rootFile,
+	fh, err := rootFile.NewHandle()
+	if err != nil {
+		return server9.MakeError(msg.Tag, err)
 	}
-	err = srv.AddFid(msg.Fid, f)
+	err = srv.AddFid(msg.Fid, fh)
 	if err != nil {
 		return server9.MakeError(msg.Tag, err)
 	}
@@ -207,19 +304,17 @@ func (srv *ExportServer) handleWalk(msg *proto9.Twalk) proto9.Msg {
 	if !ok {
 		return server9.MakeError(msg.Tag, server9.ErrNoSuchFid)
 	}
-	f, wqids, err := server9.Walk(fh.file, msg.Names)
+	f, wqids, err := fh.Twalk(msg)
 	if err != nil {
 		return server9.MakeError(msg.Tag, err)
 	}
 	if f != nil {
+		newfh, err := f.NewHandle()
 		if msg.NewFid == msg.Fid {
-			fh.Close()
+			fh.Clunk()
 			delete(srv.fids, msg.Fid)
 		}
-		fh = &FileHandle{
-			file: f.(*File),
-		}
-		err = srv.AddFid(msg.NewFid, fh)
+		err = srv.AddFid(msg.NewFid, newfh)
 		if err != nil {
 			return server9.MakeError(msg.Tag, err)
 		}
@@ -239,25 +334,14 @@ func (srv *ExportServer) handleOpen(msg *proto9.Topen) proto9.Msg {
 	if !ok {
 		return server9.MakeError(msg.Tag, server9.ErrNoSuchFid)
 	}
-	stat, err := fh.file.Stat()
+	qid, err := fh.Topen(msg)
 	if err != nil {
 		return server9.MakeError(msg.Tag, err)
 	}
-	if stat.Qid.IsFile() {
-		fh.isdir = false
-		rdr, err := os.Open(fh.file.path)
-		if err != nil {
-			return server9.MakeError(msg.Tag, err)
-		}
-		fh.osfile = rdr
-	} else {
-		fh.isdir = true
-	}
-	fh.isopen = true
 	return &proto9.Ropen{
 		Tag:    msg.Tag,
-		Qid:    stat.Qid,
-		Iounit: srv.negMessageSize - proto9.WriteOverhead,
+		Qid:    qid,
+		Iounit: fh.GetIounit(srv.negMessageSize),
 	}
 }
 
@@ -266,51 +350,28 @@ func (srv *ExportServer) handleCreate(msg *proto9.Tcreate) proto9.Msg {
 	if !ok {
 		return server9.MakeError(msg.Tag, server9.ErrNoSuchFid)
 	}
-	stat, err := fh.file.Stat()
+	f, err := fh.Tcreate(msg)
 	if err != nil {
-		return server9.MakeError(msg.Tag, err)
+		return server9.MakeError(msg.Tag, server9.ErrNoSuchFid)
 	}
-	if !stat.Qid.IsDir() {
-		return server9.MakeError(msg.Tag, server9.ErrNotDir)
+	qid, err := f.Qid()
+	if err != nil {
+		return server9.MakeError(msg.Tag, server9.ErrNoSuchFid)
 	}
-	path := filepath.Join(fh.file.path, msg.Name)
-	fh.Close()
-	isdir := msg.Perm&proto9.DMDIR != 0
-	if isdir {
-		err := os.Mkdir(path, 0755)
-		if err != nil {
-			return server9.MakeError(msg.Tag, err)
-		}
-		srv.fids[msg.Fid] = &FileHandle{
-			file: &File{
-				parent: fh.file.parent,
-				path:   path,
-			},
-			isdir:  true,
-			isopen: true,
-		}
-	} else {
-		f, err := os.Create(path)
-		if err != nil {
-			return server9.MakeError(msg.Tag, err)
-		}
-		srv.fids[msg.Fid] = &FileHandle{
-			file: &File{
-				parent: fh.file.parent,
-				path:   path,
-			},
-			osfile: f,
-			isdir:  false,
-			isopen: true,
-		}
+	newhandle, err := f.NewHandle()
+	if err != nil {
+		return server9.MakeError(msg.Tag, server9.ErrNoSuchFid)
 	}
+	fh.Clunk()
+	srv.fids[msg.Fid] = newhandle
 	return &proto9.Rcreate{
 		Tag:    msg.Tag,
-		Qid:    makeQid(isdir),
-		Iounit: srv.negMessageSize - proto9.WriteOverhead,
+		Qid:    qid,
+		Iounit: newhandle.GetIounit(srv.negMessageSize),
 	}
 }
 
+/*
 func (srv *ExportServer) handleRead(msg *proto9.Tread) proto9.Msg {
 	fh, ok := srv.fids[msg.Fid]
 	if !ok {
@@ -407,14 +468,14 @@ func (srv *ExportServer) handleRemove(msg *proto9.Tremove) proto9.Msg {
 		Tag: msg.Tag,
 	}
 }
-
+*/
 func (srv *ExportServer) handleClunk(msg *proto9.Tclunk) proto9.Msg {
 	fh, ok := srv.fids[msg.Fid]
 	if !ok {
 		return server9.MakeError(msg.Tag, server9.ErrNoSuchFid)
 	}
 	delete(srv.fids, msg.Fid)
-	err := fh.Close()
+	err := fh.Clunk()
 	if err != nil {
 		return server9.MakeError(msg.Tag, err)
 	}
@@ -428,7 +489,7 @@ func (srv *ExportServer) handleStat(msg *proto9.Tstat) proto9.Msg {
 	if !ok {
 		return server9.MakeError(msg.Tag, server9.ErrNoSuchFid)
 	}
-	stat, err := f.file.Stat()
+	stat, err := f.Tstat(msg)
 	if err != nil {
 		return server9.MakeError(msg.Tag, err)
 	}
@@ -438,6 +499,7 @@ func (srv *ExportServer) handleStat(msg *proto9.Tstat) proto9.Msg {
 	}
 }
 
+/*
 func (srv *ExportServer) handleWStat(msg *proto9.Twstat) proto9.Msg {
 	f, ok := srv.fids[msg.Fid]
 	if !ok {
@@ -463,9 +525,10 @@ func (srv *ExportServer) handleWStat(msg *proto9.Twstat) proto9.Msg {
 		Tag: msg.Tag,
 	}
 }
+*/
 
 func (srv *ExportServer) Serve() error {
-	srv.fids = make(map[proto9.Fid]*FileHandle)
+	srv.fids = make(map[proto9.Fid]server9.Handle)
 	srv.inbuf = make([]byte, srv.maxMessageSize, srv.maxMessageSize)
 	srv.outbuf = make([]byte, srv.maxMessageSize, srv.maxMessageSize)
 	for {
@@ -486,18 +549,18 @@ func (srv *ExportServer) Serve() error {
 			resp = srv.handleWalk(msg)
 		case *proto9.Topen:
 			resp = srv.handleOpen(msg)
-		case *proto9.Tread:
-			resp = srv.handleRead(msg)
+		//case *proto9.Tread:
+		//	resp = srv.handleRead(msg)
 		case *proto9.Tclunk:
 			resp = srv.handleClunk(msg)
 		case *proto9.Tstat:
 			resp = srv.handleStat(msg)
-		case *proto9.Twstat:
-			resp = srv.handleWStat(msg)
-		case *proto9.Twrite:
-			resp = srv.handleWrite(msg)
-		case *proto9.Tremove:
-			resp = srv.handleRemove(msg)
+		//case *proto9.Twstat:
+		//	resp = srv.handleWStat(msg)
+		//case *proto9.Twrite:
+		//	resp = srv.handleWrite(msg)
+		//case *proto9.Tremove:
+		//	resp = srv.handleRemove(msg)
 		case *proto9.Tauth:
 			resp = server9.MakeError(msg.Tag, ErrAuthNotSupported)
 		case *proto9.Tcreate:

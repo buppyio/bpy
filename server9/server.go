@@ -25,6 +25,20 @@ type File interface {
 	Child(name string) (File, error)
 	Qid() (proto9.Qid, error)
 	Stat() (proto9.Stat, error)
+	NewHandle() (Handle, error)
+}
+
+type Handle interface {
+	GetFile() (File, error)
+	GetIounit(maxMessageSize uint32) uint32
+	Twalk(msg *proto9.Twalk) (File, []proto9.Qid, error)
+	Topen(msg *proto9.Topen) (proto9.Qid, error)
+	Tread(msg *proto9.Tread) (uint32, error)
+	Twrite(msg *proto9.Twrite) (uint32, error)
+	Tcreate(msg *proto9.Tcreate) (File, error)
+	Twstat(msg *proto9.Twstat) error
+	Tstat(msg *proto9.Tstat) (proto9.Stat, error)
+	Clunk() error
 }
 
 func Walk(f File, names []string) (File, []proto9.Qid, error) {

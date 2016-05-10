@@ -26,8 +26,8 @@ func NewWriter(store *client9.Client, cachepath string) (*Writer, error) {
 	}
 	return &Writer{
 		cachepath: cachepath,
-		midx:  midx,
-		store: store,
+		midx:      midx,
+		store:     store,
 	}, nil
 }
 

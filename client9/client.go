@@ -180,7 +180,6 @@ func (c *Client) Remove(path string) error {
 	return nil
 }
 
-
 func (c *Client) Mkdir(fullpath string, mode proto9.FileMode) error {
 	name := path.Base(fullpath)
 	dir := path.Dir(fullpath)
