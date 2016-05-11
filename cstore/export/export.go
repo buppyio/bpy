@@ -114,8 +114,18 @@ func (fh *FileHandle) Topen(msg *proto9.Topen) (proto9.Qid, error) {
 	return proto9.Qid{}, errors.New("unimplemented")
 }
 
-func (fh *FileHandle) Tread(msg *proto9.Tread) (uint32, error) {
-	return 0, errors.New("unimplemented")
+func (fh *FileHandle) Tread(msg *proto9.Tread, buf []byte) (uint32, error) {
+	if fh.osfile == nil {
+		return 0, server9.ErrFileNotOpen
+	}
+	n, err := fh.osfile.ReadAt(buf, int64(msg.Offset))
+	if n != 0 {
+		return uint32(n), nil
+	}
+	if err == io.EOF {
+		return 0, nil
+	}
+	return 0, err
 }
 
 func (fh *FileHandle) Twrite(msg *proto9.Twrite) (uint32, error) {
@@ -148,7 +158,7 @@ func (dh *DirHandle) Tcreate(msg *proto9.Tcreate) (server9.File, error) {
 }
 
 func (dh *DirHandle) Twalk(msg *proto9.Twalk) (server9.File, []proto9.Qid, error) {
-	return nil, nil, server9.ErrNotDir
+	return server9.Walk(dh.file, msg.Names)
 }
 
 func (dh *DirHandle) Tstat(msg *proto9.Tstat) (proto9.Stat, error) {
@@ -160,44 +170,35 @@ func (dh *DirHandle) Twstat(msg *proto9.Twstat) error {
 }
 
 func (dh *DirHandle) Topen(msg *proto9.Topen) (proto9.Qid, error) {
-	return proto9.Qid{}, errors.New("unimplemented")
+	return dh.file.Qid()
 }
 
-func (dh *DirHandle) Tread(msg *proto9.Tread) (uint32, error) {
-	return 0, errors.New("unimplemented")
+func (dh *DirHandle) Tread(msg *proto9.Tread, buf []byte) (uint32, error) {
+	if msg.Offset == 0 {
+		dirents, err := ioutil.ReadDir(dh.file.path)
+		if err != nil {
+			return 0, err
+		}
+		n := len(dirents)
+		stats := make([]proto9.Stat, n, n)
+		for i := range dirents {
+			stats[i] = osToStat(dirents[i])
+		}
+		dh.stats = server9.StatList{
+			Stats: stats,
+		}
+	}
+	return dh.stats.Tread(msg, buf)
 }
 
 func (dh *DirHandle) Twrite(msg *proto9.Twrite) (uint32, error) {
-	return 0, errors.New("unimplemented")
+	return 0, server9.ErrBadWrite
 }
 
 func (dh *DirHandle) Clunk() error {
 	dh.stats = server9.StatList{}
 	return nil
 }
-
-/*
-type FileHandle struct {
-	file *File
-
-	isopen bool
-	isdir  bool
-	osfile *os.File
-	stats  server9.StatList
-}
-
-func (f *FileHandle) Close() error {
-	f.isopen = false
-	if f.osfile != nil {
-		err := f.osfile.Close()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-*/
 
 func makeQid(isdir bool) proto9.Qid {
 	ty := proto9.QTFILE
@@ -371,14 +372,10 @@ func (srv *ExportServer) handleCreate(msg *proto9.Tcreate) proto9.Msg {
 	}
 }
 
-/*
 func (srv *ExportServer) handleRead(msg *proto9.Tread) proto9.Msg {
 	fh, ok := srv.fids[msg.Fid]
 	if !ok {
 		return server9.MakeError(msg.Tag, server9.ErrNoSuchFid)
-	}
-	if !fh.isopen {
-		return server9.MakeError(msg.Tag, server9.ErrFileNotOpen)
 	}
 	nbytes := uint64(msg.Count)
 	maxbytes := uint64(srv.negMessageSize - proto9.ReadOverhead)
@@ -386,43 +383,13 @@ func (srv *ExportServer) handleRead(msg *proto9.Tread) proto9.Msg {
 		nbytes = maxbytes
 	}
 	buf := make([]byte, nbytes, nbytes)
-
-	if fh.isdir {
-		if msg.Offset == 0 {
-			dirents, err := ioutil.ReadDir(fh.file.path)
-			if err != nil {
-				return server9.MakeError(msg.Tag, err)
-			}
-			n := len(dirents)
-			stats := make([]proto9.Stat, n, n)
-			for i := range dirents {
-				stats[i] = osToStat(dirents[i])
-			}
-			fh.stats = server9.StatList{
-				Stats: stats,
-			}
-		}
-		n, err := fh.stats.ReadAt(buf, msg.Offset)
-		if err != nil {
-			return server9.MakeError(msg.Tag, err)
-		}
-		return &proto9.Rread{
-			Tag:  msg.Tag,
-			Data: buf[0:n],
-		}
-
-	} else {
-		if fh.osfile == nil {
-			return server9.MakeError(msg.Tag, errors.New("internal error"))
-		}
-		n, err := fh.osfile.ReadAt(buf, int64(msg.Offset))
-		if err != nil && err != io.EOF {
-			return server9.MakeError(msg.Tag, err)
-		}
-		return &proto9.Rread{
-			Tag:  msg.Tag,
-			Data: buf[0:n],
-		}
+	n, err := fh.Tread(msg, buf)
+	if err != nil {
+		return server9.MakeError(msg.Tag, server9.ErrNoSuchFid)
+	}
+	return &proto9.Rread{
+		Tag:  msg.Tag,
+		Data: buf[0:n],
 	}
 }
 
@@ -431,16 +398,7 @@ func (srv *ExportServer) handleWrite(msg *proto9.Twrite) proto9.Msg {
 	if !ok {
 		return server9.MakeError(msg.Tag, server9.ErrNoSuchFid)
 	}
-	if !fh.isopen {
-		return server9.MakeError(msg.Tag, server9.ErrFileNotOpen)
-	}
-	if fh.isdir {
-		return server9.MakeError(msg.Tag, server9.ErrBadWrite)
-	}
-	if fh.osfile == nil {
-		return server9.MakeError(msg.Tag, errors.New("internal error"))
-	}
-	n, err := fh.osfile.WriteAt(msg.Data, int64(msg.Offset))
+	n, err := fh.Twrite(msg)
 	if err != nil {
 		return server9.MakeError(msg.Tag, err)
 	}
@@ -450,6 +408,7 @@ func (srv *ExportServer) handleWrite(msg *proto9.Twrite) proto9.Msg {
 	}
 }
 
+/*
 func (srv *ExportServer) handleRemove(msg *proto9.Tremove) proto9.Msg {
 	fh, ok := srv.fids[msg.Fid]
 	if !ok {

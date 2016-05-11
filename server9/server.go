@@ -33,7 +33,7 @@ type Handle interface {
 	GetIounit(maxMessageSize uint32) uint32
 	Twalk(msg *proto9.Twalk) (File, []proto9.Qid, error)
 	Topen(msg *proto9.Topen) (proto9.Qid, error)
-	Tread(msg *proto9.Tread) (uint32, error)
+	Tread(msg *proto9.Tread, buf []byte) (uint32, error)
 	Twrite(msg *proto9.Twrite) (uint32, error)
 	Tcreate(msg *proto9.Tcreate) (File, error)
 	Twstat(msg *proto9.Twstat) error
@@ -115,14 +115,14 @@ type StatList struct {
 	Stats  []proto9.Stat
 }
 
-func (sl *StatList) ReadAt(buf []byte, off uint64) (int, error) {
-	if off != sl.Offset {
+func (sl *StatList) Tread(msg *proto9.Tread, buf []byte) (uint32, error) {
+	if msg.Offset != sl.Offset {
 		return 0, ErrBadRead
 	}
-	n := 0
+	n := uint32(0)
 	for len(sl.Stats) != 0 {
 		curstat := sl.Stats[0]
-		statlen := proto9.StatLen(&curstat)
+		statlen := uint32(proto9.StatLen(&curstat))
 		if uint64(statlen+n) > uint64(len(buf)) {
 			if n == 0 {
 				return 0, proto9.ErrBuffTooSmall
