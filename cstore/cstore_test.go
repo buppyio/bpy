@@ -2,8 +2,8 @@ package cstore
 
 import (
 	"acha.ninja/bpy/client9"
-	"acha.ninja/bpy/cstore/export"
 	"acha.ninja/bpy/proto9"
+	"acha.ninja/bpy/remote"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -59,7 +59,7 @@ func TestCStore(t *testing.T) {
 	defer clientcon.Close()
 	defer servercon.Close()
 
-	srv, err := export.NewExportServer(servercon, storepath)
+	srv, err := remote.NewServer(servercon, storepath)
 	if err != nil {
 		t.Fatal(err)
 	}

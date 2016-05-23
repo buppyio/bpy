@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -24,7 +25,7 @@ func searchMetaIndex(midx []metaIndexEnt, hash [32]byte) (metaIndexEnt, bpack.In
 }
 
 func readAndCacheMetaIndex(store *client9.Client, cachepath string) ([]metaIndexEnt, error) {
-	dirents, err := store.Ls("/")
+	dirents, err := store.Ls("packs")
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +109,7 @@ func getAndCacheIndex(store *client9.Client, packname, cachepath string) (bpack.
 	if err != nil {
 		return nil, err
 	}
-	f, err := store.Open(packname, proto9.OREAD)
+	f, err := store.Open(path.Join("packs", packname), proto9.OREAD)
 	if err != nil {
 		return nil, err
 	}

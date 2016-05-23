@@ -6,6 +6,7 @@ import (
 	"acha.ninja/bpy/proto9"
 	"container/list"
 	"errors"
+	"path"
 	"snappy"
 )
 
@@ -65,11 +66,12 @@ func (r *Reader) getPackReader(packname string, idx bpack.Index) (*bpack.Reader,
 			return ent.pack, nil
 		}
 	}
-	stat, err := r.store.Stat(packname)
+	packPath := path.Join("packs", packname)
+	stat, err := r.store.Stat(packPath)
 	if err != nil {
 		return nil, err
 	}
-	f, err := r.store.Open(packname, proto9.OREAD)
+	f, err := r.store.Open(packPath, proto9.OREAD)
 	if err != nil {
 		return nil, err
 	}

@@ -6,6 +6,7 @@ import (
 	"acha.ninja/bpy/proto9"
 	"crypto/sha256"
 	"encoding/hex"
+	"path"
 	"snappy"
 )
 
@@ -52,7 +53,7 @@ func (w *Writer) flushWorkingSet() error {
 	bpackname := hex.EncodeToString(dgst.Sum(nil)) + ".bpack"
 	st := proto9.MaskedStat
 	st.Name = bpackname
-	err = w.store.Wstat(w.tmpname, st)
+	err = w.store.Wstat(path.Join("packs", w.tmpname), st)
 	if err != nil {
 		return err
 	}
@@ -72,7 +73,7 @@ func (w *Writer) Put(data []byte) ([32]byte, error) {
 		if err != nil {
 			return h, err
 		}
-		f, err := w.store.Create(w.tmpname, 0777, proto9.OWRITE)
+		f, err := w.store.Create(path.Join("packs", w.tmpname), 0777, proto9.OWRITE)
 		if err != nil {
 			return h, err
 		}
