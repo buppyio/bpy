@@ -332,11 +332,13 @@ func NewServer(rwc io.ReadWriteCloser, packDir string) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	// dbPath := filepath.Join(packDir, "tags.db")
 	root := &RootFile{
 		packDir: &File{
 			parent: nil,
 			path:   packDir,
 		},
+		ctlFile: &CtlFile{},
 	}
 	srv := &Server{
 		root:           root,

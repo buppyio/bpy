@@ -17,6 +17,7 @@ var (
 
 type RootFile struct {
 	packDir server9.File
+	ctlFile server9.File
 }
 
 func (f *RootFile) Wstat(stat proto9.Stat) error {
@@ -34,6 +35,7 @@ func (f *RootFile) Parent() (server9.File, error) {
 func (f *RootFile) Child(name string) (server9.File, error) {
 	switch name {
 	case "ctl":
+		return f.ctlFile, nil
 	case "packs":
 		return f.packDir, nil
 	}
@@ -99,29 +101,20 @@ func (rh *RootHandle) Topen(msg *proto9.Topen) (proto9.Qid, error) {
 
 func (rh *RootHandle) Tread(msg *proto9.Tread, buf []byte) (uint32, error) {
 	if msg.Offset == 0 {
+
+		ctlStat, err := rh.file.ctlFile.Stat()
+		if err != nil {
+			return 0, nil
+		}
+
+		packStat, err := rh.file.packDir.Stat()
+		if err != nil {
+			return 0, nil
+		}
+
 		stats := []proto9.Stat{
-			proto9.Stat{
-				Mode:   0644,
-				Atime:  0,
-				Mtime:  0,
-				Name:   CTLFILENAME,
-				Qid:    makeQid(false),
-				Length: 0,
-				UID:    "nobody",
-				GID:    "nobody",
-				MUID:   "nobody",
-			},
-			proto9.Stat{
-				Mode:   0644 | proto9.DMDIR,
-				Atime:  0,
-				Mtime:  0,
-				Name:   PACKDIRNAME,
-				Qid:    makeQid(true),
-				Length: 0,
-				UID:    "nobody",
-				GID:    "nobody",
-				MUID:   "nobody",
-			},
+			ctlStat,
+			packStat,
 		}
 		rh.stats = server9.StatList{
 			Stats: stats,
