@@ -1,7 +1,7 @@
 package remote
 
 import (
-	"acha.ninja/bpy/cstore/export"
+	"acha.ninja/bpy/remote"
 	"flag"
 	"io"
 	"log"
@@ -22,7 +22,7 @@ func Remote() {
 	if len(flag.Args()) != 1 {
 		log.Fatal("please specify a directory\n")
 	}
-	export, err := export.NewExportServer(&remoteInputOutput{
+	export, err := remote.NewServer(&remoteInputOutput{
 		stdin:  os.Stdin,
 		stdout: os.Stdout,
 	}, flag.Args()[0])
