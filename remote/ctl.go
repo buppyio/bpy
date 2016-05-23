@@ -8,7 +8,6 @@ import (
 	"github.com/boltdb/bolt"
 	"regexp"
 	"strings"
-	"time"
 	// "log"
 )
 
@@ -108,17 +107,11 @@ func (fh *CtlFileHandle) Topen(msg *proto9.Topen) (proto9.Qid, error) {
 	if err != nil {
 		return proto9.Qid{}, err
 	}
-	fh.db, err = bolt.Open(fh.file.dbPath, 0600, &bolt.Options{Timeout: 1 * time.Second})
+	fh.db, err = openTagDB(fh.file.dbPath)
 	if err != nil {
 		return proto9.Qid{}, err
 	}
-	return qid, fh.db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte("tags"))
-		if err != nil {
-			return fmt.Errorf("create db bucket: %s", err)
-		}
-		return nil
-	})
+	return qid, nil
 }
 
 func (fh *CtlFileHandle) Tread(msg *proto9.Tread, buf []byte) (uint32, error) {
@@ -181,11 +174,10 @@ func ctlCasTag(db *bolt.DB, tag, newval, oldval string) error {
 		return err
 	}
 	stale := false
-	pstale := &stale
 	err = db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("tags"))
 		if string(b.Get([]byte(tag))) != oldval {
-			*pstale = true
+			stale = true
 			return nil
 		}
 		return b.Put([]byte(tag), []byte(newval))

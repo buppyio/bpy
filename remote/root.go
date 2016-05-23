@@ -8,6 +8,7 @@ import (
 
 const (
 	CTLFILENAME = "ctl"
+	TAGDIRNAME  = "tags"
 	PACKDIRNAME = "packs"
 )
 
@@ -18,6 +19,7 @@ var (
 type RootFile struct {
 	packDir server9.File
 	ctlFile server9.File
+	tagDir  server9.File
 }
 
 func (f *RootFile) Wstat(stat proto9.Stat) error {
@@ -38,6 +40,8 @@ func (f *RootFile) Child(name string) (server9.File, error) {
 		return f.ctlFile, nil
 	case "packs":
 		return f.packDir, nil
+	case "tags":
+		return f.tagDir, nil
 	}
 	return nil, server9.ErrNotExist
 }
@@ -112,9 +116,15 @@ func (rh *RootHandle) Tread(msg *proto9.Tread, buf []byte) (uint32, error) {
 			return 0, nil
 		}
 
+		tagStat, err := rh.file.tagDir.Stat()
+		if err != nil {
+			return 0, nil
+		}
+
 		stats := []proto9.Stat{
 			ctlStat,
 			packStat,
+			tagStat,
 		}
 		rh.stats = server9.StatList{
 			Stats: stats,
