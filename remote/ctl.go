@@ -3,10 +3,16 @@ package remote
 import (
 	"acha.ninja/bpy/proto9"
 	"acha.ninja/bpy/server9"
+	"errors"
+	"fmt"
+	"github.com/boltdb/bolt"
+	"strings"
+	"time"
 	// "log"
 )
 
 type CtlFile struct {
+	dbPath string
 }
 
 func (f *CtlFile) Remove() error {
@@ -51,6 +57,7 @@ func (f *CtlFile) Qid() (proto9.Qid, error) {
 
 type CtlFileHandle struct {
 	file *CtlFile
+	db   *bolt.DB
 }
 
 func (fh *CtlFileHandle) GetFile() (server9.File, error) {
@@ -82,6 +89,9 @@ func (fh *CtlFileHandle) Twstat(msg *proto9.Twstat) error {
 }
 
 func (fh *CtlFileHandle) Topen(msg *proto9.Topen) (proto9.Qid, error) {
+	if fh.db != nil {
+		return proto9.Qid{}, server9.ErrFileAlreadyOpen
+	}
 	f, err := fh.GetFile()
 	if err != nil {
 		return proto9.Qid{}, err
@@ -90,17 +100,50 @@ func (fh *CtlFileHandle) Topen(msg *proto9.Topen) (proto9.Qid, error) {
 	if err != nil {
 		return proto9.Qid{}, err
 	}
+	fh.db, err = bolt.Open(fh.file.dbPath, 0600, &bolt.Options{Timeout: 1 * time.Second})
+	if err != nil {
+		return proto9.Qid{}, err
+	}
 	return qid, nil
 }
 
 func (fh *CtlFileHandle) Tread(msg *proto9.Tread, buf []byte) (uint32, error) {
-	return 0, nil
+	return 0, errors.New("ctl file is write only")
 }
 
 func (fh *CtlFileHandle) Twrite(msg *proto9.Twrite) (uint32, error) {
+	cmd := string(msg.Data)
+	err := ctlCommand(fh.db, cmd)
+	if err != nil {
+		return 0, err
+	}
 	return uint32(len(msg.Data)), nil
 }
 
 func (fh *CtlFileHandle) Clunk() error {
+	if fh.db != nil {
+		fh.db.Close()
+		fh.db = nil
+	}
 	return nil
+}
+
+func ctlCommand(db *bolt.DB, cmd string) error {
+	args := strings.Split(cmd, " ")
+	if len(args) < 1 {
+		return errors.New("not enough arguments to ctl command")
+	}
+	switch args[0] {
+	case "set":
+		if len(args) != 3 {
+			return errors.New("ctl set requires 2 arguments")
+		}
+		return errors.New("unimplemented 'set'")
+	case "cas":
+		if len(args) != 4 {
+			return errors.New("ctl cas requires 3 arguments")
+		}
+		return errors.New("unimplemented 'cas'")
+	}
+	return fmt.Errorf("invalid ctl command: '%s'", args[0])
 }

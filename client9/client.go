@@ -289,7 +289,7 @@ func (f *File) WriteAt(offset uint64, buf []byte) (int, error) {
 		if amnt > maxamnt {
 			amnt = maxamnt
 		}
-		resp, err := f.c.c.Twrite(f.Fid, offset+uint64(n), buf[0:amnt])
+		resp, err := f.Twrite(offset+uint64(n), buf[0:amnt])
 		if err != nil {
 			return n, err
 		}
@@ -297,6 +297,14 @@ func (f *File) WriteAt(offset uint64, buf []byte) (int, error) {
 		n += int(resp.Count)
 	}
 	return n, nil
+}
+
+func (f *File) Twrite(offset uint64, buf []byte) (*proto9.Rwrite, error) {
+	resp, err := f.c.c.Twrite(f.Fid, offset, buf)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 func (f *File) Seek(offset int64, whence int) (int64, error) {

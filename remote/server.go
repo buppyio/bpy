@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const TAGDBNAME = "tags.db"
+
 var ErrAuthNotSupported = errors.New("auth not supported")
 
 type Server struct {
@@ -332,13 +334,15 @@ func NewServer(rwc io.ReadWriteCloser, packDir string) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	// dbPath := filepath.Join(packDir, "tags.db")
+
 	root := &RootFile{
 		packDir: &File{
 			parent: nil,
 			path:   packDir,
 		},
-		ctlFile: &CtlFile{},
+		ctlFile: &CtlFile{
+			dbPath: filepath.Join(packDir, TAGDBNAME),
+		},
 	}
 	srv := &Server{
 		root:           root,
