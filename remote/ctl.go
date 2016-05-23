@@ -6,10 +6,18 @@ import (
 	"errors"
 	"fmt"
 	"github.com/boltdb/bolt"
+	"regexp"
 	"strings"
 	"time"
 	// "log"
 )
+
+const (
+	TAGMAXSIZE  = 2048
+	TAGREGEXSTR = "[a-zA-Z0-9_]+"
+)
+
+var tagRegex = regexp.MustCompile(TAGREGEXSTR)
 
 type CtlFile struct {
 	dbPath string
@@ -104,7 +112,13 @@ func (fh *CtlFileHandle) Topen(msg *proto9.Topen) (proto9.Qid, error) {
 	if err != nil {
 		return proto9.Qid{}, err
 	}
-	return qid, nil
+	return qid, fh.db.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte("tags"))
+		if err != nil {
+			return fmt.Errorf("create db bucket: %s", err)
+		}
+		return nil
+	})
 }
 
 func (fh *CtlFileHandle) Tread(msg *proto9.Tread, buf []byte) (uint32, error) {
@@ -138,12 +152,64 @@ func ctlCommand(db *bolt.DB, cmd string) error {
 		if len(args) != 3 {
 			return errors.New("ctl set requires 2 arguments")
 		}
-		return errors.New("unimplemented 'set'")
+		return ctlSetTag(db, args[1], args[2])
 	case "cas":
 		if len(args) != 4 {
 			return errors.New("ctl cas requires 3 arguments")
 		}
-		return errors.New("unimplemented 'cas'")
+		return ctlCasTag(db, args[1], args[2], args[3])
 	}
 	return fmt.Errorf("invalid ctl command: '%s'", args[0])
+}
+
+func validateTagPair(tag, value string) error {
+	if len(tag) > TAGMAXSIZE {
+		return errors.New("tag key too large")
+	}
+	if len(value) > TAGMAXSIZE {
+		return errors.New("tag val too large")
+	}
+	if !tagRegex.MatchString(tag) {
+		return errors.New("tag key invalid it must match: " + TAGREGEXSTR)
+	}
+	return nil
+}
+
+func ctlCasTag(db *bolt.DB, tag, newval, oldval string) error {
+	err := validateTagPair(tag, newval)
+	if err != nil {
+		return err
+	}
+	stale := false
+	pstale := &stale
+	err = db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("tags"))
+		if string(b.Get([]byte(tag))) != oldval {
+			*pstale = true
+			return nil
+		}
+		return b.Put([]byte(tag), []byte(newval))
+	})
+	if err != nil {
+		return nil
+	}
+	if stale {
+		return errors.New("tag update failed, value stale due to concurrent modification")
+	}
+	return nil
+}
+
+func ctlSetTag(db *bolt.DB, tag, value string) error {
+	err := validateTagPair(tag, value)
+	if err != nil {
+		return err
+	}
+	err = db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("tags"))
+		return b.Put([]byte(tag), []byte(value))
+	})
+	if err != nil {
+		return nil
+	}
+	return nil
 }

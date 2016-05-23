@@ -83,9 +83,14 @@ func TestTags(t *testing.T) {
 	}
 
 	tags, err := List(remote)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	if len(tags) != 3 {
 		t.Fatal("incorrect number of tags")
 	}
+
 	if tags[0] != "foo" || tags[1] != "foo1" || tags[2] != "foo2" {
 		t.Fatal("incorrect tag listing")
 	}
