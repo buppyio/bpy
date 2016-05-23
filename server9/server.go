@@ -8,16 +8,17 @@ import (
 )
 
 var (
-	ErrNoSuchFid   = errors.New("no such fid")
-	ErrFidInUse    = errors.New("fid in use")
-	ErrBadFid      = errors.New("bad fid")
-	ErrBadTag      = errors.New("bad tag")
-	ErrBadPath     = errors.New("bad path")
-	ErrNotDir      = errors.New("not a directory path")
-	ErrNotExist    = errors.New("no such file")
-	ErrFileNotOpen = errors.New("file not open")
-	ErrBadRead     = errors.New("bad read")
-	ErrBadWrite    = errors.New("bad write")
+	ErrNoSuchFid       = errors.New("no such fid")
+	ErrFidInUse        = errors.New("fid in use")
+	ErrBadFid          = errors.New("bad fid")
+	ErrBadTag          = errors.New("bad tag")
+	ErrBadPath         = errors.New("bad path")
+	ErrNotDir          = errors.New("not a directory path")
+	ErrNotExist        = errors.New("no such file")
+	ErrFileNotOpen     = errors.New("file not open")
+	ErrFileAlreadyOpen = errors.New("file already open")
+	ErrBadRead         = errors.New("bad read")
+	ErrBadWrite        = errors.New("bad write")
 )
 
 type File interface {
@@ -35,8 +36,9 @@ type Handle interface {
 	Topen(msg *proto9.Topen) (proto9.Qid, error)
 	Tread(msg *proto9.Tread, buf []byte) (uint32, error)
 	Twrite(msg *proto9.Twrite) (uint32, error)
-	Tcreate(msg *proto9.Tcreate) (File, error)
+	Tcreate(msg *proto9.Tcreate) (Handle, error)
 	Twstat(msg *proto9.Twstat) error
+	Tremove(msg *proto9.Tremove) error
 	Tstat(msg *proto9.Tstat) (proto9.Stat, error)
 	Clunk() error
 }
@@ -135,4 +137,14 @@ func (sl *StatList) Tread(msg *proto9.Tread, buf []byte) (uint32, error) {
 	}
 	sl.Offset += uint64(n)
 	return n, nil
+}
+
+func ValidFileName(name string) bool {
+	if strings.Contains(name, "/") || strings.Contains(name, "\\") {
+		return false
+	}
+	if name == ".." || name == "." || name == "" {
+		return false
+	}
+	return true
 }
