@@ -76,7 +76,7 @@ func TestTags(t *testing.T) {
 	testvals["foo2"] = "baz"
 
 	for k, v := range testvals {
-		err = Set(remote, k, v)
+		err = Create(remote, k, v)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -103,5 +103,25 @@ func TestTags(t *testing.T) {
 		if val != v {
 			t.Fatalf("value got('%s') != expected('%v')", v, val)
 		}
+	}
+
+	err = Remove(remote, "foo", "...")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	err = Remove(remote, "foo", "bar")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = Get(remote, "foo")
+	if err == nil {
+		t.Fatal("expecter error")
+	}
+	tags, err = List(remote)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tags) != 2 {
+		t.Fatal("incorrect number of tags")
 	}
 }

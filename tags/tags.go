@@ -35,13 +35,26 @@ func Cas(remote *client9.Client, tag, oldval, newval string) error {
 	return nil
 }
 
-func Set(remote *client9.Client, tag, val string) error {
+func Create(remote *client9.Client, tag, val string) error {
 	f, err := remote.Open("ctl", proto9.OREAD)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	_, err = f.Twrite(0, []byte(fmt.Sprintf("set %s %s", tag, val)))
+	_, err = f.Twrite(0, []byte(fmt.Sprintf("create %s %s", tag, val)))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func Remove(remote *client9.Client, tag, value string) error {
+	f, err := remote.Open("ctl", proto9.OREAD)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = f.Twrite(0, []byte(fmt.Sprintf("remove %s %s", tag, value)))
 	if err != nil {
 		return err
 	}

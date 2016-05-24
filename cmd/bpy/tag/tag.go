@@ -15,7 +15,7 @@ func taghelp() {
 	os.Exit(1)
 }
 
-func set() {
+func create() {
 	flag.Parse()
 	if len(flag.Args()) != 2 {
 		common.Die("please specity a tag and a hash\n")
@@ -28,9 +28,9 @@ func set() {
 	if err != nil {
 		common.Die("error getting remote: %s\n", err.Error())
 	}
-	err = tags.Set(remote, flag.Args()[0], flag.Args()[1])
+	err = tags.Create(remote, flag.Args()[0], flag.Args()[1])
 	if err != nil {
-		common.Die("error setting tag: %s\n", err.Error())
+		common.Die("error create tag: %s\n", err.Error())
 	}
 }
 
@@ -50,6 +50,21 @@ func get() {
 	_, err = fmt.Println(hash)
 	if err != nil {
 		common.Die("io error: %s\n", err.Error())
+	}
+}
+
+func remove() {
+	flag.Parse()
+	if len(flag.Args()) != 2 {
+		common.Die("please specity a tag and its value\n")
+	}
+	remote, err := common.GetRemote()
+	if err != nil {
+		common.Die("error getting remote: %s\n", err.Error())
+	}
+	err = tags.Remove(remote, flag.Args()[0], flag.Args()[1])
+	if err != nil {
+		common.Die("error removing tag: %s\n", err.Error())
 	}
 }
 
@@ -97,12 +112,14 @@ func Tag() {
 	cmd := taghelp
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
-		case "set":
-			cmd = set
+		case "create":
+			cmd = create
 		case "cas":
 			cmd = cas
 		case "get":
 			cmd = get
+		case "remove":
+			cmd = remove
 		case "list":
 			cmd = list
 		default:

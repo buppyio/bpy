@@ -141,11 +141,16 @@ func ctlCommand(db *bolt.DB, cmd string) error {
 		return errors.New("not enough arguments to ctl command")
 	}
 	switch args[0] {
-	case "set":
+	case "remove":
+		if len(args) != 3 {
+			return errors.New("ctl remove requires 2 arguments")
+		}
+		return ctlRemoveTag(db, args[1], args[2])
+	case "create":
 		if len(args) != 3 {
 			return errors.New("ctl set requires 2 arguments")
 		}
-		return ctlSetTag(db, args[1], args[2])
+		return ctlCreateTag(db, args[1], args[2])
 	case "cas":
 		if len(args) != 4 {
 			return errors.New("ctl cas requires 3 arguments")
@@ -173,35 +178,44 @@ func ctlCasTag(db *bolt.DB, tag, oldval, newval string) error {
 	if err != nil {
 		return err
 	}
-	stale := false
 	err = db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("tags"))
 		if string(b.Get([]byte(tag))) != oldval {
-			stale = true
-			return nil
+			return errors.New("tag compare and swap failed, value stale")
 		}
 		return b.Put([]byte(tag), []byte(newval))
 	})
 	if err != nil {
-		return nil
-	}
-	if stale {
-		return errors.New("tag update failed, value stale due to concurrent modification")
+		return err
 	}
 	return nil
 }
 
-func ctlSetTag(db *bolt.DB, tag, value string) error {
+func ctlCreateTag(db *bolt.DB, tag, value string) error {
 	err := validateTagPair(tag, value)
 	if err != nil {
 		return err
 	}
 	err = db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("tags"))
+		if b.Get([]byte(tag)) != nil {
+			return errors.New("tag already exists")
+		}
 		return b.Put([]byte(tag), []byte(value))
 	})
 	if err != nil {
 		return nil
 	}
 	return nil
+}
+
+func ctlRemoveTag(db *bolt.DB, tag, value string) error {
+	err := db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("tags"))
+		if string(b.Get([]byte(tag))) != value {
+			return errors.New("tag remove failed, value stale")
+		}
+		return b.Delete([]byte(tag))
+	})
+	return err
 }
