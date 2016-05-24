@@ -168,7 +168,7 @@ func validateTagPair(tag, value string) error {
 	return nil
 }
 
-func ctlCasTag(db *bolt.DB, tag, newval, oldval string) error {
+func ctlCasTag(db *bolt.DB, tag, oldval, newval string) error {
 	err := validateTagPair(tag, newval)
 	if err != nil {
 		return err

@@ -53,6 +53,29 @@ func get() {
 	}
 }
 
+func cas() {
+	flag.Parse()
+	if len(flag.Args()) != 3 {
+		common.Die("please specity a tag, the old hash and the new hash\n")
+	}
+	_, err := bpy.ParseHash(flag.Args()[1])
+	if err != nil {
+		common.Die("old hash not valid: %s\n", err.Error())
+	}
+	_, err = bpy.ParseHash(flag.Args()[2])
+	if err != nil {
+		common.Die("new hash not valid: %s\n", err.Error())
+	}
+	remote, err := common.GetRemote()
+	if err != nil {
+		common.Die("error getting remote: %s\n", err.Error())
+	}
+	err = tags.Cas(remote, flag.Args()[0], flag.Args()[1], flag.Args()[2])
+	if err != nil {
+		common.Die("error setting tag: %s\n", err.Error())
+	}
+}
+
 func list() {
 	remote, err := common.GetRemote()
 	if err != nil {
@@ -70,16 +93,14 @@ func list() {
 	}
 }
 
-func cas() {
-	common.Die("unimplemented\n")
-}
-
 func Tag() {
 	cmd := taghelp
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "set":
 			cmd = set
+		case "cas":
+			cmd = cas
 		case "get":
 			cmd = get
 		case "list":
