@@ -11,7 +11,7 @@ import (
 
 func taghelp() {
 	fmt.Println("Please specify one of the following subcommands:")
-	fmt.Println("set, get, list, cas")
+	fmt.Println("create, get, list, remove, cas")
 	os.Exit(1)
 }
 
