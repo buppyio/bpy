@@ -27,10 +27,17 @@ func inspecthtree() {
 	if err != nil {
 		common.Die("error parsing hash: %s\n", err.Error())
 	}
-	store, err := common.GetCStoreReader()
+
+	remote, err := common.GetRemote()
 	if err != nil {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
+
+	store, err := common.GetCStoreReader(remote)
+	if err != nil {
+		common.Die("error getting content store: %s\n", err.Error())
+	}
+
 	data, err := store.Get(hash)
 	if err != nil {
 		common.Die("error getting hash: %s", err.Error())
@@ -55,10 +62,16 @@ func inspecthtree() {
 }
 
 func writehtree() {
-	store, err := common.GetCStoreWriter()
+	remote, err := common.GetRemote()
 	if err != nil {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
+
+	store, err := common.GetCStoreWriter(remote)
+	if err != nil {
+		common.Die("error getting content store: %s\n", err.Error())
+	}
+
 	w := htree.NewWriter(store)
 	_, err = io.Copy(w, os.Stdin)
 	if err != nil {

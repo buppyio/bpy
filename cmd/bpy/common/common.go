@@ -43,6 +43,8 @@ func dialRemote(url, path string) (io.ReadWriteCloser, error) {
 	if err != nil {
 		return nil, err
 	}
+	stderr, err := cmd.StderrPipe()
+	go io.Copy(os.Stderr, stderr)
 	err = cmd.Start()
 	if err != nil {
 		return nil, err
@@ -70,44 +72,36 @@ func GetCacheDir() (string, error) {
 	return filepath.Join(d, "cache"), nil
 }
 
-func GetStore() (*client9.Client, error) {
-	slv, err := dialRemote("acha.ninja", "/home/ac/bpy")
+func GetRemote() (*client9.Client, error) {
+	slv, err := dialRemote("localhost", "/home/ac/bpy")
 	if err != nil {
 		return nil, err
 	}
-	store, err := client9.NewClient(proto9.NewConn(slv, slv))
+	remote, err := client9.NewClient(proto9.NewConn(slv, slv))
 	if err != nil {
 		return nil, err
 	}
-	err = store.Attach("nobody", "")
+	err = remote.Attach("nobody", "")
 	if err != nil {
 		return nil, err
 	}
-	return store, nil
+	return remote, nil
 }
 
-func GetCStoreReader() (bpy.CStoreReader, error) {
-	store, err := GetStore()
-	if err != nil {
-		return nil, err
-	}
+func GetCStoreReader(remote *client9.Client) (bpy.CStoreReader, error) {
 	cache, err := GetCacheDir()
 	if err != nil {
 		return nil, err
 	}
-	return cstore.NewReader(store, cache)
+	return cstore.NewReader(remote, cache)
 }
 
-func GetCStoreWriter() (bpy.CStoreWriter, error) {
-	store, err := GetStore()
-	if err != nil {
-		return nil, err
-	}
+func GetCStoreWriter(remote *client9.Client) (bpy.CStoreWriter, error) {
 	cache, err := GetCacheDir()
 	if err != nil {
 		return nil, err
 	}
-	return cstore.NewWriter(store, cache)
+	return cstore.NewWriter(remote, cache)
 }
 
 func Die(msg string, args ...interface{}) {

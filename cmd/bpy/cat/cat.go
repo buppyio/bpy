@@ -18,9 +18,13 @@ func Cat() {
 	if err != nil {
 		common.Die("error parsing given hash: %s\n", err.Error())
 	}
-	store, err := common.GetCStoreReader()
+	remote, err := common.GetRemote()
 	if err != nil {
 		common.Die("error connecting to remote: %s\n", err.Error())
+	}
+	store, err := common.GetCStoreReader(remote)
+	if err != nil {
+		common.Die("error getting content store: %s\n", err.Error())
 	}
 	for _, fpath := range flag.Args()[1:] {
 		rdr, err := fs.Open(store, hash, fpath)
@@ -34,6 +38,6 @@ func Cat() {
 	}
 	err = store.Close()
 	if err != nil {
-		common.Die("error closing remote: %s\n", err.Error())
+		common.Die("error closing store: %s\n", err.Error())
 	}
 }

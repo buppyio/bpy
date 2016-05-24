@@ -13,10 +13,17 @@ func Put() {
 	if len(flag.Args()) != 1 {
 		common.Die("please specify the dir to put\n")
 	}
-	store, err := common.GetCStoreWriter()
+
+	remote, err := common.GetRemote()
 	if err != nil {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
+
+	store, err := common.GetCStoreWriter(remote)
+	if err != nil {
+		common.Die("error getting content store: %s\n", err.Error())
+	}
+
 	hash, err := fsutil.CpHostDirToFs(store, flag.Args()[0])
 	if err != nil {
 		common.Die("error copying data: %s\n", err.Error())
