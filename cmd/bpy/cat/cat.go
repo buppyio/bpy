@@ -4,30 +4,57 @@ import (
 	"acha.ninja/bpy"
 	"acha.ninja/bpy/cmd/bpy/common"
 	"acha.ninja/bpy/fs"
+	"acha.ninja/bpy/tags"
 	"flag"
 	"io"
 	"os"
 )
 
 func Cat() {
+	var root [32]byte
+	tagArg := flag.String("tag", "", "tag of directory to list")
+	hashArg := flag.String("hash", "", "hash of directory to list")
 	flag.Parse()
-	if len(flag.Args()) < 2 {
-		common.Die("please specify the hash to get and the destination directory\n")
+
+	if *hashArg == "" && *tagArg == "" || *hashArg != "" && *tagArg != "" {
+		common.Die("please specify a hash or a tag to list\n")
 	}
-	hash, err := bpy.ParseHash(flag.Args()[0])
-	if err != nil {
-		common.Die("error parsing given hash: %s\n", err.Error())
+
+	if *hashArg != "" {
+		hash, err := bpy.ParseHash(*hashArg)
+		if err != nil {
+			common.Die("error parsing hash: %s\n", err.Error())
+		}
+		root = hash
 	}
+
+	if len(flag.Args()) != 1 {
+		common.Die("please specify a path\n")
+	}
+
 	remote, err := common.GetRemote()
 	if err != nil {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
+
 	store, err := common.GetCStoreReader(remote)
 	if err != nil {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
-	for _, fpath := range flag.Args()[1:] {
-		rdr, err := fs.Open(store, hash, fpath)
+
+	if *tagArg != "" {
+		tagHash, err := tags.Get(remote, *tagArg)
+		if err != nil {
+			common.Die("error fetching tag hash: %s\n", err.Error())
+		}
+		root, err = bpy.ParseHash(tagHash)
+		if err != nil {
+			common.Die("error parsing hash: %s\n", err.Error())
+		}
+	}
+
+	for _, fpath := range flag.Args() {
+		rdr, err := fs.Open(store, root, fpath)
 		if err != nil {
 			common.Die("error opening %s: %s\n", fpath, err.Error())
 		}
