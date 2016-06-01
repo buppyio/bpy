@@ -243,12 +243,26 @@ func (c *Client) walk(wpath string) (proto9.Fid, error) {
 }
 
 func (f *File) Read(buf []byte) (int, error) {
-	n, err := f.ReadAt(f.offset, buf)
+	if len(buf) == 0 {
+		return 0, nil
+	}
+	resp, err := f.Tread(f.offset, uint32(len(buf)))
+	if err != nil {
+		return 0, err
+	}
+	n := copy(buf, resp.Data)
 	f.offset += uint64(n)
-	return n, err
+	if n == 0 {
+		return 0, io.EOF
+	}
+	return n, nil
 }
 
 func (f *File) Tread(offset uint64, amnt uint32) (*proto9.Rread, error) {
+	maxamnt := f.c.c.MaxMessageSize() - proto9.ReadOverhead
+	if amnt > maxamnt {
+		amnt = maxamnt
+	}
 	resp, err := f.c.c.Tread(f.Fid, offset, amnt)
 	if err != nil {
 		return nil, err
@@ -259,20 +273,12 @@ func (f *File) Tread(offset uint64, amnt uint32) (*proto9.Rread, error) {
 	return resp, nil
 }
 
-func (f *File) ReadAt(offset uint64, buf []byte) (int, error) {
-	amnt := uint32(len(buf))
-	maxamnt := f.c.c.MaxMessageSize() - proto9.ReadOverhead
-	if amnt > maxamnt {
-		amnt = maxamnt
-	}
-	resp, err := f.Tread(offset, amnt)
+func (f *File) ReadAt(offset int64, buf []byte) (int, error) {
+	_, err := f.Seek(offset, 0)
 	if err != nil {
 		return 0, err
 	}
-	if len(resp.Data) == 0 {
-		return 0, io.EOF
-	}
-	return copy(buf, resp.Data), nil
+	return io.ReadFull(f, buf)
 }
 
 func (f *File) Write(buf []byte) (int, error) {

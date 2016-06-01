@@ -10,18 +10,25 @@ type Writer struct {
 	block cipher.Block
 	buf   []byte
 	nbuf  int
+	ctr   *ctrState
 }
 
-func NewWriter(b cipher.Block, w io.Writer) *Writer {
+func NewWriter(w io.Writer, b cipher.Block, iv []byte) *Writer {
+	if len(iv) != b.BlockSize() {
+		panic("block size != iv size")
+	}
 	return &Writer{
 		w:     w,
 		block: b,
 		buf:   make([]byte, b.BlockSize()),
+		ctr:   newCtrState(iv),
 	}
 }
 
 func (w *Writer) flushBlock() error {
 	w.nbuf = 0
+	w.ctr.Xor(w.buf)
+	w.ctr.Add(1)
 	w.block.Encrypt(w.buf, w.buf)
 	_, err := w.w.Write(w.buf)
 	return err

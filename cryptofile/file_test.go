@@ -8,13 +8,21 @@ import (
 	"testing"
 )
 
-type PlainTextBlock struct {
+type XorBlock struct {
 	BlockSz int
 }
 
-func (pt *PlainTextBlock) BlockSize() int          { return pt.BlockSz }
-func (pt *PlainTextBlock) Encrypt(dst, src []byte) {}
-func (pt *PlainTextBlock) Decrypt(dst, src []byte) {}
+func (xb *XorBlock) BlockSize() int { return xb.BlockSz }
+
+func (xb *XorBlock) Encrypt(dst, src []byte) {
+	for i := range src {
+		dst[i] = src[i] ^ 0xf0
+	}
+}
+
+func (xb *XorBlock) Decrypt(dst, src []byte) {
+	xb.Encrypt(dst, src)
+}
 
 func TestReadWrite(t *testing.T) {
 
@@ -30,8 +38,8 @@ func TestReadWrite(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			block := &PlainTextBlock{BlockSz: blocksz}
-			w := NewWriter(block, &buf)
+			block := &XorBlock{BlockSz: blocksz}
+			w := NewWriter(&buf, block, make([]byte, blocksz, blocksz))
 
 			ncopied := 0
 			for ncopied != len(data) {
@@ -55,7 +63,7 @@ func TestReadWrite(t *testing.T) {
 				t.Fatal("len is not a multiple of block size")
 			}
 
-			rdr := NewReader(bytes.NewReader(buf.Bytes()), block, int64(buf.Len()))
+			rdr := NewReader(bytes.NewReader(buf.Bytes()), block, make([]byte, blocksz, blocksz), int64(buf.Len()))
 			result := make([]byte, len(data), len(data))
 			nread := 0
 			for nread != len(data) {

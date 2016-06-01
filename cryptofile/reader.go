@@ -10,13 +10,15 @@ type Reader struct {
 	block  cipher.Block
 	size   int64
 	offset int64
+	ctr    *ctrState
 }
 
-func NewReader(r io.ReaderAt, block cipher.Block, size int64) *Reader {
+func NewReader(r io.ReaderAt, block cipher.Block, iv []byte, size int64) *Reader {
 	return &Reader{
 		r:     r,
 		block: block,
 		size:  size,
+		ctr:   newCtrState(iv),
 	}
 }
 
@@ -27,6 +29,7 @@ func (r *Reader) readBlocks(idx int64, buf []byte) (int, error) {
 	if int64(len(buf))%blocksz != 0 {
 		panic("bufsize not multiple of blocksize")
 	}
+	nblocks := int64(len(buf)) / blocksz
 
 	if idx*blocksz >= r.size {
 		return 0, io.EOF
@@ -39,6 +42,15 @@ func (r *Reader) readBlocks(idx int64, buf []byte) (int, error) {
 	_, err := r.r.ReadAt(buf, idx*blocksz)
 	if err != nil {
 		return 0, err
+	}
+
+	r.ctr.Reset()
+	r.ctr.Add(uint64(idx))
+	for i := int64(0); i < nblocks; i++ {
+		block := buf[i*blocksz : (i+1)*blocksz]
+		r.block.Decrypt(block, block)
+		r.ctr.Xor(block)
+		r.ctr.Add(1)
 	}
 
 	if idx*blocksz+int64(len(buf)) == r.size {

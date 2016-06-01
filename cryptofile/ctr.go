@@ -1,26 +1,26 @@
 package cryptofile
 
-type ctr struct {
+type ctrState struct {
 	Iv  []byte
 	Vec []byte
 }
 
-func newCtr(iv []byte) *ctr {
-	c := &ctr{
+func newCtrState(iv []byte) *ctrState {
+	ctr := &ctrState{
 		Iv:  make([]byte, len(iv), len(iv)),
 		Vec: make([]byte, len(iv), len(iv)),
 	}
-	copy(c.Iv, iv)
-	copy(c.Vec, iv)
-	return c
+	copy(ctr.Iv, iv)
+	copy(ctr.Vec, iv)
+	return ctr
 }
 
-func (c *ctr) Reset() {
-	copy(c.Vec, c.Iv)
+func (ctr *ctrState) Reset() {
+	copy(ctr.Vec, ctr.Iv)
 }
 
-func (c *ctr) Add(val uint64) {
-	idx := len(c.Vec) - 1
+func (ctr *ctrState) Add(val uint64) {
+	idx := len(ctr.Vec) - 1
 	carry := uint64(0)
 	for val != 0 || carry != 0 {
 		b := val & 0xff
@@ -30,8 +30,8 @@ func (c *ctr) Add(val uint64) {
 			break
 		}
 
-		newb := uint64(c.Vec[idx]) + b + carry
-		c.Vec[idx] = byte(newb)
+		newb := uint64(ctr.Vec[idx]) + b + carry
+		ctr.Vec[idx] = byte(newb)
 
 		if newb&(1<<8) != 0 {
 			carry = 1
@@ -40,5 +40,14 @@ func (c *ctr) Add(val uint64) {
 		}
 
 		idx--
+	}
+}
+
+func (ctr *ctrState) Xor(buf []byte) {
+	if len(ctr.Vec) != len(buf) {
+		panic("Xor with different length buffers")
+	}
+	for idx, v := range ctr.Vec {
+		buf[idx] = v ^ buf[idx]
 	}
 }

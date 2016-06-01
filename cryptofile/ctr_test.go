@@ -6,7 +6,7 @@ import (
 )
 
 func TestCtr(t *testing.T) {
-	c := newCtr([]byte{0, 0, 0})
+	c := newCtrState([]byte{0, 0, 0})
 
 	c.Add(1)
 
@@ -23,6 +23,13 @@ func TestCtr(t *testing.T) {
 	c.Add(0xffffff)
 
 	if !reflect.DeepEqual(c.Vec, []byte{0, 0xff, 0xff}) {
+		t.Fatal("Add failed", c.Vec)
+	}
+
+	xorVal := []byte{1, 0xff, 0}
+	c.Xor(xorVal)
+
+	if !reflect.DeepEqual(xorVal, []byte{1, 0, 0xff}) {
 		t.Fatal("Add failed", c.Vec)
 	}
 

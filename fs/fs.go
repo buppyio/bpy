@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -214,7 +215,7 @@ func (r *FileReader) ReadAt(buf []byte, off int64) (int, error) {
 			return 0, err
 		}
 	}
-	return r.Read(buf)
+	return io.ReadFull(r, buf)
 }
 
 func (r *FileReader) Close() error {
