@@ -22,7 +22,7 @@ func TestReadWrite(t *testing.T) {
 
 	for _, blocksz := range []int{1, 2, 8, 32} {
 		for sz := 0; sz < 1000; sz++ {
-			var buf, resultbuf bytes.Buffer
+			var buf bytes.Buffer
 
 			data := make([]byte, sz, sz)
 			_, err := io.ReadFull(random, data)
@@ -55,19 +55,28 @@ func TestReadWrite(t *testing.T) {
 				t.Fatal("len is not a multiple of block size")
 			}
 
-			r := NewReader(bytes.NewReader(buf.Bytes()), block, int64(buf.Len()))
-
-			n, err := io.Copy(&resultbuf, r)
-			if err != nil {
-				t.Fatal(err)
+			rdr := NewReader(bytes.NewReader(buf.Bytes()), block, int64(buf.Len()))
+			result := make([]byte, len(data), len(data))
+			nread := 0
+			for nread != len(data) {
+				amnt := rand.Int() % (blocksz * 3)
+				if nread+amnt > len(data) {
+					amnt = len(data) - nread
+				}
+				n, err := io.ReadFull(rdr, result[nread:nread+amnt])
+				if err != nil {
+					t.Fatal(err)
+				}
+				nread += n
 			}
 
-			if n != int64(sz) {
-				t.Fatalf("bad size: %v != %v", n, sz)
+			n, err := io.ReadFull(rdr, make([]byte, 10000, 10000))
+			if n != 0 || err != io.EOF {
+				t.Fatal("expected EOF")
 			}
 
-			if !reflect.DeepEqual(data, resultbuf.Bytes()) {
-				t.Fatalf("data differs: %v != %v", resultbuf.Bytes(), data)
+			if !reflect.DeepEqual(data, result) {
+				t.Fatalf("data differs: %v != %v", result, data)
 			}
 		}
 	}
