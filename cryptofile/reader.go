@@ -1,4 +1,4 @@
-package foo
+package cryptofile
 
 import (
 	"crypto/cipher"
@@ -21,6 +21,7 @@ func NewReader(r io.ReaderAt, block cipher.Block, size int64) *Reader {
 }
 
 func (r *Reader) readBlocks(idx int64, buf []byte) (int, error) {
+
 	blocksz := int64(r.block.BlockSize())
 
 	if int64(len(buf))%blocksz != 0 {
