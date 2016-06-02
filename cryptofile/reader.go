@@ -11,6 +11,7 @@ type Reader struct {
 	size   int64
 	offset int64
 	ctr    *ctrState
+	rbuf   [4096]byte
 }
 
 func NewReader(r io.ReaderAt, block cipher.Block, iv []byte, size int64) *Reader {
@@ -86,7 +87,12 @@ func (r *Reader) Read(buf []byte) (int, error) {
 		buflen += int64(r.block.BlockSize()) - (buflen % int64(r.block.BlockSize()))
 	}
 
-	buf2 := make([]byte, buflen, buflen)
+	var buf2 []byte
+	if buflen < int64(len(r.rbuf)) {
+		buf2 = r.rbuf[:buflen]
+	} else {
+		buf2 = make([]byte, buflen, buflen)
+	}
 
 	startidx := aligned / int64(r.block.BlockSize())
 
