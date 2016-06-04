@@ -39,8 +39,10 @@ func TestReadWrite(t *testing.T) {
 			}
 
 			block := &XorBlock{BlockSz: blocksz}
-			w := NewWriter(&buf, block, make([]byte, blocksz, blocksz))
-
+			w, err := NewWriter(&buf, block)
+			if err != nil {
+				t.Fatal(err)
+			}
 			ncopied := 0
 			for ncopied != len(data) {
 				amnt := rand.Int() % (blocksz * 3)
@@ -63,7 +65,10 @@ func TestReadWrite(t *testing.T) {
 				t.Fatal("len is not a multiple of block size")
 			}
 
-			rdr := NewReader(bytes.NewReader(buf.Bytes()), block, make([]byte, blocksz, blocksz), int64(buf.Len()))
+			rdr, err := NewReader(bytes.NewReader(buf.Bytes()), block, int64(buf.Len()))
+			if err != nil {
+				t.Fatal(err)
+			}
 			result := make([]byte, len(data), len(data))
 			nread := 0
 			for nread != len(data) {

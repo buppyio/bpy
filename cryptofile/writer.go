@@ -2,6 +2,7 @@ package cryptofile
 
 import (
 	"crypto/cipher"
+	"crypto/rand"
 	"io"
 )
 
@@ -13,16 +14,22 @@ type Writer struct {
 	ctr   *ctrState
 }
 
-func NewWriter(w io.Writer, b cipher.Block, iv []byte) *Writer {
-	if len(iv) != b.BlockSize() {
-		panic("block size != iv size")
+func NewWriter(w io.Writer, b cipher.Block) (*Writer, error) {
+	iv := make([]byte, b.BlockSize(), b.BlockSize())
+	_, err := io.ReadFull(rand.Reader, iv)
+	if err != nil {
+		return nil, err
+	}
+	_, err = w.Write(iv)
+	if err != nil {
+		return nil, err
 	}
 	return &Writer{
 		w:     w,
 		block: b,
 		buf:   make([]byte, b.BlockSize()),
 		ctr:   newCtrState(iv),
-	}
+	}, nil
 }
 
 func (w *Writer) flushBlock() error {

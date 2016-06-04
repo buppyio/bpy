@@ -2,6 +2,7 @@ package cryptofile
 
 import (
 	"crypto/cipher"
+	"errors"
 	"io"
 )
 
@@ -14,13 +15,21 @@ type Reader struct {
 	rbuf   [4096]byte
 }
 
-func NewReader(r io.ReaderAt, block cipher.Block, iv []byte, size int64) *Reader {
+func NewReader(r io.ReaderAt, block cipher.Block, fsize int64) (*Reader, error) {
+	if fsize%int64(block.BlockSize()) != 0 {
+		return nil, errors.New("file size is not a multiple of block size")
+	}
+	iv := make([]byte, block.BlockSize(), block.BlockSize())
+	_, err := r.ReadAt(iv, 0)
+	if err != nil {
+		return nil, err
+	}
 	return &Reader{
 		r:     r,
 		block: block,
-		size:  size,
+		size:  fsize - int64(len(iv)),
 		ctr:   newCtrState(iv),
-	}
+	}, nil
 }
 
 func (r *Reader) readBlocks(idx int64, buf []byte) (int, error) {
@@ -40,7 +49,7 @@ func (r *Reader) readBlocks(idx int64, buf []byte) (int, error) {
 		buf = buf[:r.size-idx*blocksz]
 	}
 
-	_, err := r.r.ReadAt(buf, idx*blocksz)
+	_, err := r.r.ReadAt(buf, (1+idx)*blocksz)
 	if err != nil {
 		return 0, err
 	}
