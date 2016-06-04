@@ -7,14 +7,14 @@ import (
 )
 
 type Writer struct {
-	w     io.Writer
+	w     io.WriteCloser
 	block cipher.Block
 	buf   []byte
 	nbuf  int
 	ctr   *ctrState
 }
 
-func NewWriter(w io.Writer, b cipher.Block) (*Writer, error) {
+func NewWriter(w io.WriteCloser, b cipher.Block) (*Writer, error) {
 	iv := make([]byte, b.BlockSize(), b.BlockSize())
 	_, err := io.ReadFull(rand.Reader, iv)
 	if err != nil {
@@ -60,5 +60,9 @@ func (w *Writer) Close() error {
 		w.buf[i] = 0
 	}
 	w.buf[w.nbuf] = 0x80
-	return w.flushBlock()
+	err := w.flushBlock()
+	if err != nil {
+		return err
+	}
+	return w.w.Close()
 }

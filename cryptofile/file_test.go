@@ -8,6 +8,18 @@ import (
 	"testing"
 )
 
+type bufwriter struct {
+	bytes.Buffer
+}
+
+func (b *bufwriter) Close() error { return nil }
+
+type bufreader struct {
+	*bytes.Reader
+}
+
+func (b *bufreader) Close() error { return nil }
+
 type XorBlock struct {
 	BlockSz int
 }
@@ -30,7 +42,7 @@ func TestReadWrite(t *testing.T) {
 
 	for _, blocksz := range []int{1, 2, 8, 32} {
 		for sz := 0; sz < 1000; sz++ {
-			var buf bytes.Buffer
+			var buf bufwriter
 
 			data := make([]byte, sz, sz)
 			_, err := io.ReadFull(random, data)
@@ -43,6 +55,7 @@ func TestReadWrite(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			ncopied := 0
 			for ncopied != len(data) {
 				amnt := rand.Int() % (blocksz * 3)
@@ -65,7 +78,7 @@ func TestReadWrite(t *testing.T) {
 				t.Fatal("len is not a multiple of block size")
 			}
 
-			rdr, err := NewReader(bytes.NewReader(buf.Bytes()), block, int64(buf.Len()))
+			rdr, err := NewReader(&bufreader{bytes.NewReader(buf.Bytes())}, block, int64(buf.Len()))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -86,6 +99,11 @@ func TestReadWrite(t *testing.T) {
 			n, err := io.ReadFull(rdr, make([]byte, 10000, 10000))
 			if n != 0 || err != io.EOF {
 				t.Fatal("expected EOF")
+			}
+
+			err = rdr.Close()
+			if err != nil {
+				t.Fatal(err)
 			}
 
 			if !reflect.DeepEqual(data, result) {

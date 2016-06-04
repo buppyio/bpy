@@ -6,8 +6,13 @@ import (
 	"io"
 )
 
+type ReaderAtCloser interface {
+	io.ReaderAt
+	io.Closer
+}
+
 type Reader struct {
-	r      io.ReaderAt
+	r      ReaderAtCloser
 	block  cipher.Block
 	size   int64
 	offset int64
@@ -15,7 +20,7 @@ type Reader struct {
 	rbuf   [4096]byte
 }
 
-func NewReader(r io.ReaderAt, block cipher.Block, fsize int64) (*Reader, error) {
+func NewReader(r ReaderAtCloser, block cipher.Block, fsize int64) (*Reader, error) {
 	if fsize%int64(block.BlockSize()) != 0 {
 		return nil, errors.New("file size is not a multiple of block size")
 	}
@@ -114,4 +119,8 @@ func (r *Reader) Read(buf []byte) (int, error) {
 		}
 	}
 	return n, err
+}
+
+func (r *Reader) Close() error {
+	return r.r.Close()
 }
