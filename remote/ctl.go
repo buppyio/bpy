@@ -204,7 +204,7 @@ func ctlCreateTag(db *bolt.DB, tag, value string) error {
 		return b.Put([]byte(tag), []byte(value))
 	})
 	if err != nil {
-		return nil
+		return err
 	}
 	return nil
 }
