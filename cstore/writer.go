@@ -4,10 +4,12 @@ import (
 	"acha.ninja/bpy/bpack"
 	"acha.ninja/bpy/client9"
 	"acha.ninja/bpy/proto9"
+	"bytes"
+	"compress/flate"
 	"crypto/sha256"
 	"encoding/hex"
+	"io/ioutil"
 	"path"
-	"snappy"
 )
 
 type Writer struct {
@@ -18,7 +20,8 @@ type Writer struct {
 	workingSetSz uint64
 	key          [32]byte
 	midx         []metaIndexEnt
-	snappybuf    [65536]byte
+	flatebuf     bytes.Buffer
+	flatew       *flate.Writer
 }
 
 func NewWriter(store *client9.Client, key [32]byte, cachepath string) (*Writer, error) {
@@ -26,11 +29,18 @@ func NewWriter(store *client9.Client, key [32]byte, cachepath string) (*Writer, 
 	if err != nil {
 		return nil, err
 	}
+
+	flatew, err := flate.NewWriter(ioutil.Discard, flate.BestSpeed)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Writer{
 		cachepath: cachepath,
 		midx:      midx,
 		store:     store,
 		key:       key,
+		flatew:    flatew,
 	}, nil
 }
 
@@ -93,7 +103,18 @@ func (w *Writer) Put(data []byte) ([32]byte, error) {
 	if ok {
 		return h, nil
 	}
-	compressed := snappy.Encode(w.snappybuf[:], data)
+
+	w.flatebuf.Reset()
+	w.flatew.Reset(&w.flatebuf)
+	_, err = w.flatew.Write(data)
+	if err != nil {
+		return h, err
+	}
+	err = w.flatew.Close()
+	if err != nil {
+		return h, err
+	}
+	compressed := w.flatebuf.Bytes()
 	err = w.pack.Add(string(h[:]), compressed)
 	if err != nil {
 		return h, err

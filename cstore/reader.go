@@ -4,10 +4,12 @@ import (
 	"acha.ninja/bpy/bpack"
 	"acha.ninja/bpy/client9"
 	"acha.ninja/bpy/proto9"
+	"bytes"
+	"compress/flate"
 	"container/list"
 	"errors"
+	"io"
 	"path"
-	"snappy"
 )
 
 var NotFound = errors.New("hash not in cstore")
@@ -28,6 +30,7 @@ type Reader struct {
 	midx      []metaIndexEnt
 	lru       *list.List
 	key       [32]byte
+	flatebuf  bytes.Buffer
 }
 
 func NewReader(store *client9.Client, key [32]byte, cachepath string) (*Reader, error) {
@@ -57,7 +60,23 @@ func (r *Reader) Get(hash [32]byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return snappy.Decode(nil, buf)
+	bufrdr := bytes.NewReader(buf)
+	compressedr := flate.NewReader(bufrdr)
+	if err != nil {
+		return nil, err
+	}
+	r.flatebuf.Reset()
+	_, err = io.Copy(&r.flatebuf, compressedr)
+	if err != nil {
+		return nil, err
+	}
+	err = compressedr.Close()
+	if err != nil {
+		return nil, err
+	}
+	decompressed := make([]byte, r.flatebuf.Len(), r.flatebuf.Len())
+	copy(decompressed, r.flatebuf.Bytes())
+	return decompressed, nil
 }
 
 func (r *Reader) getPackReader(packname string, idx bpack.Index) (*bpack.Reader, error) {
