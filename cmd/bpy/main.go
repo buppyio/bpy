@@ -13,7 +13,8 @@ import (
 
 func help() {
 	fmt.Println("Please specify one of the following subcommands:")
-	fmt.Println("put, get, cat, ls, tag, help\n")
+	fmt.Println("put, get, cat, ls, tag, help")
+	fmt.Println("")
 	fmt.Println("For more use -h on the sub commands.")
 	fmt.Println("Also check the docs at https://buppy.io/docs")
 	os.Exit(1)

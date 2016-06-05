@@ -164,7 +164,7 @@ func Walk(store bpy.CStoreReader, hash [32]byte, fpath string) (DirEnt, error) {
 		}
 		if i != end-1 {
 			if !ents[j].Mode.IsDir() {
-				fmt.Errorf("not a directory: %s", ents[j].Name)
+				return result, fmt.Errorf("not a directory: %s", ents[j].Name)
 			}
 			hash = ents[j].Data
 		} else {

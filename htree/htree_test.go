@@ -67,14 +67,14 @@ func TestHTree(t *testing.T) {
 			seekto := uint64(rand.Int31()) % uint64(len(expected))
 			seekedto, err := r.Seek(seekto)
 			if err != nil {
-				t.Fatal("Seek failed %s", err.Error())
+				t.Fatalf("Seek failed %s", err.Error())
 			}
 			if seekedto != seekto {
 				t.Fatal("Seek returned bad offset")
 			}
 			_, err = r.Read(rdbuf)
 			if err != nil {
-				t.Fatal("Seek failed %s", err.Error())
+				t.Fatalf("Seek failed %s", err.Error())
 			}
 			if rdbuf[0] != expected[seekto] {
 				t.Fatal("Seek gave wrong value differ")

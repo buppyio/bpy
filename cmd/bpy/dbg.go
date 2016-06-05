@@ -14,7 +14,7 @@ import (
 
 func dbghelp() {
 	fmt.Println("Please specify one of the following subcommands:")
-	fmt.Println("inspect-htree, write-htree\n")
+	fmt.Println("inspect-htree, write-htree")
 	os.Exit(1)
 }
 
