@@ -6,13 +6,14 @@ import (
 	"io"
 )
 
-type ReaderAtCloser interface {
-	io.ReaderAt
+type ReadSeekCloser interface {
+	io.Reader
+	io.Seeker
 	io.Closer
 }
 
 type Reader struct {
-	r      ReaderAtCloser
+	r      ReadSeekCloser
 	block  cipher.Block
 	size   int64
 	offset int64
@@ -20,12 +21,16 @@ type Reader struct {
 	rbuf   [4096]byte
 }
 
-func NewReader(r ReaderAtCloser, block cipher.Block, fsize int64) (*Reader, error) {
+func NewReader(r ReadSeekCloser, block cipher.Block, fsize int64) (*Reader, error) {
 	if fsize%int64(block.BlockSize()) != 0 {
 		return nil, errors.New("file size is not a multiple of block size")
 	}
 	iv := make([]byte, block.BlockSize(), block.BlockSize())
-	_, err := r.ReadAt(iv, 0)
+	_, err := r.Seek(0, 0)
+	if err != nil {
+		return nil, err
+	}
+	_, err = io.ReadFull(r, iv)
 	if err != nil {
 		return nil, err
 	}
@@ -35,6 +40,29 @@ func NewReader(r ReaderAtCloser, block cipher.Block, fsize int64) (*Reader, erro
 		size:  fsize - int64(len(iv)),
 		ctr:   newCtrState(iv),
 	}, nil
+}
+
+func (r *Reader) Seek(offset int64, whence int) (int64, error) {
+	if whence != 0 {
+		return r.offset, errors.New("unsupported whence")
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	if offset > r.size {
+		offset = r.size
+	}
+	r.offset = offset
+	return r.offset, nil
+}
+
+func (r *Reader) Size() (int64, error) {
+	buf := make([]byte, r.block.BlockSize(), r.block.BlockSize())
+	n, err := r.readBlocks((r.size/int64(r.block.BlockSize()))-1, buf)
+	if err != nil && err != io.EOF {
+		return 0, err
+	}
+	return r.size - int64(r.block.BlockSize()) + int64(n), nil
 }
 
 func (r *Reader) readBlocks(idx int64, buf []byte) (int, error) {
@@ -54,7 +82,12 @@ func (r *Reader) readBlocks(idx int64, buf []byte) (int, error) {
 		buf = buf[:r.size-idx*blocksz]
 	}
 
-	_, err := r.r.ReadAt(buf, (1+idx)*blocksz)
+	_, err := r.r.Seek((1+idx)*blocksz, 0)
+	if err != nil {
+		return 0, err
+	}
+
+	_, err = io.ReadFull(r.r, buf)
 	if err != nil {
 		return 0, err
 	}

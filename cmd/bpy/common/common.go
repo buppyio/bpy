@@ -73,7 +73,7 @@ func GetCacheDir() (string, error) {
 }
 
 func GetRemote() (*client9.Client, error) {
-	slv, err := dialRemote("localhost", "/home/ac/bpy")
+	slv, err := dialRemote("acha.ninja", "/home/ac/bpy")
 	if err != nil {
 		return nil, err
 	}

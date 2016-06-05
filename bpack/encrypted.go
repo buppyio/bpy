@@ -18,14 +18,18 @@ func NewEncryptedWriter(w io.WriteCloser, key [32]byte) (*Writer, error) {
 	return NewWriter(w)
 }
 
-func NewEncryptedReader(r io.ReadSeekCloser, key [32]byte) (*Reader, error) {
+func NewEncryptedReader(r ReadSeekCloser, key [32]byte, fsize int64) (*Reader, error) {
 	block, err := aes.NewCipher(key[:])
 	if err != nil {
 		return nil, err
 	}
-	r, err = cryptofile.NewReader(r, block)
+	cryptof, err := cryptofile.NewReader(r, block, fsize)
 	if err != nil {
 		return nil, err
 	}
-	return NewReader(r)
+	dataLen, err := cryptof.Size()
+	if err != nil {
+		return nil, err
+	}
+	return NewReader(cryptof, uint64(dataLen)), nil
 }

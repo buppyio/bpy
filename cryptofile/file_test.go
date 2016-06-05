@@ -82,6 +82,16 @@ func TestReadWrite(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
+			datalen, err := rdr.Size()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if datalen != int64(len(data)) {
+				t.Fatalf("data len differs: %v != %v", datalen, len(data))
+			}
+
 			result := make([]byte, len(data), len(data))
 			nread := 0
 			for nread != len(data) {
