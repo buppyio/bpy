@@ -16,12 +16,13 @@ type Writer struct {
 	cachepath    string
 	tmpname      string
 	workingSetSz uint64
+	key          [32]byte
 	midx         []metaIndexEnt
 	snappybuf    [65536]byte
 }
 
-func NewWriter(store *client9.Client, cachepath string) (*Writer, error) {
-	midx, err := readAndCacheMetaIndex(store, cachepath)
+func NewWriter(store *client9.Client, key [32]byte, cachepath string) (*Writer, error) {
+	midx, err := readAndCacheMetaIndex(store, key, cachepath)
 	if err != nil {
 		return nil, err
 	}
@@ -29,6 +30,7 @@ func NewWriter(store *client9.Client, cachepath string) (*Writer, error) {
 		cachepath: cachepath,
 		midx:      midx,
 		store:     store,
+		key:       key,
 	}, nil
 }
 
@@ -77,7 +79,7 @@ func (w *Writer) Put(data []byte) ([32]byte, error) {
 		if err != nil {
 			return h, err
 		}
-		w.pack, err = bpack.NewWriter(f)
+		w.pack, err = bpack.NewEncryptedWriter(f, w.key)
 		if err != nil {
 			f.Close()
 			w.store.Remove(w.tmpname)

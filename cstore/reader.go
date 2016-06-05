@@ -27,10 +27,11 @@ type Reader struct {
 	cachepath string
 	midx      []metaIndexEnt
 	lru       *list.List
+	key       [32]byte
 }
 
-func NewReader(store *client9.Client, cachepath string) (*Reader, error) {
-	midx, err := readAndCacheMetaIndex(store, cachepath)
+func NewReader(store *client9.Client, key [32]byte, cachepath string) (*Reader, error) {
+	midx, err := readAndCacheMetaIndex(store, key, cachepath)
 	if err != nil {
 		return nil, err
 	}
@@ -39,6 +40,7 @@ func NewReader(store *client9.Client, cachepath string) (*Reader, error) {
 		lru:       list.New(),
 		store:     store,
 		cachepath: cachepath,
+		key:       key,
 	}, nil
 }
 
@@ -75,7 +77,10 @@ func (r *Reader) getPackReader(packname string, idx bpack.Index) (*bpack.Reader,
 	if err != nil {
 		return nil, err
 	}
-	pack := bpack.NewReader(f, stat.Length)
+	pack, err := bpack.NewEncryptedReader(f, r.key, int64(stat.Length))
+	if err != nil {
+		return nil, err
+	}
 	pack.Idx = idx
 	r.lru.PushFront(lruent{packname: packname, pack: pack})
 	if r.lru.Len() > 5 {

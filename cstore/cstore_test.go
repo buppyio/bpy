@@ -74,8 +74,13 @@ func TestCStore(t *testing.T) {
 		t.Fatal(err)
 	}
 	testvals := make(map[[32]byte][]byte)
+	key := [32]byte{}
+	_, err = io.ReadFull(r, key[:])
+	if err != nil {
+		t.Fatal(err)
+	}
 	for i := 0; i < 100; i++ {
-		w, err := NewWriter(store, cachepath)
+		w, err := NewWriter(store, key, cachepath)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -97,7 +102,7 @@ func TestCStore(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	rdr, err := NewReader(store, cachepath)
+	rdr, err := NewReader(store, key, cachepath)
 	if err != nil {
 		t.Fatal(err)
 	}

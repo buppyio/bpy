@@ -24,7 +24,7 @@ func searchMetaIndex(midx []metaIndexEnt, hash [32]byte) (metaIndexEnt, bpack.In
 	return metaIndexEnt{}, bpack.IndexEnt{}, false
 }
 
-func readAndCacheMetaIndex(store *client9.Client, cachepath string) ([]metaIndexEnt, error) {
+func readAndCacheMetaIndex(store *client9.Client, key [32]byte, cachepath string) ([]metaIndexEnt, error) {
 	dirents, err := store.Ls("packs")
 	if err != nil {
 		return nil, err
@@ -32,7 +32,7 @@ func readAndCacheMetaIndex(store *client9.Client, cachepath string) ([]metaIndex
 	midx := make([]metaIndexEnt, 0, 16)
 	for _, dirent := range dirents {
 		if strings.HasSuffix(dirent.Name, ".bpack") {
-			idx, err := getAndCacheIndex(store, dirent.Name, cachepath)
+			idx, err := getAndCacheIndex(store, key, dirent.Name, cachepath)
 			if err != nil {
 				return nil, err
 			}
@@ -91,7 +91,7 @@ func cacheIndex(packname, cachepath string, index bpack.Index) error {
 	return nil
 }
 
-func getAndCacheIndex(store *client9.Client, packname, cachepath string) (bpack.Index, error) {
+func getAndCacheIndex(store *client9.Client, key [32]byte, packname, cachepath string) (bpack.Index, error) {
 	idxpath := filepath.Join(cachepath, packname+".index")
 	_, err := os.Stat(idxpath)
 	if err == nil {
@@ -113,7 +113,10 @@ func getAndCacheIndex(store *client9.Client, packname, cachepath string) (bpack.
 	if err != nil {
 		return nil, err
 	}
-	pack := bpack.NewReader(f, stat.Length)
+	pack, err := bpack.NewEncryptedReader(f, key, int64(stat.Length))
+	if err != nil {
+		return nil, err
+	}
 	defer pack.Close()
 	err = pack.ReadIndex()
 	if err != nil {

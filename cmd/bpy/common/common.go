@@ -93,7 +93,7 @@ func GetCStoreReader(remote *client9.Client) (bpy.CStoreReader, error) {
 	if err != nil {
 		return nil, err
 	}
-	return cstore.NewReader(remote, cache)
+	return cstore.NewReader(remote, [32]byte{}, cache)
 }
 
 func GetCStoreWriter(remote *client9.Client) (bpy.CStoreWriter, error) {
@@ -101,7 +101,7 @@ func GetCStoreWriter(remote *client9.Client) (bpy.CStoreWriter, error) {
 	if err != nil {
 		return nil, err
 	}
-	return cstore.NewWriter(remote, cache)
+	return cstore.NewWriter(remote, [32]byte{}, cache)
 }
 
 func Die(msg string, args ...interface{}) {
