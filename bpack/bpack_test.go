@@ -90,7 +90,7 @@ func TestBpack(t *testing.T) {
 	}
 }
 
-func TestEncrryptedBpack(t *testing.T) {
+func TestEncryptedBpack(t *testing.T) {
 	var buf [1024 * 1024 * 10]byte
 
 	bufw := &bufwriter{off: 0, buf: buf[:]}
