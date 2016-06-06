@@ -1,6 +1,7 @@
 package main
 
 import (
+	"acha.ninja/bpy/cmd/bpy/browse"
 	"acha.ninja/bpy/cmd/bpy/cat"
 	"acha.ninja/bpy/cmd/bpy/get"
 	"acha.ninja/bpy/cmd/bpy/ls"
@@ -13,7 +14,7 @@ import (
 
 func help() {
 	fmt.Println("Please specify one of the following subcommands:")
-	fmt.Println("put, get, cat, ls, tag, help")
+	fmt.Println("browse, cat, get, ls, put, tag")
 	fmt.Println("")
 	fmt.Println("For more use -h on the sub commands.")
 	fmt.Println("Also check the docs at https://buppy.io/docs")
@@ -24,14 +25,16 @@ func main() {
 	cmd := help
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
-		case "put":
-			cmd = put.Put
-		case "get":
-			cmd = get.Get
+		case "browse":
+			cmd = browse.Browse
 		case "cat":
 			cmd = cat.Cat
+		case "get":
+			cmd = get.Get
 		case "ls":
 			cmd = ls.Ls
+		case "put":
+			cmd = put.Put
 		case "remote":
 			cmd = remote.Remote
 		case "tag":
