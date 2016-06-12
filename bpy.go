@@ -15,6 +15,12 @@ type CStoreWriter interface {
 	Close() error
 }
 
+type Key struct {
+	CipherKey [32]byte
+	HmacKey   [32]byte
+	Id        [32]byte
+}
+
 func ParseHash(hashstr string) ([32]byte, error) {
 	var hash [32]byte
 	if len(hashstr) != 64 {
