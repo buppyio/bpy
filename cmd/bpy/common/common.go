@@ -5,6 +5,7 @@ import (
 	"acha.ninja/bpy/client9"
 	"acha.ninja/bpy/cstore"
 	"acha.ninja/bpy/proto9"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -72,8 +73,22 @@ func GetCacheDir() (string, error) {
 	return filepath.Join(d, "cache"), nil
 }
 
-func GetRemote() (*client9.Client, error) {
-	slv, err := dialRemote("acha.ninja", "/home/ac/bpy")
+func GetKey() (bpy.Key, error) {
+	d, err := GetBuppyDir()
+	if err != nil {
+		return bpy.Key{}, err
+	}
+	keyfile := filepath.Join(d, "bpy.key")
+	f, err := os.Open(keyfile)
+	if err != nil {
+		return bpy.Key{}, err
+	}
+	defer f.Close()
+	return bpy.ReadKey(f)
+}
+
+func GetRemote(k *bpy.Key) (*client9.Client, error) {
+	slv, err := dialRemote("localhost", "/home/ac/bpy")
 	if err != nil {
 		return nil, err
 	}
@@ -81,27 +96,27 @@ func GetRemote() (*client9.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = remote.Attach("nobody", "")
+	err = remote.Attach("nobody", hex.EncodeToString(k.Id[:]))
 	if err != nil {
 		return nil, err
 	}
 	return remote, nil
 }
 
-func GetCStoreReader(remote *client9.Client) (bpy.CStoreReader, error) {
+func GetCStoreReader(k *bpy.Key, remote *client9.Client) (bpy.CStoreReader, error) {
 	cache, err := GetCacheDir()
 	if err != nil {
 		return nil, err
 	}
-	return cstore.NewReader(remote, [32]byte{}, cache)
+	return cstore.NewReader(remote, k.CipherKey, filepath.Join(cache, hex.EncodeToString(k.Id[:])))
 }
 
-func GetCStoreWriter(remote *client9.Client) (bpy.CStoreWriter, error) {
+func GetCStoreWriter(k *bpy.Key, remote *client9.Client) (bpy.CStoreWriter, error) {
 	cache, err := GetCacheDir()
 	if err != nil {
 		return nil, err
 	}
-	return cstore.NewWriter(remote, [32]byte{}, cache)
+	return cstore.NewWriter(remote, k.CipherKey, filepath.Join(cache, hex.EncodeToString(k.Id[:])))
 }
 
 func Die(msg string, args ...interface{}) {

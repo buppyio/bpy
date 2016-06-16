@@ -17,12 +17,17 @@ func Put() {
 		common.Die("please specify the dir to put\n")
 	}
 
-	remote, err := common.GetRemote()
+	k, err := common.GetKey()
+	if err != nil {
+		common.Die("error getting bpy key data: %s\n", err.Error())
+	}
+
+	remote, err := common.GetRemote(&k)
 	if err != nil {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
 
-	store, err := common.GetCStoreWriter(remote)
+	store, err := common.GetCStoreWriter(&k, remote)
 	if err != nil {
 		common.Die("error getting content store: %s\n", err.Error())
 	}

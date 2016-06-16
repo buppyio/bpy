@@ -3,16 +3,14 @@ package newkey
 import (
 	"acha.ninja/bpy"
 	"acha.ninja/bpy/cmd/bpy/common"
-	"crypto/rand"
-	"encoding/json"
 	"flag"
+	"fmt"
 	"io"
 	"os"
 )
 
 func NewKey() {
 	var o io.WriteCloser
-	var k bpy.Key
 
 	keyFile := flag.String("f", "", "file to write the key to. (defaults to stdout)")
 
@@ -28,29 +26,18 @@ func NewKey() {
 		o = f
 	}
 
-	_, err := io.ReadFull(rand.Reader, k.CipherKey[:])
+	k, err := bpy.NewKey()
 	if err != nil {
-		common.Die("error generating cipher key: %s", err.Error())
+		common.Die("%s", err.Error())
 	}
 
-	_, err = io.ReadFull(rand.Reader, k.HmacKey[:])
+	err = bpy.WriteKey(o, &k)
 	if err != nil {
-		common.Die("error generating hmac key: %s", err.Error())
+		common.Die("%s", err.Error())
 	}
 
-	_, err = io.ReadFull(rand.Reader, k.Id[:])
+	_, err = fmt.Fprintln(o, "")
 	if err != nil {
-		common.Die("error generating id: %s", err.Error())
+		common.Die("%s", err.Error())
 	}
-
-	j, err := json.Marshal(&k)
-	if err != nil {
-		common.Die("error mashalling key: %s", err.Error())
-	}
-
-	_, err = o.Write(j)
-	if err != nil {
-		common.Die("error writing key: %s", err.Error())
-	}
-
 }

@@ -13,6 +13,7 @@ func Ls() {
 	var root [32]byte
 	tagArg := flag.String("tag", "", "tag of directory to list")
 	hashArg := flag.String("hash", "", "hash of directory to list")
+	lsPath := "/"
 	flag.Parse()
 
 	if *hashArg == "" && *tagArg == "" || *hashArg != "" && *tagArg != "" {
@@ -27,16 +28,23 @@ func Ls() {
 		root = hash
 	}
 
-	if len(flag.Args()) != 1 {
-		common.Die("please specify a path\n")
+	if len(flag.Args()) > 1 {
+		common.Die("please specify a single path\n")
+	} else if len(flag.Args()) == 1 {
+		lsPath = flag.Args()[0]
 	}
 
-	remote, err := common.GetRemote()
+	k, err := common.GetKey()
+	if err != nil {
+		common.Die("error getting bpy key data: %s\n", err.Error())
+	}
+
+	remote, err := common.GetRemote(&k)
 	if err != nil {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
 
-	store, err := common.GetCStoreReader(remote)
+	store, err := common.GetCStoreReader(&k, remote)
 	if err != nil {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
@@ -52,7 +60,7 @@ func Ls() {
 		}
 	}
 
-	ents, err := fs.Ls(store, root, flag.Args()[0])
+	ents, err := fs.Ls(store, root, lsPath)
 	if err != nil {
 		common.Die("error reading directory: %s\n", err.Error())
 	}
