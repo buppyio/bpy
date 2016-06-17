@@ -5,18 +5,21 @@ import (
 	"acha.ninja/bpy/server9"
 	"errors"
 	"io"
-	//"log"
 	"os"
 	"path/filepath"
 	"time"
+	"regexp"
 )
 
+const MAXMOUNTLEN = 512
 const TAGDBNAME = "tags.db"
 
-var ErrAuthNotSupported = errors.New("auth not supported")
-
+var (
+	ErrAuthNotSupported = errors.New("auth not supported")
+	ErrInvalidMount = errors.New("invalid mount")
+)
 type Server struct {
-	root           server9.File
+	dir      string
 	rwc            io.ReadWriteCloser
 	maxMessageSize uint32
 	negMessageSize uint32
@@ -91,7 +94,44 @@ func (srv *Server) handleAttach(msg *proto9.Tattach) proto9.Msg {
 		return server9.MakeError(msg.Tag, ErrAuthNotSupported)
 	}
 
-	fh, err := srv.root.NewHandle()
+	if len(msg.Aname) > MAXMOUNTLEN {
+		return server9.MakeError(msg.Tag, ErrInvalidMount)
+	}
+	match, err := regexp.MatchString("[a-zA-Z0-9]+", msg.Aname)
+	if err != nil {
+		return server9.MakeError(msg.Tag, err)
+	}
+	if !match {
+		return server9.MakeError(msg.Tag, ErrInvalidMount)
+	}
+
+	rootDir := filepath.Join(srv.dir, msg.Aname)
+	_, err = os.Stat(rootDir)
+	if os.IsNotExist(err) {
+		err = os.Mkdir(rootDir, 0644)
+	}
+	if err != nil {
+		return server9.MakeError(msg.Tag, err)
+	}
+
+	tagdbPath := filepath.Join(rootDir, TAGDBNAME)
+	root := &RootFile{
+		packDir: &File{
+			parent: nil,
+			path:   rootDir,
+		},
+		tagDir: &TagDirFile{
+			parent: nil,
+			dbpath: tagdbPath,
+		},
+		ctlFile: &CtlFile{
+			dbPath: tagdbPath,
+		},
+	}
+	root.packDir.parent = root
+	root.tagDir.parent = root
+
+	fh, err := root.NewHandle()
 	if err != nil {
 		return server9.MakeError(msg.Tag, err)
 	}
@@ -99,7 +139,7 @@ func (srv *Server) handleAttach(msg *proto9.Tattach) proto9.Msg {
 	if err != nil {
 		return server9.MakeError(msg.Tag, err)
 	}
-	qid, err := srv.root.Qid()
+	qid, err := root.Qid()
 	if err != nil {
 		return server9.MakeError(msg.Tag, err)
 	}
@@ -329,27 +369,13 @@ func (srv *Server) Serve() error {
 	}
 }
 
-func NewServer(rwc io.ReadWriteCloser, packDir string) (*Server, error) {
-	packDir, err := filepath.Abs(packDir)
+func NewServer(rwc io.ReadWriteCloser, exportDir string) (*Server, error) {
+	exportDir, err := filepath.Abs(exportDir)
 	if err != nil {
 		return nil, err
 	}
-	tagdbPath := filepath.Join(packDir, TAGDBNAME)
-	root := &RootFile{
-		packDir: &File{
-			parent: nil,
-			path:   packDir,
-		},
-		tagDir: &TagDirFile{
-			parent: nil,
-			dbpath: tagdbPath,
-		},
-		ctlFile: &CtlFile{
-			dbPath: tagdbPath,
-		},
-	}
 	srv := &Server{
-		root:           root,
+		dir: exportDir,
 		rwc:            rwc,
 		maxMessageSize: 131072,
 	}

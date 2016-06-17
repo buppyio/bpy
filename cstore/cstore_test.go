@@ -69,7 +69,7 @@ func TestCStore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = store.Attach("", "")
+	err = store.Attach("", "test")
 	if err != nil {
 		t.Fatal(err)
 	}

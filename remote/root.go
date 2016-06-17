@@ -17,9 +17,9 @@ var (
 )
 
 type RootFile struct {
-	packDir server9.File
-	ctlFile server9.File
-	tagDir  server9.File
+	packDir *File
+	ctlFile *CtlFile
+	tagDir  *TagDirFile
 }
 
 func (f *RootFile) Wstat(stat proto9.Stat) error {

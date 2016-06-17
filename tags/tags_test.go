@@ -65,7 +65,7 @@ func TestTags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = remote.Attach("", "")
+	err = remote.Attach("", "test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestTags(t *testing.T) {
 	}
 	_, err = Get(remote, "foo")
 	if err == nil {
-		t.Fatal("expecter error")
+		t.Fatal("expected error")
 	}
 	tags, err = List(remote)
 	if err != nil {
