@@ -4,13 +4,32 @@ import (
 	"acha.ninja/bpy/bpack"
 	"acha.ninja/bpy/client9"
 	"acha.ninja/bpy/proto9"
+	"bufio"
 	"bytes"
 	"compress/flate"
 	"crypto/sha256"
 	"encoding/hex"
+	"io"
 	"io/ioutil"
 	"path"
 )
+
+type bufferedWriteCloser struct {
+	wc io.WriteCloser
+	bw *bufio.Writer
+}
+
+func (bwc *bufferedWriteCloser) Write(buf []byte) (int, error) {
+	return bwc.bw.Write(buf)
+}
+
+func (bwc *bufferedWriteCloser) Close() error {
+	err := bwc.bw.Flush()
+	if err != nil {
+		return err
+	}
+	return bwc.wc.Close()
+}
 
 type Writer struct {
 	store        *client9.Client
@@ -89,7 +108,11 @@ func (w *Writer) Put(data []byte) ([32]byte, error) {
 		if err != nil {
 			return h, err
 		}
-		w.pack, err = bpack.NewEncryptedWriter(f, w.key)
+		bwc := &bufferedWriteCloser{
+			wc: f,
+			bw: bufio.NewWriterSize(f, 65536),
+		}
+		w.pack, err = bpack.NewEncryptedWriter(bwc, w.key)
 		if err != nil {
 			f.Close()
 			w.store.Remove(w.tmpname)
