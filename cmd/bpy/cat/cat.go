@@ -32,12 +32,17 @@ func Cat() {
 		common.Die("please specify a path\n")
 	}
 
-	remote, err := common.GetRemote()
+	k, err := common.GetKey()
+	if err != nil {
+		common.Die("error getting bpy key data: %s\n", err.Error())
+	}
+
+	remote, err := common.GetRemote(&k)
 	if err != nil {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
 
-	store, err := common.GetCStoreReader(remote)
+	store, err := common.GetCStoreReader(&k, remote)
 	if err != nil {
 		common.Die("error getting content store: %s\n", err.Error())
 	}

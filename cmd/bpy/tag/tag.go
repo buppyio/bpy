@@ -24,7 +24,11 @@ func create() {
 	if err != nil {
 		common.Die("hash not valid: %s\n", err.Error())
 	}
-	remote, err := common.GetRemote()
+	k, err := common.GetKey()
+	if err != nil {
+		common.Die("error getting bpy key data: %s\n", err.Error())
+	}
+	remote, err := common.GetRemote(&k)
 	if err != nil {
 		common.Die("error getting remote: %s\n", err.Error())
 	}
@@ -39,7 +43,11 @@ func get() {
 	if len(flag.Args()) != 1 {
 		common.Die("please specity a tag\n")
 	}
-	remote, err := common.GetRemote()
+	k, err := common.GetKey()
+	if err != nil {
+		common.Die("error getting bpy key data: %s\n", err.Error())
+	}
+	remote, err := common.GetRemote(&k)
 	if err != nil {
 		common.Die("error getting remote: %s\n", err.Error())
 	}
@@ -58,7 +66,11 @@ func remove() {
 	if len(flag.Args()) != 2 {
 		common.Die("please specity a tag and its value\n")
 	}
-	remote, err := common.GetRemote()
+	k, err := common.GetKey()
+	if err != nil {
+		common.Die("error getting bpy key data: %s\n", err.Error())
+	}
+	remote, err := common.GetRemote(&k)
 	if err != nil {
 		common.Die("error getting remote: %s\n", err.Error())
 	}
@@ -81,7 +93,11 @@ func cas() {
 	if err != nil {
 		common.Die("new hash not valid: %s\n", err.Error())
 	}
-	remote, err := common.GetRemote()
+	k, err := common.GetKey()
+	if err != nil {
+		common.Die("error getting bpy key data: %s\n", err.Error())
+	}
+	remote, err := common.GetRemote(&k)
 	if err != nil {
 		common.Die("error getting remote: %s\n", err.Error())
 	}
@@ -92,7 +108,11 @@ func cas() {
 }
 
 func list() {
-	remote, err := common.GetRemote()
+	k, err := common.GetKey()
+	if err != nil {
+		common.Die("error getting bpy key data: %s\n", err.Error())
+	}
+	remote, err := common.GetRemote(&k)
 	if err != nil {
 		common.Die("error getting remote: %s", err.Error())
 	}
