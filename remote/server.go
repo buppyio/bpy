@@ -7,8 +7,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"time"
 	"regexp"
+	"time"
 )
 
 const MAXMOUNTLEN = 512
@@ -16,10 +16,11 @@ const TAGDBNAME = "tags.db"
 
 var (
 	ErrAuthNotSupported = errors.New("auth not supported")
-	ErrInvalidMount = errors.New("invalid mount")
+	ErrInvalidMount     = errors.New("invalid mount")
 )
+
 type Server struct {
-	dir      string
+	dir            string
 	rwc            io.ReadWriteCloser
 	maxMessageSize uint32
 	negMessageSize uint32
@@ -108,7 +109,7 @@ func (srv *Server) handleAttach(msg *proto9.Tattach) proto9.Msg {
 	rootDir := filepath.Join(srv.dir, msg.Aname)
 	_, err = os.Stat(rootDir)
 	if os.IsNotExist(err) {
-		err = os.Mkdir(rootDir, 0644)
+		err = os.Mkdir(rootDir, 0755)
 	}
 	if err != nil {
 		return server9.MakeError(msg.Tag, err)
@@ -375,7 +376,7 @@ func NewServer(rwc io.ReadWriteCloser, exportDir string) (*Server, error) {
 		return nil, err
 	}
 	srv := &Server{
-		dir: exportDir,
+		dir:            exportDir,
 		rwc:            rwc,
 		maxMessageSize: 131072,
 	}
