@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"regexp"
 )
 
 type slave struct {
@@ -34,7 +35,11 @@ func (s *slave) Close() error {
 	return s.cmd.Process.Kill()
 }
 
-func dialRemote(url, path string) (io.ReadWriteCloser, error) {
+func dialRemote(remote string) (io.ReadWriteCloser, error) {
+	url, path, err := ParseRemoteString(remote)
+	if err != nil {
+		return nil, err
+	}
 	cmd := exec.Command("ssh", url, "bpy", "remote", path)
 	out, err := cmd.StdinPipe()
 	if err != nil {
@@ -88,7 +93,8 @@ func GetKey() (bpy.Key, error) {
 }
 
 func GetRemote(k *bpy.Key) (*client9.Client, error) {
-	slv, err := dialRemote("acha.ninja", "/home/ac/bpy")
+	url := os.Getenv("BPY_REMOTE")
+	slv, err := dialRemote(url)
 	if err != nil {
 		return nil, err
 	}
@@ -122,4 +128,14 @@ func GetCStoreWriter(k *bpy.Key, remote *client9.Client) (bpy.CStoreWriter, erro
 func Die(msg string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, msg, args...)
 	os.Exit(1)
+}
+
+func ParseRemoteString(remote string) (string, string, error) {
+	r := regexp.MustCompile("ssh://([^/]+)(.+)")
+
+	matches := r.FindStringSubmatch(remote)
+	if matches == nil {
+		return "", "", fmt.Errorf("invalid remote: '%s'\n", remote)
+	}
+	return matches[1], matches[2], nil
 }
