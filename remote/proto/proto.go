@@ -45,7 +45,7 @@ type TError struct {
 type TAttach struct {
 	Mid            uint16
 	MaxMessageSize uint32
-	ProtoVersion   []string
+	Version        string
 	KeyId          string
 }
 
@@ -241,8 +241,43 @@ func unpackTError(buf []byte) (Message, error) {
 	return m, nil
 }
 
+func (m *TAttach) PackedSize() (uint32, error) {
+	versionLen, err := packedStringLen(m.KeyId)
+	if err != nil {
+		return 0, err
+	}
+	keyLen, err := packedStringLen(m.KeyId)
+	if err != nil {
+		return 0, err
+	}
+	return 5 + 2 + 4 + 2 + versionLen + 2 + keyLen, nil
+}
+
+func (m *TAttach) Pack(buf []byte) error {
+	buf[4] = TATTACH
+	binary.BigEndian.PutUint16(buf[5:7], m.Mid)
+	binary.BigEndian.PutUint32(buf[7:11], m.MaxMessageSize)
+	versionLen := PackString(m.Version, buf[11:])
+	PackString(m.KeyId, buf[11+versionLen:])
+	return nil
+}
+
 func unpackTAttach(buf []byte) (Message, error) {
-	return nil, ErrMsgCorrupt
+	m := &TAttach{}
+	if len(buf) < 5+2+4+2+2 {
+		return nil, ErrMsgCorrupt
+	}
+	m.Mid = binary.BigEndian.Uint16(buf[5:7])
+	versionLen := uint32(binary.BigEndian.Uint16(buf[7:9]))
+	if uint32(len(buf)) < 5+2+4+2+2+versionLen {
+		return nil, ErrMsgCorrupt
+	}
+	keyLen := uint32(binary.BigEndian.Uint16(buf[11+versionLen : 11+versionLen+2]))
+	if uint32(len(buf)) < 5+2+4+2+2+versionLen+keyLen {
+		return nil, ErrMsgCorrupt
+	}
+	m.KeyId = string(buf[11+versionLen+2 : 11+versionLen+2+keyLen])
+	return m, nil
 }
 
 func unpackRAttach(buf []byte) (Message, error) {
