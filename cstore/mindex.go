@@ -105,7 +105,7 @@ func getAndCacheIndex(store *client9.Client, key [32]byte, packname, cachepath s
 	if !os.IsNotExist(err) {
 		return nil, err
 	}
-	stat, err := store.Stat(packname)
+	stat, err := store.Stat(path.Join("packs", packname))
 	if err != nil {
 		return nil, err
 	}

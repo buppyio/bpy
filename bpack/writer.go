@@ -1,7 +1,6 @@
 package bpack
 
 import (
-	"bufio"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -12,7 +11,6 @@ const MaxPackEntrySize = 16777215
 
 type Writer struct {
 	w      io.WriteCloser
-	bufw   *bufio.Writer
 	keys   map[string]struct{}
 	index  Index
 	offset uint64
@@ -21,7 +19,6 @@ type Writer struct {
 func NewWriter(w io.WriteCloser) (*Writer, error) {
 	return &Writer{
 		w:      w,
-		bufw:   bufio.NewWriterSize(w, 65536),
 		keys:   make(map[string]struct{}),
 		index:  make(Index, 0, 2048),
 		offset: 0,
@@ -69,7 +66,7 @@ func (w *Writer) Add(key string, val []byte) error {
 	if len(val) > MaxPackEntrySize {
 		return errors.New("value too large for bpack")
 	}
-	_, err := w.bufw.Write(val)
+	_, err := w.w.Write(val)
 	if err != nil {
 		return err
 	}
@@ -104,15 +101,11 @@ func WriteIndex(w io.Writer, idx Index) error {
 
 func (w *Writer) Close() (Index, error) {
 	idxoffset := w.offset
-	err := WriteIndex(w.bufw, w.index)
+	err := WriteIndex(w.w, w.index)
 	if err != nil {
 		return nil, err
 	}
-	err = writeUInt64(w.bufw, idxoffset)
-	if err != nil {
-		return nil, err
-	}
-	err = w.bufw.Flush()
+	err = writeUInt64(w.w, idxoffset)
 	if err != nil {
 		return nil, err
 	}
