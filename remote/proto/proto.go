@@ -146,7 +146,7 @@ func ReadMessage(r io.Reader, buf []byte) (Message, error) {
 }
 
 func UnpackMessage(buf []byte) (Message, error) {
-	switch buf[0] {
+	switch buf[4] {
 	case TERROR:
 		return unpackTError(buf)
 	case TATTACH:
@@ -268,15 +268,17 @@ func unpackTAttach(buf []byte) (Message, error) {
 		return nil, ErrMsgCorrupt
 	}
 	m.Mid = binary.BigEndian.Uint16(buf[5:7])
-	versionLen := uint32(binary.BigEndian.Uint16(buf[7:9]))
+	m.MaxMessageSize = binary.BigEndian.Uint32(buf[7:11])
+	versionLen := uint32(binary.BigEndian.Uint16(buf[11:13]))
 	if uint32(len(buf)) < 5+2+4+2+2+versionLen {
 		return nil, ErrMsgCorrupt
 	}
-	keyLen := uint32(binary.BigEndian.Uint16(buf[11+versionLen : 11+versionLen+2]))
+	m.Version = string(buf[13 : 13+versionLen])
+	keyLen := uint32(binary.BigEndian.Uint16(buf[13+versionLen : 13+versionLen+2]))
 	if uint32(len(buf)) < 5+2+4+2+2+versionLen+keyLen {
 		return nil, ErrMsgCorrupt
 	}
-	m.KeyId = string(buf[11+versionLen+2 : 11+versionLen+2+keyLen])
+	m.KeyId = string(buf[13+versionLen+2 : 13+versionLen+2+keyLen])
 	return m, nil
 }
 
