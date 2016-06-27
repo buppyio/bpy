@@ -282,8 +282,23 @@ func unpackTAttach(buf []byte) (Message, error) {
 	return m, nil
 }
 
+
+func (m *RAttach) PackedSize() (uint32, error) {
+	return 5 + 2 + 4
+}
+
+func (m *RAttach) Pack(buf []byte) error {
+	buf[4] = RATTACH
+	binary.BigEndian.PutUint16(buf[5:7], m.Mid)
+	binary.BigEndian.PutUint32(buf[7:11], m.MaxMessageSize)
+	return nil
+}
+
 func unpackRAttach(buf []byte) (Message, error) {
-	return nil, ErrMsgCorrupt
+	m := &RAttach{}
+	m.Mid = binary.BigEndian.Uint16(buf[5:7])
+	m.MasMessageSize = binary.BigEndian.Uint32(buf[7:11])
+	return m, nil
 }
 
 func unpackTNewTag(buf []byte) (Message, error) {
