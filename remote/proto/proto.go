@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"reflect"
 )
 
 const (
@@ -27,14 +28,12 @@ const (
 )
 
 var (
-	ErrMsgTooLarge    = errors.New("Message too large")
-	ErrStringTooLarge = errors.New("String too large")
-	ErrMsgCorrupt     = errors.New("Message corrupt")
+	ErrMsgTooLarge = errors.New("message too large")
+	ErrStrTooLarge = errors.New("string too large")
+	ErrMsgCorrupt  = errors.New("message corrupt")
 )
 
 type Message interface {
-	PackedSize() (uint32, error)
-	Pack(buf []byte) error
 }
 
 type TError struct {
@@ -86,14 +85,14 @@ type ROpen struct {
 }
 
 type TReadAt struct {
-	Mid uint16
-	Fid uint32
+	Mid    uint16
+	Fid    uint32
+	Offset uint64
 }
 
 type RReadAt struct {
-	Mid    uint16
-	Offset uint64
-	Data   []byte
+	Mid  uint16
+	Data []byte
 }
 
 type TNewPack struct {
@@ -148,211 +147,176 @@ func ReadMessage(r io.Reader, buf []byte) (Message, error) {
 func UnpackMessage(buf []byte) (Message, error) {
 	switch buf[4] {
 	case TERROR:
-		return unpackTError(buf)
+		m := &TError{}
+		return m, unpackFields(m, buf[5:])
 	case TATTACH:
-		return unpackTAttach(buf)
+		m := &TAttach{}
+		return m, unpackFields(m, buf[5:])
 	case RATTACH:
-		return unpackRAttach(buf)
+		m := &RAttach{}
+		return m, unpackFields(m, buf[5:])
 	case TNEWTAG:
-		return unpackTNewTag(buf)
+		m := &TNewTag{}
+		return m, unpackFields(m, buf[5:])
 	case RNEWTAG:
-		return unpackRNewTag(buf)
+		m := &RNewTag{}
+		return m, unpackFields(m, buf[5:])
 	case TREMOVETAG:
-		return unpackTRemoveTag(buf)
+		m := &TRemoveTag{}
+		return m, unpackFields(m, buf[5:])
 	case RREMOVETAG:
-		return unpackRRemoveTag(buf)
+		m := &RRemoveTag{}
+		return m, unpackFields(m, buf[5:])
 	case TOPEN:
-		return unpackTOpen(buf)
+		m := &TOpen{}
+		return m, unpackFields(m, buf[5:])
 	case ROPEN:
-		return unpackTOpen(buf)
+		m := &ROpen{}
+		return m, unpackFields(m, buf[5:])
 	case TREADAT:
-		return unpackTReadAt(buf)
+		m := &TReadAt{}
+		return m, unpackFields(m, buf[5:])
 	case RREADAT:
-		return unpackRReadAt(buf)
+		m := &RReadAt{}
+		return m, unpackFields(m, buf[5:])
 	case TNEWPACK:
-		return unpackTNewPack(buf)
+		m := &TNewPack{}
+		return m, unpackFields(m, buf[5:])
 	case RNEWPACK:
-		return unpackRNewPack(buf)
+		m := &RNewPack{}
+		return m, unpackFields(m, buf[5:])
 	case TWRITEPACK:
-		return unpackTWritePack(buf)
+		m := &TWritePack{}
+		return m, unpackFields(m, buf[5:])
 	case RPACKERROR:
-		return unpackRPackError(buf)
+		m := &RPackError{}
+		return m, unpackFields(m, buf[5:])
 	case TCLOSEPACK:
-		return unpackTClosePack(buf)
+		m := &TClosePack{}
+		return m, unpackFields(m, buf[5:])
 	case RCLOSEPACK:
-		return unpackRClosePack(buf)
+		m := &RClosePack{}
+		return m, unpackFields(m, buf[5:])
 	default:
 		return nil, ErrMsgCorrupt
 	}
 }
 
-func PackMessage(m Message, buf []byte) (uint32, error) {
-	sz, err := m.PackedSize()
-	if err != nil {
-		return 0, err
+func unpackFields(m Message, buf []byte) error {
+	v := reflect.Indirect(reflect.ValueOf(m))
+	for i := 0; i < v.NumField(); i++ {
+		v := v.Field(i)
+		switch v.Kind() {
+		case reflect.Uint16:
+			if len(buf) < 2 {
+				return ErrMsgCorrupt
+			}
+			v.SetUint(uint64(binary.BigEndian.Uint16(buf[0:2])))
+			buf = buf[2:]
+		case reflect.Uint32:
+			if len(buf) < 4 {
+				return ErrMsgCorrupt
+			}
+			v.SetUint(uint64(binary.BigEndian.Uint32(buf[0:4])))
+			buf = buf[4:]
+		case reflect.Uint64:
+			if len(buf) < 8 {
+				return ErrMsgCorrupt
+			}
+			v.SetUint(binary.BigEndian.Uint64(buf[0:8]))
+			buf = buf[8:]
+		case reflect.String:
+			if len(buf) < 2 {
+				return ErrMsgCorrupt
+			}
+			sz := int(binary.BigEndian.Uint16(buf[0:2]))
+			buf = buf[2:]
+			if len(buf) < sz {
+				return ErrMsgCorrupt
+			}
+			v.SetString(string(buf[0:sz]))
+			buf = buf[sz:]
+		case reflect.Slice:
+			if len(buf) < 4 {
+				return ErrMsgCorrupt
+			}
+			sz := int(binary.BigEndian.Uint32(buf[0:4]))
+			buf = buf[4:]
+			if len(buf) < sz {
+				return ErrMsgCorrupt
+			}
+			v.SetBytes(buf[0:sz])
+			buf = buf[sz:]
+		default:
+			panic("internal error")
+		}
 	}
-	if sz > uint32(len(buf)) {
+	return nil
+}
+
+func PackMessage(m Message, buf []byte) (int, error) {
+	origbuf := buf
+	if len(buf) < 5 {
 		return 0, ErrMsgTooLarge
 	}
-	binary.BigEndian.PutUint32(buf[0:4], sz)
-	return sz, m.Pack(buf)
-}
-
-func packedStringLen(str string) (uint32, error) {
-	if len(str) > 65535 {
-		return 0, ErrStringTooLarge
-	}
-	return 2 + uint32(len(str)), nil
-}
-
-func PackString(str string, buf []byte) uint32 {
-	n := uint16(copy(buf[2:], []byte(str)))
-	binary.BigEndian.PutUint16(buf[0:2], n)
-	return 2 + uint32(n)
-}
-
-func (m *TError) PackedSize() (uint32, error) {
-	msgLen, err := packedStringLen(m.Message)
-	if err != nil {
-		return 0, err
-	}
-	return 5 + 2 + msgLen, nil
-}
-
-func (m *TError) Pack(buf []byte) error {
 	buf[4] = TERROR
-	binary.BigEndian.PutUint16(buf[5:7], m.Mid)
-	PackString(m.Message, buf[7:])
-	return nil
-}
-
-func unpackTError(buf []byte) (Message, error) {
-	m := &TError{}
-
-	if len(buf) < 5+2+2 {
-		return nil, ErrMsgCorrupt
+	buf = buf[5:]
+	v := reflect.Indirect(reflect.ValueOf(m))
+	for i := 0; i < v.NumField(); i++ {
+		v := v.Field(i)
+		switch v.Kind() {
+		case reflect.Uint16:
+			if len(buf) < 2 {
+				return 0, ErrMsgTooLarge
+			}
+			binary.BigEndian.PutUint16(buf[0:2], uint16(v.Uint()))
+			buf = buf[2:]
+		case reflect.Uint32:
+			if len(buf) < 4 {
+				return 0, ErrMsgTooLarge
+			}
+			binary.BigEndian.PutUint32(buf[0:4], uint32(v.Uint()))
+			buf = buf[4:]
+		case reflect.Uint64:
+			if len(buf) < 8 {
+				return 0, ErrMsgTooLarge
+			}
+			binary.BigEndian.PutUint64(buf[0:8], uint64(v.Uint()))
+			buf = buf[8:]
+		case reflect.String:
+			if len(buf) < 2 {
+				return 0, ErrMsgTooLarge
+			}
+			str := v.String()
+			sz := len(str)
+			if sz > 65535 {
+				return 0, ErrStrTooLarge
+			}
+			binary.BigEndian.PutUint16(buf[0:2], uint16(sz))
+			buf = buf[2:]
+			if len(buf) < sz {
+				return 0, ErrMsgTooLarge
+			}
+			copy(buf, []byte(str))
+			buf = buf[sz:]
+		case reflect.Slice:
+			if len(buf) < 2 {
+				return 0, ErrMsgTooLarge
+			}
+			data := v.Bytes()
+			sz := uint32(len(data))
+			binary.BigEndian.PutUint32(buf[0:4], sz)
+			buf = buf[4:]
+			if uint32(len(buf)) < sz {
+				return 0, ErrMsgTooLarge
+			}
+			copy(buf, data)
+			buf = buf[sz:]
+		default:
+			panic("internal error")
+		}
 	}
-	m.Mid = binary.BigEndian.Uint16(buf[5:7])
-	msgLen := uint32(binary.BigEndian.Uint16(buf[7:9]))
-	if uint32(len(buf)) < 5+2+2+msgLen {
-		return nil, ErrMsgCorrupt
-	}
-	m.Message = string(buf[9 : 9+msgLen])
-	return m, nil
-}
-
-func (m *TAttach) PackedSize() (uint32, error) {
-	versionLen, err := packedStringLen(m.KeyId)
-	if err != nil {
-		return 0, err
-	}
-	keyLen, err := packedStringLen(m.KeyId)
-	if err != nil {
-		return 0, err
-	}
-	return 5 + 2 + 4 + 2 + versionLen + 2 + keyLen, nil
-}
-
-func (m *TAttach) Pack(buf []byte) error {
-	buf[4] = TATTACH
-	binary.BigEndian.PutUint16(buf[5:7], m.Mid)
-	binary.BigEndian.PutUint32(buf[7:11], m.MaxMessageSize)
-	versionLen := PackString(m.Version, buf[11:])
-	PackString(m.KeyId, buf[11+versionLen:])
-	return nil
-}
-
-func unpackTAttach(buf []byte) (Message, error) {
-	m := &TAttach{}
-	if len(buf) < 5+2+4+2+2 {
-		return nil, ErrMsgCorrupt
-	}
-	m.Mid = binary.BigEndian.Uint16(buf[5:7])
-	m.MaxMessageSize = binary.BigEndian.Uint32(buf[7:11])
-	versionLen := uint32(binary.BigEndian.Uint16(buf[11:13]))
-	if uint32(len(buf)) < 5+2+4+2+2+versionLen {
-		return nil, ErrMsgCorrupt
-	}
-	m.Version = string(buf[13 : 13+versionLen])
-	keyLen := uint32(binary.BigEndian.Uint16(buf[13+versionLen : 13+versionLen+2]))
-	if uint32(len(buf)) < 5+2+4+2+2+versionLen+keyLen {
-		return nil, ErrMsgCorrupt
-	}
-	m.KeyId = string(buf[13+versionLen+2 : 13+versionLen+2+keyLen])
-	return m, nil
-}
-
-
-func (m *RAttach) PackedSize() (uint32, error) {
-	return 5 + 2 + 4
-}
-
-func (m *RAttach) Pack(buf []byte) error {
-	buf[4] = RATTACH
-	binary.BigEndian.PutUint16(buf[5:7], m.Mid)
-	binary.BigEndian.PutUint32(buf[7:11], m.MaxMessageSize)
-	return nil
-}
-
-func unpackRAttach(buf []byte) (Message, error) {
-	m := &RAttach{}
-	m.Mid = binary.BigEndian.Uint16(buf[5:7])
-	m.MasMessageSize = binary.BigEndian.Uint32(buf[7:11])
-	return m, nil
-}
-
-func unpackTNewTag(buf []byte) (Message, error) {
-	return nil, ErrMsgCorrupt
-}
-
-func unpackRNewTag(buf []byte) (Message, error) {
-	return nil, ErrMsgCorrupt
-}
-
-func unpackTRemoveTag(buf []byte) (Message, error) {
-	return nil, ErrMsgCorrupt
-}
-
-func unpackRRemoveTag(buf []byte) (Message, error) {
-	return nil, ErrMsgCorrupt
-}
-
-func unpackTOpen(buf []byte) (Message, error) {
-	return nil, ErrMsgCorrupt
-}
-
-func unpackROpen(buf []byte) (Message, error) {
-	return nil, ErrMsgCorrupt
-}
-
-func unpackTReadAt(buf []byte) (Message, error) {
-	return nil, ErrMsgCorrupt
-}
-
-func unpackRReadAt(buf []byte) (Message, error) {
-	return nil, ErrMsgCorrupt
-}
-
-func unpackTNewPack(buf []byte) (Message, error) {
-	return nil, ErrMsgCorrupt
-}
-
-func unpackRNewPack(buf []byte) (Message, error) {
-	return nil, ErrMsgCorrupt
-}
-
-func unpackTWritePack(buf []byte) (Message, error) {
-	return nil, ErrMsgCorrupt
-}
-
-func unpackRPackError(buf []byte) (Message, error) {
-	return nil, ErrMsgCorrupt
-}
-
-func unpackTClosePack(buf []byte) (Message, error) {
-	return nil, ErrMsgCorrupt
-}
-
-func unpackRClosePack(buf []byte) (Message, error) {
-	return nil, ErrMsgCorrupt
+	sz := len(origbuf) - len(buf)
+	binary.BigEndian.PutUint32(origbuf[0:4], uint32(sz))
+	return sz, nil
 }
