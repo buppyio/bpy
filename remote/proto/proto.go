@@ -251,7 +251,50 @@ func unpackFields(m Message, buf []byte) error {
 			panic("internal error")
 		}
 	}
+	if len(buf) != 0 {
+		return ErrMsgCorrupt
+	}
 	return nil
+}
+
+func GetMessageType(m Message) byte {
+	switch m.(type) {
+	case *TError:
+		return TERROR
+	case *TAttach:
+		return TATTACH
+	case *RAttach:
+		return RATTACH
+	case *TNewTag:
+		return TNEWTAG
+	case *RNewTag:
+		return RNEWTAG
+	case *TRemoveTag:
+		return TREMOVETAG
+	case *RRemoveTag:
+		return RREMOVETAG
+	case *TOpen:
+		return TOPEN
+	case *ROpen:
+		return ROPEN
+	case *TReadAt:
+		return TREADAT
+	case *RReadAt:
+		return RREADAT
+	case *TNewPack:
+		return TNEWPACK
+	case *RNewPack:
+		return RNEWPACK
+	case *TWritePack:
+		return TWRITEPACK
+	case *RPackError:
+		return RPACKERROR
+	case *TClosePack:
+		return TCLOSEPACK
+	case *RClosePack:
+		return RCLOSEPACK
+	}
+	panic("internal error")
 }
 
 func PackMessage(m Message, buf []byte) (int, error) {
@@ -259,7 +302,7 @@ func PackMessage(m Message, buf []byte) (int, error) {
 	if len(buf) < 5 {
 		return 0, ErrMsgTooLarge
 	}
-	buf[4] = TERROR
+	buf[4] = GetMessageType(m)
 	buf = buf[5:]
 	v := reflect.Indirect(reflect.ValueOf(m))
 	for i := 0; i < v.NumField(); i++ {
