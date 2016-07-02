@@ -1,91 +1,145 @@
 package client
 
 import (
+	"acha.ninja/bpy/remote/proto"
 	"errors"
-	"sync"
+	"io"
 )
+
+type ReadWriteCloser interface {
+	io.Reader
+	io.Writer
+	io.Closer
+}
 
 var (
 	ErrClientClosed = errors.New("client closed")
-	ErrBadResponse = errors.New("server sent bad response")
+	ErrBadResponse  = errors.New("server sent bad response")
+	ErrDisconnected = errors.New("connection disconnected")
 )
 
 type Client struct {
-	lock sync.Mutex
 	callCount uint16
-	calls map[uint16]chan proto.Message
-	closed bool
 }
 
-func (c *Client) newCall() (mid uint16, chan proto.Message, error) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	if c.closed {
-		return nil, errors.New("client closed")
+func Connect(conn ReadWriteCloser, keyId string) (*Client, error) {
+	maxsz := 1024 * 1024
+	buf := make([]byte, maxsz, maxsz)
+
+	err := c.writeMessage(&proto.TAttach{
+		Mid:            1,
+		MaxMessageSize: maxsz,
+		Version:        "buppy1",
+		KeyId:          keyId,
+	})
+	if err != nil {
+		return nil, err
 	}
-	for mid := c.callCount + 1 ; mid != c.callCount ; mid++ {
-		_, ok := c.calls[mid]
-		if !ok {
-			ch := make(chan proto.Message, 1)
-			c.calls[mid] = ch
-			c.callCount = mid
-			return mid, call, nil
+
+	resp, err := proto.ReadMessage()
+	if err != nil {
+		return nil, err
+	}
+
+	switch resp := resp.(type) {
+	case *proto.RAttach:
+		if resp.MaxMessageSize > maxsz || resp.Mid != 1 {
+			return nil, ErrBadResponse
 		}
+		buf = make([]byte, resp.MaxMessageSize, resp.MaxMessageSize)
+	case *RError:
+		if resp.Mid != 1 {
+			return nil, ErrBadResponse
+		}
+		return nil, errors.New(resp.Message)
+	default:
+		return nil, ErrBadResponse
 	}
-	return 0, nil, errors.New("too many concurrent remote calls")
+
+	return &Client{
+		conn: conn,
+		buf:  buf,
+	}
 }
 
-func (c *Client) sendMessage(m proto.Message) error {
-	sz, err := m.PackedSize()
-	if err != nil {
-		return err
-	}
-	buf := make(byte[], sz, sz)
-	err := m.Pack(buf)
-	if err != nil {
-		return err
-	}
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	_, err = c.writer.Write(buf)
-	if err != nil {
-		c.Close()
-	}
-	return err
+func (c *Client) WriteMessage(m proto.Message) error {
+	return errors.New("unimpl")
 }
 
-func (c *Client) Close() error {
-	c.lock.Lock()
-	c.closed = true
-	for _, ch := range c.calls {
-		close(ch)
+func (c *Client) nextMid() uint16 {
+	c.callCount += 1
+	if c.callCount == proto.CASTMID {
+		c.callCount += 1
 	}
-	c.lock.Unlock()
-	return nil
+	return c.callCount
 }
 
-func (c *Client) TReadAt(offset uint64) (*proto.RReadAt, error) {
-	mid, resp, err := c.newCall()
+func (c *Client) TOpen(path string) (*proto.ROpen, error) {
+	mid := c.nextMid()
+	err := c.writeMessage(&proto.TOpen{
+		Mid:  mid,
+		Path: path,
+	})
+	resp, err := c.readMessage()
 	if err != nil {
 		return nil, err
 	}
-	t := &TReadAt{
-		Mid: mid,
-		Offset: offset,
+	if proto.GetMessageId(resp) != mid {
+		return nil, ErrBadResponse
 	}
-	err = c.sendMessage(t)
-	if err != nil {
-		return nil, err
-	}
-	r, ok <- resp
-	if !ok {
-		return nil, ErrClientClosed
-	}
-	switch r := r.(type) {
-	case *proto.RReadAt:
-		return r, nil
+	switch resp := resp.(type) {
+	case *proto.ROpen:
+		return resp, nil
 	case *proto.RError:
-		return nil, errors.New(r.Message)
+		return nil, errors.New(resp.Message)
+	default:
+		return nil, ErrBadResponse
+	}
+}
+
+func (c *Client) TReadAt(fid uint64, offset uint64) (*proto.ROpen, error) {
+	mid := c.nextMid()
+	err := c.writeMessage(&proto.TOpen{
+		Mid:    mid,
+		Fid:    fid,
+		Offset: offset,
+	})
+	resp, err := c.readMessage()
+	if err != nil {
+		return nil, err
+	}
+	if proto.GetMessageId(resp) != mid {
+		return nil, ErrBadResponse
+	}
+	switch resp := resp.(type) {
+	case *proto.RReadAt:
+		return resp, nil
+	case *proto.RError:
+		return nil, errors.New(resp.Message)
+	default:
+		return nil, ErrBadResponse
+	}
+}
+
+func (c *Client) TReadAt(fid uint64, offset uint64) (*proto.ROpen, error) {
+	mid := c.nextMid()
+	err := c.writeMessage(&proto.TOpen{
+		Mid:    mid,
+		Fid:    fid,
+		Offset: offset,
+	})
+	resp, err := c.readMessage()
+	if err != nil {
+		return nil, err
+	}
+	if proto.GetMessageId(resp) != mid {
+		return nil, ErrBadResponse
+	}
+	switch resp := resp.(type) {
+	case *proto.RReadAt:
+		return resp, nil
+	case *proto.RError:
+		return nil, errors.New(resp.Message)
 	default:
 		return nil, ErrBadResponse
 	}

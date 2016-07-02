@@ -27,6 +27,10 @@ const (
 	RCLOSEPACK
 )
 
+const (
+	CASTMID = 0
+)
+
 var (
 	ErrMsgTooLarge = errors.New("message too large")
 	ErrStrTooLarge = errors.New("string too large")
@@ -293,6 +297,46 @@ func GetMessageType(m Message) byte {
 		return TCLOSEPACK
 	case *RClosePack:
 		return RCLOSEPACK
+	}
+	panic("internal error")
+}
+
+func GetMessageId(m Message) uint16 {
+	switch m := m.(type) {
+	case *TError:
+		return m.Mid
+	case *TAttach:
+		return m.Mid
+	case *RAttach:
+		return m.Mid
+	case *TNewTag:
+		return m.Mid
+	case *RNewTag:
+		return m.Mid
+	case *TRemoveTag:
+		return m.Mid
+	case *RRemoveTag:
+		return m.Mid
+	case *TOpen:
+		return m.Mid
+	case *ROpen:
+		return m.Mid
+	case *TReadAt:
+		return m.Mid
+	case *RReadAt:
+		return m.Mid
+	case *TNewPack:
+		return m.Mid
+	case *RNewPack:
+		return m.Mid
+	case *TWritePack:
+		return CASTMID
+	case *RPackError:
+		return CASTMID
+	case *TClosePack:
+		return m.Mid
+	case *RClosePack:
+		return m.Mid
 	}
 	panic("internal error")
 }
