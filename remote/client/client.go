@@ -4,6 +4,7 @@ import (
 	"acha.ninja/bpy/remote/proto"
 	"errors"
 	"io"
+	"sync"
 )
 
 type ReadWriteCloser interface {
@@ -14,29 +15,65 @@ type ReadWriteCloser interface {
 
 var (
 	ErrClientClosed = errors.New("client closed")
+	ErrTooManyCalls = errors.New("too many calls in progress")
 	ErrBadResponse  = errors.New("server sent bad response")
 	ErrDisconnected = errors.New("connection disconnected")
 )
 
 type Client struct {
-	callCount uint16
+	conn ReadWriteCloser
+
+	wLock sync.Mutex
+	wBuf  []byte
+	rBuf  []byte
+
+	midLock  sync.Mutex
+	mIdCount uint16
+	closed   bool
+	calls    map[uint16]chan Message
+}
+
+func readMessages(c *Client) {
+	for {
+		m, err := proto.ReadMessage(c.conn, c.rBuf)
+		if err != nil {
+			break
+		}
+		mid := proto.GetMessageId(m)
+		c.midLock.Lock()
+		ch, ok := c.calls[mid]
+		if ok {
+			ch <- m
+		}
+		c.midLock.Unlock()
+	}
+	c.midLock.Lock()
+	for _, ch := range calls {
+		close(ch)
+	}
+	c.closed = true
+	c.midLock.Unlock()
 }
 
 func Connect(conn ReadWriteCloser, keyId string) (*Client, error) {
 	maxsz := 1024 * 1024
-	buf := make([]byte, maxsz, maxsz)
+	c := &Client{
+		conn: conn,
+		wBuf: make([]byte, maxsz, maxsz),
+		rBuf: make([]byte, maxsz, maxsz),
+	}
+	go readMessages(c)
 
-	err := c.writeMessage(&proto.TAttach{
-		Mid:            1,
-		MaxMessageSize: maxsz,
-		Version:        "buppy1",
-		KeyId:          keyId,
-	})
+	ch, mid, err := c.MakeCall()
 	if err != nil {
 		return nil, err
 	}
-
-	resp, err := proto.ReadMessage()
+	resp, err := c.Call(&proto.TAttach{
+		Mid:            mid,
+		MaxMessageSize: maxsz,
+		Version:        "buppy1",
+		KeyId:          keyId,
+	}, ch)
 	if err != nil {
 		return nil, err
 	}
@@ -46,33 +83,75 @@ func Connect(conn ReadWriteCloser, keyId string) (*Client, error) {
 		if resp.MaxMessageSize > maxsz || resp.Mid != 1 {
 			return nil, ErrBadResponse
 		}
-		buf = make([]byte, resp.MaxMessageSize, resp.MaxMessageSize)
-	case *RError:
-		if resp.Mid != 1 {
-			return nil, ErrBadResponse
-		}
-		return nil, errors.New(resp.Message)
+		c.wLock.Lock()
+		c.wBuf = make([]byte, resp.MaxMessageSize, resp.MaxMessageSize)
+		c.wLock.Unlock()
+		return c, nil
 	default:
 		return nil, ErrBadResponse
 	}
+}
 
-	return &Client{
-		conn: conn,
-		buf:  buf,
+func (c *Client) NewCall() {
+	c.midLock.Lock()
+	defer c.midLock.Unlock()
+
+	if c.closed {
+		return nil, 0, ErrDisconnected
+	}
+
+	mid := c.mIdCount + 1
+	for {
+		if mid == 0 {
+			mid += 1
+		}
+		if mid == c.mIdCount {
+			return nil, 0, ErrTooManyCalls
+		}
+		_, ok := c.calls[mid]
+		if ok {
+			ch := make(chan Message)
+			c.calls[mid] = ch
+			return ch, mid, nil
+		}
+		mid += 1
+	}
+}
+
+func (c *Client) Call(m proto.Message, ch chan Message, mid uint16) (Message, error) {
+	defer func() {
+		c.midLock.Lock()
+		delete(c.calls, mid)
+		c.midLock.Unlock()
+	}()
+	err := c.WriteMessage(m)
+	if err != nil {
+		return nil, err
+	}
+	resp, ok := <-ch
+	if !ok {
+		return nil, ErrDisconnected
+	}
+	switch resp := resp.(type) {
+	case *proto.RError:
+		return nil, errors.New(resp.Message)
+	default:
+		return resp, nil
 	}
 }
 
 func (c *Client) WriteMessage(m proto.Message) error {
-	return errors.New("unimpl")
+	c.wLock.Lock()
+	defer c.wLock.Unlock()
+	n, err := proto.PackMessage(c, c.wBuf)
+	if err != nil {
+		return err
+	}
+	_, err := c.conn.Write(c.wBuf[:n])
+	return err
 }
 
-func (c *Client) nextMid() uint16 {
-	c.callCount += 1
-	if c.callCount == proto.CASTMID {
-		c.callCount += 1
-	}
-	return c.callCount
-}
+/*
 
 func (c *Client) TOpen(path string) (*proto.ROpen, error) {
 	mid := c.nextMid()
@@ -144,3 +223,4 @@ func (c *Client) TReadAt(fid uint64, offset uint64) (*proto.ROpen, error) {
 		return nil, ErrBadResponse
 	}
 }
+*/
