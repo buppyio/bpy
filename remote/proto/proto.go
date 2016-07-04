@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	TERROR = iota
+	RERROR = iota
 	TATTACH
 	RATTACH
 	TNEWTAG
@@ -40,7 +40,7 @@ var (
 type Message interface {
 }
 
-type TError struct {
+type RError struct {
 	Mid     uint16
 	Message string
 }
@@ -54,7 +54,7 @@ type TAttach struct {
 
 type RAttach struct {
 	Mid            uint16
-	MaxMessageSize uint64
+	MaxMessageSize uint32
 }
 
 type TNewTag struct {
@@ -148,10 +148,19 @@ func ReadMessage(r io.Reader, buf []byte) (Message, error) {
 	return UnpackMessage(buf[:sz])
 }
 
+func WriteMessage(w io.Writer, m Message, buf []byte) error {
+	n, err := PackMessage(m, buf)
+	if err != nil {
+		return nil
+	}
+	_, err = w.Write(buf[:n])
+	return err
+}
+
 func UnpackMessage(buf []byte) (Message, error) {
 	switch buf[4] {
-	case TERROR:
-		m := &TError{}
+	case RERROR:
+		m := &RError{}
 		return m, unpackFields(m, buf[5:])
 	case TATTACH:
 		m := &TAttach{}
@@ -263,8 +272,8 @@ func unpackFields(m Message, buf []byte) error {
 
 func GetMessageType(m Message) byte {
 	switch m.(type) {
-	case *TError:
-		return TERROR
+	case *RError:
+		return RERROR
 	case *TAttach:
 		return TATTACH
 	case *RAttach:
@@ -303,7 +312,7 @@ func GetMessageType(m Message) byte {
 
 func GetMessageId(m Message) uint16 {
 	switch m := m.(type) {
-	case *TError:
+	case *RError:
 		return m.Mid
 	case *TAttach:
 		return m.Mid

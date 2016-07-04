@@ -30,7 +30,7 @@ type Client struct {
 	midLock  sync.Mutex
 	mIdCount uint16
 	closed   bool
-	calls    map[uint16]chan Message
+	calls    map[uint16]chan proto.Message
 }
 
 func readMessages(c *Client) {
@@ -48,7 +48,7 @@ func readMessages(c *Client) {
 		c.midLock.Unlock()
 	}
 	c.midLock.Lock()
-	for _, ch := range calls {
+	for _, ch := range c.calls {
 		close(ch)
 	}
 	c.closed = true
@@ -56,7 +56,7 @@ func readMessages(c *Client) {
 }
 
 func Connect(conn ReadWriteCloser, keyId string) (*Client, error) {
-	maxsz := 1024 * 1024
+	maxsz := uint32(1024 * 1024)
 	c := &Client{
 		conn: conn,
 		wBuf: make([]byte, maxsz, maxsz),
@@ -64,7 +64,7 @@ func Connect(conn ReadWriteCloser, keyId string) (*Client, error) {
 	}
 	go readMessages(c)
 
-	ch, mid, err := c.MakeCall()
+	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
 	}
@@ -73,11 +73,10 @@ func Connect(conn ReadWriteCloser, keyId string) (*Client, error) {
 		MaxMessageSize: maxsz,
 		Version:        "buppy1",
 		KeyId:          keyId,
-	}, ch)
+	}, ch, mid)
 	if err != nil {
 		return nil, err
 	}
-
 	switch resp := resp.(type) {
 	case *proto.RAttach:
 		if resp.MaxMessageSize > maxsz || resp.Mid != 1 {
@@ -92,7 +91,7 @@ func Connect(conn ReadWriteCloser, keyId string) (*Client, error) {
 	}
 }
 
-func (c *Client) NewCall() {
+func (c *Client) newCall() (chan proto.Message, uint16, error) {
 	c.midLock.Lock()
 	defer c.midLock.Unlock()
 
@@ -110,7 +109,7 @@ func (c *Client) NewCall() {
 		}
 		_, ok := c.calls[mid]
 		if ok {
-			ch := make(chan Message)
+			ch := make(chan proto.Message)
 			c.calls[mid] = ch
 			return ch, mid, nil
 		}
@@ -118,7 +117,7 @@ func (c *Client) NewCall() {
 	}
 }
 
-func (c *Client) Call(m proto.Message, ch chan Message, mid uint16) (Message, error) {
+func (c *Client) Call(m proto.Message, ch chan proto.Message, mid uint16) (proto.Message, error) {
 	defer func() {
 		c.midLock.Lock()
 		delete(c.calls, mid)
@@ -143,12 +142,7 @@ func (c *Client) Call(m proto.Message, ch chan Message, mid uint16) (Message, er
 func (c *Client) WriteMessage(m proto.Message) error {
 	c.wLock.Lock()
 	defer c.wLock.Unlock()
-	n, err := proto.PackMessage(c, c.wBuf)
-	if err != nil {
-		return err
-	}
-	_, err := c.conn.Write(c.wBuf[:n])
-	return err
+	return proto.WriteMessage(c.conn, m, c.wBuf)
 }
 
 /*

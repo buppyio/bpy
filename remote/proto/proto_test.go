@@ -9,17 +9,27 @@ func TestEncDec(t *testing.T) {
 	buf := make([]byte, 1024, 1024)
 
 	messages := []Message{
-		&TError{
-			Mid:     2,
+		&RError{
+			Mid:     1,
 			Message: "Error Message",
 		},
+		&TAttach{
+			Mid:            2,
+			Version:        "...",
+			MaxMessageSize: 1234,
+			KeyId:          "aaaaaaaaaaaaaaaaaaaaa",
+		},
+		&RAttach{
+			Mid:            3,
+			MaxMessageSize: 1234,
+		},
 		&TReadAt{
-			Mid:    3,
-			Fid:    4,
+			Mid:    4,
+			Fid:    5,
 			Offset: 0xffffffffffffffff,
 		},
 		&RReadAt{
-			Mid:  3,
+			Mid:  6,
 			Data: []byte{1, 2, 3},
 		},
 	}
