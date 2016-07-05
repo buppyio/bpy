@@ -55,7 +55,7 @@ func readMessages(c *Client) {
 	c.midLock.Unlock()
 }
 
-func Connect(conn ReadWriteCloser, keyId string) (*Client, error) {
+func Attach(conn ReadWriteCloser, keyId string) (*Client, error) {
 	maxsz := uint32(1024 * 1024)
 	c := &Client{
 		conn: conn,
