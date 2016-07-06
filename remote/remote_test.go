@@ -19,15 +19,13 @@ func (conn *TestConn) Close() error                  { conn.pr.Close(); conn.pw.
 func newTestConnPair() (*TestConn, *TestConn) {
 	pr1, pw1 := io.Pipe()
 	pr2, pw2 := io.Pipe()
-	go io.Copy(pw1, pr2)
-	go io.Copy(pw2, pr1)
 	conn1 := &TestConn{
 		pr: pr1,
-		pw: pw1,
+		pw: pw2,
 	}
 	conn2 := &TestConn{
 		pr: pr2,
-		pw: pw2,
+		pw: pw1,
 	}
 	return conn1, conn2
 }

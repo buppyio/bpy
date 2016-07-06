@@ -47,6 +47,7 @@ func Serve(conn ReadWriteCloser, root string) {
 	if err != nil {
 		return
 	}
+
 	switch t := t.(type) {
 	case *proto.TAttach:
 		if t.Mid != 1 || t.Version != "buppy1" {
