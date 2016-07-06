@@ -16,6 +16,7 @@ type ReadWriteCloser interface {
 var (
 	ErrClientClosed = errors.New("client closed")
 	ErrTooManyCalls = errors.New("too many calls in progress")
+	ErrTooManyFiles = errors.New("too many open files")
 	ErrBadResponse  = errors.New("server sent bad response")
 	ErrDisconnected = errors.New("connection disconnected")
 )
@@ -34,7 +35,7 @@ type Client struct {
 
 	fidLock  sync.Mutex
 	fidCount uint32
-	fids     map[uint16]struct{}
+	fids     map[uint32]struct{}
 }
 
 func readMessages(c *Client) {
@@ -61,7 +62,7 @@ func Attach(conn ReadWriteCloser, keyId string) (*Client, error) {
 		wBuf:  make([]byte, maxsz, maxsz),
 		rBuf:  make([]byte, maxsz, maxsz),
 		calls: make(map[uint16]chan proto.Message),
-		fids:  make(map[uint16]struct{}),
+		fids:  make(map[uint32]struct{}),
 	}
 	go readMessages(c)
 
@@ -151,6 +152,32 @@ func (c *Client) Call(m proto.Message, ch chan proto.Message, mid uint16) (proto
 		return nil, errors.New(resp.Message)
 	default:
 		return resp, nil
+	}
+}
+
+func (c *Client) nextFid(m proto.Message) (uint32, error) {
+	c.fidLock.Lock()
+	defer c.fidLock.Unlock()
+	fid := c.fidCount + 1
+	for {
+		if fid == c.fidCount {
+			return 0, ErrTooManyFiles
+		}
+		_, ok := c.fids[fid]
+		if !ok {
+			c.fids[fid] = struct{}{}
+			return fid, nil
+		}
+		fid += 1
+	}
+}
+
+func (c *Client) freeFid(fid uint32) {
+	c.fidLock.Lock()
+	defer c.fidLock.Unlock()
+	_, ok := c.fids[fid]
+	if ok {
+		delete(c.fids, fid)
 	}
 }
 
