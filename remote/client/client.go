@@ -31,6 +31,10 @@ type Client struct {
 	mIdCount uint16
 	closed   bool
 	calls    map[uint16]chan proto.Message
+
+	fidLock  sync.Mutex
+	fidCount uint32
+	fids     map[uint16]struct{}
 }
 
 func readMessages(c *Client) {
@@ -47,20 +51,17 @@ func readMessages(c *Client) {
 		}
 		c.midLock.Unlock()
 	}
-	c.midLock.Lock()
-	for _, ch := range c.calls {
-		close(ch)
-	}
-	c.closed = true
-	c.midLock.Unlock()
+	c.Close()
 }
 
 func Attach(conn ReadWriteCloser, keyId string) (*Client, error) {
 	maxsz := uint32(1024 * 1024)
 	c := &Client{
-		conn: conn,
-		wBuf: make([]byte, maxsz, maxsz),
-		rBuf: make([]byte, maxsz, maxsz),
+		conn:  conn,
+		wBuf:  make([]byte, maxsz, maxsz),
+		rBuf:  make([]byte, maxsz, maxsz),
+		calls: make(map[uint16]chan proto.Message),
+		fids:  make(map[uint16]struct{}),
 	}
 	go readMessages(c)
 
@@ -91,6 +92,20 @@ func Attach(conn ReadWriteCloser, keyId string) (*Client, error) {
 	}
 }
 
+func (c *Client) Close() error {
+	c.midLock.Lock()
+	defer c.midLock.Unlock()
+	if c.closed {
+		return nil
+	}
+	for _, ch := range c.calls {
+		close(ch)
+	}
+	c.closed = true
+	c.conn.Close()
+	return nil
+}
+
 func (c *Client) newCall() (chan proto.Message, uint16, error) {
 	c.midLock.Lock()
 	defer c.midLock.Unlock()
@@ -108,7 +123,7 @@ func (c *Client) newCall() (chan proto.Message, uint16, error) {
 			return nil, 0, ErrTooManyCalls
 		}
 		_, ok := c.calls[mid]
-		if ok {
+		if !ok {
 			ch := make(chan proto.Message)
 			c.calls[mid] = ch
 			return ch, mid, nil
@@ -145,31 +160,28 @@ func (c *Client) WriteMessage(m proto.Message) error {
 	return proto.WriteMessage(c.conn, m, c.wBuf)
 }
 
-/*
-
-func (c *Client) TOpen(path string) (*proto.ROpen, error) {
-	mid := c.nextMid()
-	err := c.writeMessage(&proto.TOpen{
-		Mid:  mid,
-		Path: path,
-	})
-	resp, err := c.readMessage()
+func (c *Client) TOpen(fid uint32, path string) (*proto.ROpen, error) {
+	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
 	}
-	if proto.GetMessageId(resp) != mid {
-		return nil, ErrBadResponse
+	resp, err := c.Call(&proto.TOpen{
+		Mid:  mid,
+		Fid:  fid,
+		Path: path,
+	}, ch, mid)
+	if err != nil {
+		return nil, err
 	}
 	switch resp := resp.(type) {
 	case *proto.ROpen:
 		return resp, nil
-	case *proto.RError:
-		return nil, errors.New(resp.Message)
 	default:
 		return nil, ErrBadResponse
 	}
 }
 
+/*
 func (c *Client) TReadAt(fid uint64, offset uint64) (*proto.ROpen, error) {
 	mid := c.nextMid()
 	err := c.writeMessage(&proto.TOpen{
