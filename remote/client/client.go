@@ -38,6 +38,10 @@ type Client struct {
 	fidLock  sync.Mutex
 	fidCount uint32
 	fids     map[uint32]struct{}
+
+	pidLock  sync.Mutex
+	pidCount uint32
+	pids     map[uint32]error
 }
 
 func readMessages(c *Client) {
@@ -65,6 +69,7 @@ func Attach(conn ReadWriteCloser, keyId string) (*Client, error) {
 		rBuf:  make([]byte, maxsz, maxsz),
 		calls: make(map[uint16]chan proto.Message),
 		fids:  make(map[uint32]struct{}),
+		pids:  make(map[uint32]error),
 	}
 	go readMessages(c)
 
@@ -157,7 +162,7 @@ func (c *Client) Call(m proto.Message, ch chan proto.Message, mid uint16) (proto
 	}
 }
 
-func (c *Client) nextFid(m proto.Message) (uint32, error) {
+func (c *Client) nextFid() (uint32, error) {
 	c.fidLock.Lock()
 	defer c.fidLock.Unlock()
 	fid := c.fidCount + 1
@@ -248,6 +253,83 @@ func (c *Client) TClose(fid uint32) (*proto.RClose, error) {
 	case *proto.RClose:
 		return resp, nil
 	default:
+		return nil, ErrBadResponse
+	}
+}
+
+func (c *Client) TNewPack(pid uint32) (*proto.RNewPack, error) {
+	ch, mid, err := c.newCall()
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.Call(&proto.TNewPack{
+		Mid: mid,
+		Pid: pid,
+	}, ch, mid)
+	if err != nil {
+		return nil, err
+	}
+	switch resp := resp.(type) {
+	case *proto.RNewPack:
+		return resp, nil
+	default:
+		return nil, ErrBadResponse
+	}
+}
+
+func (c *Client) TPackWrite(pid uint32, data []byte) error {
+	return c.WriteMessage(&proto.TPackWrite{
+		Mid: proto.CASTMID,
+		Pid: pid,
+	})
+}
+
+func (c *Client) TClosePack(pid uint32) (*proto.TClosePack, error) {
+	ch, mid, err := c.newCall()
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.Call(&proto.TClosePack{
+		Mid: mid,
+		Pid: pid,
+	}, ch, mid)
+	if err != nil {
+		return nil, err
+	}
+	switch resp := resp.(type) {
+	case *proto.RClosePack:
+		return resp, nil
+	default:
+		return nil, ErrBadResponse
+	}
+}
+
+func (c *Client) Open(path string) (*File, error) {
+	fid, err := c.nextFid()
+	if err != nil {
+		return nil, err
+	}
+	ch, mid, err := c.newCall()
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.Call(&proto.TOpen{
+		Mid:  mid,
+		Path: path,
+		Fid:  fid,
+	}, ch, mid)
+	if err != nil {
+		c.freeFid(fid)
+		return nil, err
+	}
+	switch resp.(type) {
+	case *proto.ROpen:
+		return &File{
+			c:   c,
+			fid: fid,
+		}, nil
+	default:
+		c.freeFid(fid)
 		return nil, ErrBadResponse
 	}
 }

@@ -35,6 +35,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 }
 
 func (f *File) Close() error {
+	f.c.freeFid(f.fid)
 	_, err := f.c.TClose(f.fid)
 	return err
 }
