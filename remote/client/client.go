@@ -232,7 +232,7 @@ func (c *Client) TReadAt(fid uint32, offset uint64, size uint32) (*proto.RReadAt
 	}
 }
 
-func (c *Client) TClose(fid uint32, offset uint64, size uint32) (*proto.RClose, error) {
+func (c *Client) TClose(fid uint32) (*proto.RClose, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err

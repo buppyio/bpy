@@ -33,3 +33,8 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 		return int64(f.offset), errors.New("seek unsupported")
 	}
 }
+
+func (f *File) Close() error {
+	_, err := f.c.TClose(f.fid)
+	return err
+}
