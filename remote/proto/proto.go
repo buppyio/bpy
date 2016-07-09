@@ -31,6 +31,10 @@ const (
 	CASTMID = 0
 )
 
+const (
+	READOVERHEAD = 4 + 1 + 2 + 4
+)
+
 var (
 	ErrMsgTooLarge = errors.New("message too large")
 	ErrStrTooLarge = errors.New("string too large")
@@ -92,11 +96,21 @@ type TReadAt struct {
 	Mid    uint16
 	Fid    uint32
 	Offset uint64
+	Size   uint32
 }
 
 type RReadAt struct {
 	Mid  uint16
 	Data []byte
+}
+
+type TClose struct {
+	Mid uint16
+	Fid uint32
+}
+
+type RClose struct {
+	Mid uint16
 }
 
 type TNewPack struct {

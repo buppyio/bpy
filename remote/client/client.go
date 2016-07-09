@@ -24,6 +24,8 @@ var (
 type Client struct {
 	conn ReadWriteCloser
 
+	maxMessageSize uint32
+
 	wLock sync.Mutex
 	wBuf  []byte
 	rBuf  []byte
@@ -208,52 +210,44 @@ func (c *Client) TOpen(fid uint32, path string) (*proto.ROpen, error) {
 	}
 }
 
-/*
-func (c *Client) TReadAt(fid uint64, offset uint64) (*proto.ROpen, error) {
-	mid := c.nextMid()
-	err := c.writeMessage(&proto.TOpen{
-		Mid:    mid,
-		Fid:    fid,
-		Offset: offset,
-	})
-	resp, err := c.readMessage()
+func (c *Client) TReadAt(fid uint32, offset uint64, size uint32) (*proto.RReadAt, error) {
+	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
 	}
-	if proto.GetMessageId(resp) != mid {
-		return nil, ErrBadResponse
+	resp, err := c.Call(&proto.TReadAt{
+		Mid:    mid,
+		Fid:    fid,
+		Offset: offset,
+		Size:   size,
+	}, ch, mid)
+	if err != nil {
+		return nil, err
 	}
 	switch resp := resp.(type) {
 	case *proto.RReadAt:
 		return resp, nil
-	case *proto.RError:
-		return nil, errors.New(resp.Message)
 	default:
 		return nil, ErrBadResponse
 	}
 }
 
-func (c *Client) TReadAt(fid uint64, offset uint64) (*proto.ROpen, error) {
-	mid := c.nextMid()
-	err := c.writeMessage(&proto.TOpen{
-		Mid:    mid,
-		Fid:    fid,
-		Offset: offset,
-	})
-	resp, err := c.readMessage()
+func (c *Client) TClose(fid uint32, offset uint64, size uint32) (*proto.RClose, error) {
+	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
 	}
-	if proto.GetMessageId(resp) != mid {
-		return nil, ErrBadResponse
+	resp, err := c.Call(&proto.TClose{
+		Mid: mid,
+		Fid: fid,
+	}, ch, mid)
+	if err != nil {
+		return nil, err
 	}
 	switch resp := resp.(type) {
-	case *proto.RReadAt:
+	case *proto.RClose:
 		return resp, nil
-	case *proto.RError:
-		return nil, errors.New(resp.Message)
 	default:
 		return nil, ErrBadResponse
 	}
 }
-*/
