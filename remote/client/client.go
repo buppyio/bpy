@@ -17,14 +17,17 @@ var (
 	ErrClientClosed = errors.New("client closed")
 	ErrTooManyCalls = errors.New("too many calls in progress")
 	ErrTooManyFiles = errors.New("too many open files")
+	ErrTooManyPacks = errors.New("too many open pack uploads")
 	ErrBadResponse  = errors.New("server sent bad response")
 	ErrDisconnected = errors.New("connection disconnected")
+	ErrNoSuchPid    = errors.New("no such pack id")
 )
 
 type Client struct {
 	conn ReadWriteCloser
 
-	maxMessageSize uint32
+	maxMessageSizeLock sync.RWMutex
+	maxMessageSize     uint32
 
 	wLock sync.Mutex
 	wBuf  []byte
@@ -42,6 +45,23 @@ type Client struct {
 	pidLock  sync.Mutex
 	pidCount uint32
 	pids     map[uint32]error
+}
+
+func (c *Client) getMaxMessageSize() uint32 {
+	c.maxMessageSizeLock.RLock()
+	sz := c.maxMessageSize
+	c.maxMessageSizeLock.RUnlock()
+	return sz
+}
+
+func (c *Client) setMaxMessageSize(sz uint32) {
+	c.maxMessageSizeLock.Lock()
+	c.wLock.Lock()
+	c.maxMessageSize = sz
+	c.wBuf = make([]byte, sz, sz)
+	c.rBuf = make([]byte, sz, sz)
+	c.wLock.Unlock()
+	c.maxMessageSizeLock.Unlock()
 }
 
 func readMessages(c *Client) {
@@ -65,12 +85,11 @@ func Attach(conn ReadWriteCloser, keyId string) (*Client, error) {
 	maxsz := uint32(1024 * 1024)
 	c := &Client{
 		conn:  conn,
-		wBuf:  make([]byte, maxsz, maxsz),
-		rBuf:  make([]byte, maxsz, maxsz),
 		calls: make(map[uint16]chan proto.Message),
 		fids:  make(map[uint32]struct{}),
 		pids:  make(map[uint32]error),
 	}
+	c.setMaxMessageSize(maxsz)
 	go readMessages(c)
 
 	ch, mid, err := c.newCall()
@@ -91,9 +110,7 @@ func Attach(conn ReadWriteCloser, keyId string) (*Client, error) {
 		if resp.MaxMessageSize > maxsz || resp.Mid != 1 {
 			return nil, ErrBadResponse
 		}
-		c.wLock.Lock()
-		c.wBuf = make([]byte, resp.MaxMessageSize, resp.MaxMessageSize)
-		c.wLock.Unlock()
+		c.setMaxMessageSize(resp.MaxMessageSize)
 		return c, nil
 	default:
 		return nil, ErrBadResponse
@@ -277,14 +294,14 @@ func (c *Client) TNewPack(pid uint32) (*proto.RNewPack, error) {
 	}
 }
 
-func (c *Client) TPackWrite(pid uint32, data []byte) error {
-	return c.WriteMessage(&proto.TPackWrite{
+func (c *Client) TWritePack(pid uint32, data []byte) error {
+	return c.WriteMessage(&proto.TWritePack{
 		Mid: proto.CASTMID,
 		Pid: pid,
 	})
 }
 
-func (c *Client) TClosePack(pid uint32) (*proto.TClosePack, error) {
+func (c *Client) TClosePack(pid uint32) (*proto.RClosePack, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
@@ -301,6 +318,42 @@ func (c *Client) TClosePack(pid uint32) (*proto.TClosePack, error) {
 		return resp, nil
 	default:
 		return nil, ErrBadResponse
+	}
+}
+
+func (c *Client) nextPid() (uint32, error) {
+	c.pidLock.Lock()
+	defer c.pidLock.Unlock()
+	pid := c.pidCount + 1
+	for {
+		if pid == c.pidCount {
+			return 0, ErrTooManyPacks
+		}
+		_, ok := c.pids[pid]
+		if !ok {
+			c.pids[pid] = nil
+			return pid, nil
+		}
+		pid += 1
+	}
+}
+
+func (c *Client) checkPidError(pid uint32) error {
+	c.pidLock.Lock()
+	defer c.pidLock.Unlock()
+	err, ok := c.pids[pid]
+	if !ok {
+		return ErrNoSuchPid
+	}
+	return err
+}
+
+func (c *Client) freePid(pid uint32) {
+	c.pidLock.Lock()
+	defer c.pidLock.Unlock()
+	_, ok := c.pids[pid]
+	if ok {
+		delete(c.pids, pid)
 	}
 }
 

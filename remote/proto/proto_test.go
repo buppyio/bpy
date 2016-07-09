@@ -48,3 +48,23 @@ func TestEncDec(t *testing.T) {
 		}
 	}
 }
+
+func TestOverheadConstants(t *testing.T) {
+	buf := make([]byte, 1024, 1024)
+	rReadAt := &RReadAt{}
+	n, err := PackMessage(rReadAt, buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != READOVERHEAD {
+		t.Fatalf("%d != READOVERHEAD(%d)", n, READOVERHEAD)
+	}
+	tWritePack := &TWritePack{}
+	n, err = PackMessage(tWritePack, buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != WRITEOVERHEAD {
+		t.Fatalf("%d != WRITEOVERHEAD(%d)", n, WRITEOVERHEAD)
+	}
+}

@@ -32,7 +32,8 @@ const (
 )
 
 const (
-	READOVERHEAD = 4 + 1 + 2 + 4
+	READOVERHEAD  = 4 + 1 + 2 + 4
+	WRITEOVERHEAD = 4 + 1 + 2 + 4 + 4
 )
 
 var (

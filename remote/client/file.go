@@ -12,7 +12,7 @@ type File struct {
 }
 
 func (f *File) Read(buf []byte) (int, error) {
-	maxn := f.c.maxMessageSize - proto.READOVERHEAD
+	maxn := f.c.getMaxMessageSize() - proto.READOVERHEAD
 	n := uint32(len(buf))
 	if n > maxn {
 		n = maxn
