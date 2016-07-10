@@ -28,7 +28,8 @@ type ReadWriteCloser interface {
 }
 
 type file interface {
-	io.ReaderAt
+	// Semantics like io.Reader, but with interface like io.ReaderAt
+	ReadAtOffset([]byte, uint64) (int, error)
 	io.Closer
 }
 
@@ -44,6 +45,18 @@ type server struct {
 	buf       []byte
 	fids      map[uint32]file
 	pids      map[uint32]*uploadState
+}
+
+type osfile struct {
+	f *os.File
+}
+
+func (f *osfile) ReadAtOffset(buf []byte, offset uint64) (int, error) {
+	return f.f.ReadAt(buf, int64(offset))
+}
+
+func (f *osfile) Close() error {
+	return f.f.Close()
 }
 
 func makeError(mid uint16, err error) proto.Message {
@@ -67,8 +80,39 @@ func (srv *server) handleTOpen(t *proto.TOpen) proto.Message {
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
-	srv.fids[t.Fid] = f
+	srv.fids[t.Fid] = &osfile{f: f}
 	return &proto.ROpen{
+		Mid: t.Mid,
+	}
+}
+
+func (srv *server) handleTReadAt(t *proto.TReadAt) proto.Message {
+	f, ok := srv.fids[t.Fid]
+	if !ok {
+		return makeError(t.Mid, ErrNoSuchFid)
+	}
+	if t.Size+proto.READOVERHEAD > uint32(len(srv.buf)) {
+		return makeError(t.Mid, ErrBadRequest)
+	}
+	buf := make([]byte, t.Size, t.Size)
+	n, err := f.ReadAtOffset(buf, t.Offset)
+	if err != nil && err != io.EOF {
+		return makeError(t.Mid, err)
+	}
+	return &proto.RReadAt{
+		Mid:  t.Mid,
+		Data: buf[:n],
+	}
+}
+
+func (srv *server) handleTClose(t *proto.TClose) proto.Message {
+	f, ok := srv.fids[t.Fid]
+	if !ok {
+		return makeError(t.Mid, ErrNoSuchFid)
+	}
+	f.Close()
+	delete(srv.fids, t.Fid)
+	return &proto.RClose{
 		Mid: t.Mid,
 	}
 }
@@ -94,37 +138,6 @@ func (srv *server) handleTNewPack(t *proto.TNewPack) proto.Message {
 		file:    f,
 	}
 	return &proto.RNewPack{
-		Mid: t.Mid,
-	}
-}
-
-func (srv *server) handleTReadAt(t *proto.TReadAt) proto.Message {
-	f, ok := srv.fids[t.Fid]
-	if !ok {
-		return makeError(t.Mid, ErrNoSuchFid)
-	}
-	if t.Size+proto.READOVERHEAD > uint32(len(srv.buf)) {
-		return makeError(t.Mid, ErrBadRequest)
-	}
-	buf := make([]byte, t.Size, t.Size)
-	n, err := f.ReadAt(buf, int64(t.Offset))
-	if err != nil && err != io.EOF {
-		return makeError(t.Mid, err)
-	}
-	return &proto.RReadAt{
-		Mid:  t.Mid,
-		Data: buf[:n],
-	}
-}
-
-func (srv *server) handleTClose(t *proto.TClose) proto.Message {
-	f, ok := srv.fids[t.Fid]
-	if !ok {
-		return makeError(t.Mid, ErrNoSuchFid)
-	}
-	f.Close()
-	delete(srv.fids, t.Fid)
-	return &proto.RClose{
 		Mid: t.Mid,
 	}
 }
