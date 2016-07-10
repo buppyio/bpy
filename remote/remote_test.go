@@ -4,6 +4,8 @@ import (
 	"acha.ninja/bpy/remote/client"
 	"acha.ninja/bpy/remote/server"
 	"io"
+	"io/ioutil"
+	"os"
 	"testing"
 )
 
@@ -31,9 +33,26 @@ func newTestConnPair() (*TestConn, *TestConn) {
 }
 
 func TestRemote(t *testing.T) {
+	testPath, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(testPath)
 	cliConn, srvConn := newTestConnPair()
-	go server.Serve(srvConn, "./")
-	_, err := client.Attach(cliConn, "abc")
+	go server.Serve(srvConn, testPath)
+	c, err := client.Attach(cliConn, "abc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := c.NewPack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = p.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = c.Close()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -357,6 +357,35 @@ func (c *Client) freePid(pid uint32) {
 	}
 }
 
+func (c *Client) NewPack() (*Pack, error) {
+	pid, err := c.nextPid()
+	if err != nil {
+		return nil, err
+	}
+	ch, mid, err := c.newCall()
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.Call(&proto.TNewPack{
+		Mid: mid,
+		Pid: pid,
+	}, ch, mid)
+	if err != nil {
+		c.freePid(pid)
+		return nil, err
+	}
+	switch resp.(type) {
+	case *proto.RNewPack:
+		return &Pack{
+			c:   c,
+			pid: pid,
+		}, nil
+	default:
+		c.freePid(pid)
+		return nil, ErrBadResponse
+	}
+}
+
 func (c *Client) Open(path string) (*File, error) {
 	fid, err := c.nextFid()
 	if err != nil {
