@@ -117,6 +117,18 @@ func (srv *server) handleTReadAt(t *proto.TReadAt) proto.Message {
 	}
 }
 
+func (srv *server) handleTClose(t *proto.TClose) proto.Message {
+	f, ok := srv.fids[t.Fid]
+	if !ok {
+		return makeError(t.Mid, ErrNoSuchFid)
+	}
+	f.Close()
+	delete(srv.fids, t.Fid)
+	return &proto.RClose{
+		Mid: t.Mid,
+	}
+}
+
 func (srv *server) handleTWritePack(t *proto.TWritePack) proto.Message {
 	state, ok := srv.pids[t.Pid]
 	if !ok {
@@ -239,6 +251,8 @@ func Serve(conn ReadWriteCloser, root string) error {
 			r = srv.handleTClosePack(t)
 		case *proto.TReadAt:
 			r = srv.handleTReadAt(t)
+		case *proto.TClose:
+			r = srv.handleTClose(t)
 		default:
 			return ErrBadRequest
 		}

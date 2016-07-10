@@ -19,6 +19,8 @@ const (
 	ROPEN
 	TREADAT
 	RREADAT
+	TCLOSE
+	RCLOSE
 	TNEWPACK
 	RNEWPACK
 	TWRITEPACK
@@ -172,61 +174,51 @@ func WriteMessage(w io.Writer, m Message, buf []byte) error {
 }
 
 func UnpackMessage(buf []byte) (Message, error) {
+	var m Message
+
 	switch buf[4] {
 	case RERROR:
-		m := &RError{}
-		return m, unpackFields(m, buf[5:])
+		m = &RError{}
 	case TATTACH:
-		m := &TAttach{}
-		return m, unpackFields(m, buf[5:])
+		m = &TAttach{}
 	case RATTACH:
-		m := &RAttach{}
-		return m, unpackFields(m, buf[5:])
+		m = &RAttach{}
 	case TNEWTAG:
-		m := &TNewTag{}
-		return m, unpackFields(m, buf[5:])
+		m = &TNewTag{}
 	case RNEWTAG:
-		m := &RNewTag{}
-		return m, unpackFields(m, buf[5:])
+		m = &RNewTag{}
 	case TREMOVETAG:
-		m := &TRemoveTag{}
-		return m, unpackFields(m, buf[5:])
+		m = &TRemoveTag{}
 	case RREMOVETAG:
-		m := &RRemoveTag{}
-		return m, unpackFields(m, buf[5:])
+		m = &RRemoveTag{}
 	case TOPEN:
-		m := &TOpen{}
-		return m, unpackFields(m, buf[5:])
+		m = &TOpen{}
 	case ROPEN:
-		m := &ROpen{}
-		return m, unpackFields(m, buf[5:])
+		m = &ROpen{}
 	case TREADAT:
-		m := &TReadAt{}
-		return m, unpackFields(m, buf[5:])
+		m = &TReadAt{}
 	case RREADAT:
-		m := &RReadAt{}
-		return m, unpackFields(m, buf[5:])
+		m = &RReadAt{}
+	case TCLOSE:
+		m = &TClose{}
+	case RCLOSE:
+		m = &RClose{}
 	case TNEWPACK:
-		m := &TNewPack{}
-		return m, unpackFields(m, buf[5:])
+		m = &TNewPack{}
 	case RNEWPACK:
-		m := &RNewPack{}
-		return m, unpackFields(m, buf[5:])
+		m = &RNewPack{}
 	case TWRITEPACK:
-		m := &TWritePack{}
-		return m, unpackFields(m, buf[5:])
+		m = &TWritePack{}
 	case RPACKERROR:
-		m := &RPackError{}
-		return m, unpackFields(m, buf[5:])
+		m = &RPackError{}
 	case TCLOSEPACK:
-		m := &TClosePack{}
-		return m, unpackFields(m, buf[5:])
+		m = &TClosePack{}
 	case RCLOSEPACK:
-		m := &RClosePack{}
-		return m, unpackFields(m, buf[5:])
+		m = &RClosePack{}
 	default:
 		return nil, ErrMsgCorrupt
 	}
+	return m, unpackFields(m, buf[5:])
 }
 
 func unpackFields(m Message, buf []byte) error {
@@ -275,7 +267,7 @@ func unpackFields(m Message, buf []byte) error {
 			v.SetBytes(buf[0:sz])
 			buf = buf[sz:]
 		default:
-			panic("internal error")
+			panic("unpackFields: internal error")
 		}
 	}
 	if len(buf) != 0 {
@@ -308,6 +300,10 @@ func GetMessageType(m Message) byte {
 		return TREADAT
 	case *RReadAt:
 		return RREADAT
+	case *TClose:
+		return TCLOSE
+	case *RClose:
+		return RCLOSE
 	case *TNewPack:
 		return TNEWPACK
 	case *RNewPack:
@@ -321,7 +317,7 @@ func GetMessageType(m Message) byte {
 	case *RClosePack:
 		return RCLOSEPACK
 	}
-	panic("internal error")
+	panic("GetMessageType: internal error")
 }
 
 func GetMessageId(m Message) uint16 {
@@ -348,6 +344,10 @@ func GetMessageId(m Message) uint16 {
 		return m.Mid
 	case *RReadAt:
 		return m.Mid
+	case *TClose:
+		return m.Mid
+	case *RClose:
+		return m.Mid
 	case *TNewPack:
 		return m.Mid
 	case *RNewPack:
@@ -361,7 +361,7 @@ func GetMessageId(m Message) uint16 {
 	case *RClosePack:
 		return m.Mid
 	}
-	panic("internal error")
+	panic("GetMessageId: internal error")
 }
 
 func PackMessage(m Message, buf []byte) (int, error) {
