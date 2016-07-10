@@ -28,7 +28,7 @@ const (
 )
 
 const (
-	CASTMID = 0
+	NOMID = 0
 )
 
 const (
@@ -85,12 +85,11 @@ type RRemoveTag struct {
 type TOpen struct {
 	Mid  uint16
 	Fid  uint32
-	Path string
+	Name string
 }
 
 type ROpen struct {
-	Mid  uint16
-	Size uint64
+	Mid uint16
 }
 
 type TReadAt struct {
@@ -115,8 +114,9 @@ type RClose struct {
 }
 
 type TNewPack struct {
-	Mid uint16
-	Pid uint32
+	Mid  uint16
+	Pid  uint32
+	Name string
 }
 
 type RNewPack struct {
@@ -124,7 +124,6 @@ type RNewPack struct {
 }
 
 type TWritePack struct {
-	Mid  uint16
 	Pid  uint32
 	Data []byte
 }
@@ -354,9 +353,9 @@ func GetMessageId(m Message) uint16 {
 	case *RNewPack:
 		return m.Mid
 	case *TWritePack:
-		return CASTMID
+		return NOMID
 	case *RPackError:
-		return CASTMID
+		return NOMID
 	case *TClosePack:
 		return m.Mid
 	case *RClosePack:

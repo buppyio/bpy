@@ -3,9 +3,12 @@ package remote
 import (
 	"acha.ninja/bpy/remote/client"
 	"acha.ninja/bpy/remote/server"
+	"bytes"
+	"crypto/rand"
 	"io"
 	"io/ioutil"
-	"os"
+	// "os"
+	"reflect"
 	"testing"
 )
 
@@ -37,20 +40,45 @@ func TestRemote(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(testPath)
+	// defer os.RemoveAll(testPath)
 	cliConn, srvConn := newTestConnPair()
 	go server.Serve(srvConn, testPath)
 	c, err := client.Attach(cliConn, "abc")
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := c.NewPack()
+	p, err := c.NewPack("testpack")
+	if err != nil {
+		t.Fatal(err)
+	}
+	nbytes := 1000000
+	buf := make([]byte, nbytes, nbytes)
+	_, err = io.ReadFull(rand.Reader, buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = io.Copy(p, bytes.NewBuffer(buf))
 	if err != nil {
 		t.Fatal(err)
 	}
 	err = p.Close()
 	if err != nil {
 		t.Fatal(err)
+	}
+	f, err := c.Open("testpack")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := ioutil.ReadAll(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = f.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(buf, data) {
+		t.Fatal("data differs\n")
 	}
 	err = c.Close()
 	if err != nil {

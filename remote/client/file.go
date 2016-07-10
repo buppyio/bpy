@@ -3,6 +3,7 @@ package client
 import (
 	"acha.ninja/bpy/remote/proto"
 	"errors"
+	"io"
 )
 
 type File struct {
@@ -21,7 +22,12 @@ func (f *File) Read(buf []byte) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return copy(buf, resp.Data), nil
+	if len(resp.Data) == 0 {
+		return 0, io.EOF
+	}
+	ncopied := copy(buf, resp.Data)
+	f.offset += uint64(ncopied)
+	return ncopied, nil
 }
 
 func (f *File) Seek(offset int64, whence int) (int64, error) {

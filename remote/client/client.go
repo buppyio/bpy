@@ -71,6 +71,14 @@ func readMessages(c *Client) {
 			break
 		}
 		mid := proto.GetMessageId(m)
+		if mid == proto.NOMID {
+			switch m := m.(type) {
+			case *proto.RPackError:
+				c.setPidError(m.Pid, errors.New(m.Message))
+			default:
+				continue
+			}
+		}
 		c.midLock.Lock()
 		ch, ok := c.calls[mid]
 		if ok {
@@ -211,7 +219,7 @@ func (c *Client) WriteMessage(m proto.Message) error {
 	return proto.WriteMessage(c.conn, m, c.wBuf)
 }
 
-func (c *Client) TOpen(fid uint32, path string) (*proto.ROpen, error) {
+func (c *Client) TOpen(fid uint32, name string) (*proto.ROpen, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
@@ -219,7 +227,7 @@ func (c *Client) TOpen(fid uint32, path string) (*proto.ROpen, error) {
 	resp, err := c.Call(&proto.TOpen{
 		Mid:  mid,
 		Fid:  fid,
-		Path: path,
+		Name: name,
 	}, ch, mid)
 	if err != nil {
 		return nil, err
@@ -296,8 +304,8 @@ func (c *Client) TNewPack(pid uint32) (*proto.RNewPack, error) {
 
 func (c *Client) TWritePack(pid uint32, data []byte) error {
 	return c.WriteMessage(&proto.TWritePack{
-		Mid: proto.CASTMID,
-		Pid: pid,
+		Pid:  pid,
+		Data: data,
 	})
 }
 
@@ -348,6 +356,16 @@ func (c *Client) checkPidError(pid uint32) error {
 	return err
 }
 
+func (c *Client) setPidError(pid uint32, err error) {
+	c.pidLock.Lock()
+	defer c.pidLock.Unlock()
+	err, ok := c.pids[pid]
+	if !ok {
+		return
+	}
+	c.pids[pid] = err
+}
+
 func (c *Client) freePid(pid uint32) {
 	c.pidLock.Lock()
 	defer c.pidLock.Unlock()
@@ -357,7 +375,7 @@ func (c *Client) freePid(pid uint32) {
 	}
 }
 
-func (c *Client) NewPack() (*Pack, error) {
+func (c *Client) NewPack(name string) (*Pack, error) {
 	pid, err := c.nextPid()
 	if err != nil {
 		return nil, err
@@ -367,8 +385,9 @@ func (c *Client) NewPack() (*Pack, error) {
 		return nil, err
 	}
 	resp, err := c.Call(&proto.TNewPack{
-		Mid: mid,
-		Pid: pid,
+		Mid:  mid,
+		Pid:  pid,
+		Name: name,
 	}, ch, mid)
 	if err != nil {
 		c.freePid(pid)
@@ -386,32 +405,18 @@ func (c *Client) NewPack() (*Pack, error) {
 	}
 }
 
-func (c *Client) Open(path string) (*File, error) {
+func (c *Client) Open(name string) (*File, error) {
 	fid, err := c.nextFid()
 	if err != nil {
 		return nil, err
 	}
-	ch, mid, err := c.newCall()
-	if err != nil {
-		return nil, err
-	}
-	resp, err := c.Call(&proto.TOpen{
-		Mid:  mid,
-		Path: path,
-		Fid:  fid,
-	}, ch, mid)
+	_, err = c.TOpen(fid, name)
 	if err != nil {
 		c.freeFid(fid)
 		return nil, err
 	}
-	switch resp.(type) {
-	case *proto.ROpen:
-		return &File{
-			c:   c,
-			fid: fid,
-		}, nil
-	default:
-		c.freeFid(fid)
-		return nil, ErrBadResponse
-	}
+	return &File{
+		c:   c,
+		fid: fid,
+	}, nil
 }

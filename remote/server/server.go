@@ -2,13 +2,12 @@ package server
 
 import (
 	"acha.ninja/bpy/remote/proto"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 )
@@ -16,7 +15,9 @@ import (
 var (
 	ErrBadRequest         = errors.New("bad request")
 	ErrPidInUse           = errors.New("pid in use")
+	ErrFidInUse           = errors.New("fid in use")
 	ErrNoSuchPid          = errors.New("no such pid")
+	ErrNoSuchFid          = errors.New("no such fid")
 	ErrGeneratingPackName = errors.New("error generating pack name")
 )
 
@@ -27,6 +28,8 @@ type ReadWriteCloser interface {
 }
 
 type file interface {
+	io.ReaderAt
+	io.Closer
 }
 
 type uploadState struct {
@@ -47,6 +50,117 @@ func makeError(mid uint16, err error) proto.Message {
 	return &proto.RError{
 		Mid:     mid,
 		Message: err.Error(),
+	}
+}
+
+func (srv *server) handleTOpen(t *proto.TOpen) proto.Message {
+	_, ok := srv.fids[t.Fid]
+	if ok {
+		return makeError(t.Mid, ErrFidInUse)
+	}
+	matched, err := regexp.MatchString("[a-zA-Z0-9\\.]+", t.Name)
+	if err != nil || !matched {
+		return makeError(t.Mid, ErrBadRequest)
+	}
+	fpath := path.Join(srv.servePath, t.Name)
+	f, err := os.Open(fpath)
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+	srv.fids[t.Fid] = f
+	return &proto.ROpen{
+		Mid: t.Mid,
+	}
+}
+
+func (srv *server) handleTNewPack(t *proto.TNewPack) proto.Message {
+	_, ok := srv.pids[t.Pid]
+	if ok {
+		return makeError(t.Mid, ErrPidInUse)
+	}
+	matched, err := regexp.MatchString("[a-zA-Z0-9]+", t.Name)
+	if err != nil || !matched {
+		return makeError(t.Mid, ErrBadRequest)
+	}
+	name := path.Join(srv.servePath, t.Name)
+	tmpPath := name + ".tmp"
+	f, err := os.Create(tmpPath)
+	if err != nil {
+		return makeError(t.Mid, fmt.Errorf("cannot create temporary packfile: %s", err.Error()))
+	}
+	srv.pids[t.Pid] = &uploadState{
+		tmpPath: tmpPath,
+		path:    name,
+		file:    f,
+	}
+	return &proto.RNewPack{
+		Mid: t.Mid,
+	}
+}
+
+func (srv *server) handleTReadAt(t *proto.TReadAt) proto.Message {
+	f, ok := srv.fids[t.Fid]
+	if !ok {
+		return makeError(t.Mid, ErrNoSuchFid)
+	}
+	if t.Size+proto.READOVERHEAD > uint32(len(srv.buf)) {
+		return makeError(t.Mid, ErrBadRequest)
+	}
+	buf := make([]byte, t.Size, t.Size)
+	n, err := f.ReadAt(buf, int64(t.Offset))
+	if err != nil && err != io.EOF {
+		return makeError(t.Mid, err)
+	}
+	return &proto.RReadAt{
+		Mid:  t.Mid,
+		Data: buf[:n],
+	}
+}
+
+func (srv *server) handleTWritePack(t *proto.TWritePack) proto.Message {
+	state, ok := srv.pids[t.Pid]
+	if !ok {
+		return &proto.RPackError{
+			Pid:     t.Pid,
+			Message: ErrNoSuchPid.Error(),
+		}
+	}
+	if state.err != nil {
+		return &proto.RPackError{
+			Pid:     t.Pid,
+			Message: state.err.Error(),
+		}
+	}
+	_, err := state.file.Write(t.Data)
+	if err != nil {
+		return &proto.RPackError{
+			Pid:     t.Pid,
+			Message: err.Error(),
+		}
+	}
+	return nil
+}
+
+func (srv *server) handleTClosePack(t *proto.TClosePack) proto.Message {
+	state, ok := srv.pids[t.Pid]
+	if !ok {
+		return makeError(t.Mid, ErrNoSuchPid)
+	}
+	delete(srv.pids, t.Pid)
+	if state.err != nil {
+		state.file.Close()
+		return makeError(t.Mid, state.err)
+	}
+	err := state.file.Close()
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+	err = os.Rename(state.tmpPath, state.path)
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+	return &proto.RClosePack{
+		Mid: t.Mid,
 	}
 }
 
@@ -99,59 +213,6 @@ func handleAttach(conn ReadWriteCloser, root string) (*server, error) {
 	}
 }
 
-func (srv *server) handleTOpen(t *proto.TOpen) proto.Message {
-	return makeError(t.Mid, errors.New("unimplemented"))
-}
-
-func (srv *server) handleTNewPack(t *proto.TNewPack) proto.Message {
-	_, ok := srv.pids[t.Pid]
-	if ok {
-		return makeError(t.Mid, ErrPidInUse)
-	}
-	randBuf := [32]byte{}
-	_, err := io.ReadFull(rand.Reader, randBuf[:])
-	if err != nil {
-		return makeError(t.Mid, ErrGeneratingPackName)
-	}
-	name := filepath.Join(srv.servePath, hex.EncodeToString(randBuf[:]))
-	tmpPath := name + ".tmp"
-	f, err := os.Create(tmpPath)
-	if err != nil {
-		return makeError(t.Mid, fmt.Errorf("cannot create temporary packfile: %s", err.Error()))
-	}
-	srv.pids[t.Pid] = &uploadState{
-		tmpPath: tmpPath,
-		path:    name + ".ebpack",
-		file:    f,
-	}
-	return &proto.RNewPack{
-		Mid: t.Mid,
-	}
-}
-
-func (srv *server) handleTClosePack(t *proto.TClosePack) proto.Message {
-	state, ok := srv.pids[t.Pid]
-	if !ok {
-		return makeError(t.Mid, ErrNoSuchPid)
-	}
-	delete(srv.pids, t.Pid)
-	if state.err != nil {
-		state.file.Close()
-		return makeError(t.Mid, state.err)
-	}
-	err := state.file.Close()
-	if err != nil {
-		return makeError(t.Mid, err)
-	}
-	err = os.Rename(state.tmpPath, state.path)
-	if err != nil {
-		return makeError(t.Mid, err)
-	}
-	return &proto.RClosePack{
-		Mid: t.Mid,
-	}
-}
-
 func Serve(conn ReadWriteCloser, root string) error {
 	defer conn.Close()
 
@@ -172,13 +233,17 @@ func Serve(conn ReadWriteCloser, root string) error {
 			r = srv.handleTOpen(t)
 		case *proto.TNewPack:
 			r = srv.handleTNewPack(t)
+		case *proto.TWritePack:
+			r = srv.handleTWritePack(t)
 		case *proto.TClosePack:
 			r = srv.handleTClosePack(t)
+		case *proto.TReadAt:
+			r = srv.handleTReadAt(t)
 		default:
 			return ErrBadRequest
 		}
-		log.Printf("r=%#v", r)
 		if r != nil {
+			log.Printf("r=%#v", r)
 			err = proto.WriteMessage(conn, r, srv.buf)
 			if err != nil {
 				return err
