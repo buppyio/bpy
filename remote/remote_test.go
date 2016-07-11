@@ -7,7 +7,7 @@ import (
 	"crypto/rand"
 	"io"
 	"io/ioutil"
-	// "os"
+	"os"
 	"reflect"
 	"testing"
 )
@@ -40,14 +40,14 @@ func TestRemote(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// defer os.RemoveAll(testPath)
+	defer os.RemoveAll(testPath)
 	cliConn, srvConn := newTestConnPair()
 	go server.Serve(srvConn, testPath)
 	c, err := client.Attach(cliConn, "abc")
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := c.NewPack("testpack")
+	p, err := c.NewPack("packs/testpack")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestRemote(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f, err := c.Open("testpack")
+	f, err := c.Open("packs/testpack")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,6 +79,14 @@ func TestRemote(t *testing.T) {
 	}
 	if !reflect.DeepEqual(buf, data) {
 		t.Fatal("data differs\n")
+	}
+	f, err = c.Open("packs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = ioutil.ReadAll(f)
+	if err != nil {
+		t.Fatal(err)
 	}
 	err = c.Close()
 	if err != nil {

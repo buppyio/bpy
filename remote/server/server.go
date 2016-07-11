@@ -71,7 +71,16 @@ func (srv *server) handleTOpen(t *proto.TOpen) proto.Message {
 	if ok {
 		return makeError(t.Mid, ErrFidInUse)
 	}
-	matched, err := regexp.MatchString("[a-zA-Z0-9\\.]+", t.Name)
+	if t.Name == "packs" {
+		srv.fids[t.Fid] = &packListing{
+			packDir: filepath.Join(srv.servePath, "packs"),
+		}
+		return &proto.ROpen{
+			Mid: t.Mid,
+		}
+	}
+
+	matched, err := regexp.MatchString("packs/[a-zA-Z0-9\\.]+", t.Name)
 	if err != nil || !matched {
 		return makeError(t.Mid, ErrBadRequest)
 	}
@@ -122,7 +131,7 @@ func (srv *server) handleTNewPack(t *proto.TNewPack) proto.Message {
 	if ok {
 		return makeError(t.Mid, ErrPidInUse)
 	}
-	matched, err := regexp.MatchString("[a-zA-Z0-9]+", t.Name)
+	matched, err := regexp.MatchString("packs/[a-zA-Z0-9]+", t.Name)
 	if err != nil || !matched {
 		return makeError(t.Mid, ErrBadRequest)
 	}
@@ -220,10 +229,7 @@ func handleAttach(conn ReadWriteCloser, root string) (*server, error) {
 			return nil, ErrBadRequest
 		}
 		servePath := filepath.Join(root, t.KeyId)
-		_, err = os.Stat(servePath)
-		if os.IsNotExist(err) {
-			err = os.Mkdir(servePath, 0777)
-		}
+		err = os.MkdirAll(filepath.Join(servePath, "packs"), 0777)
 		if err != nil {
 			return nil, err
 		}
