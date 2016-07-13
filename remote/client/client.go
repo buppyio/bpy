@@ -2,9 +2,12 @@ package client
 
 import (
 	"acha.ninja/bpy/remote/proto"
+	"encoding/binary"
 	"errors"
 	"io"
+	"io/ioutil"
 	"sync"
+	"time"
 )
 
 type ReadWriteCloser interface {
@@ -419,4 +422,33 @@ func (c *Client) Open(name string) (*File, error) {
 		c:   c,
 		fid: fid,
 	}, nil
+}
+
+func (c *Client) ListPacks() ([]proto.PackListing, error) {
+	f, err := c.Open("packs")
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	data, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+	listing := []proto.PackListing{}
+	for len(data) != 0 {
+		if len(data) < 2 {
+			return nil, ErrBadResponse
+		}
+		namesz := int(binary.BigEndian.Uint16(data[0:2]))
+		if len(data) < namesz+18 {
+			return nil, ErrBadResponse
+		}
+		listing = append(listing, proto.PackListing{
+			Name: string(data[2 : 2+namesz]),
+			Size: binary.BigEndian.Uint64(data[2+namesz : 10+namesz]),
+			Date: time.Unix(int64(binary.BigEndian.Uint64(data[10+namesz:18+namesz])), 0),
+		})
+		data = data[18+namesz:]
+	}
+	return listing, nil
 }

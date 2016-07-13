@@ -80,16 +80,17 @@ func TestRemote(t *testing.T) {
 	if !reflect.DeepEqual(buf, data) {
 		t.Fatal("data differs\n")
 	}
-	f, err = c.Open("packs")
+	packs, err := c.ListPacks()
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = ioutil.ReadAll(f)
-	if err != nil {
-		t.Fatal(err)
+	if len(packs) != 1 {
+		t.Fatal("expected one pack")
 	}
-	err = c.Close()
-	if err != nil {
-		t.Fatal(err)
+	if packs[0].Name != "testpack" {
+		t.Fatal("incorrect pack name")
+	}
+	if packs[0].Size != uint64(len(buf)) {
+		t.Fatal("incorrect pack size")
 	}
 }

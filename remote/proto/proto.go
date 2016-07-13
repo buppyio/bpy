@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"reflect"
+	"time"
 )
 
 const (
@@ -142,6 +143,12 @@ type TClosePack struct {
 
 type RClosePack struct {
 	Mid uint16
+}
+
+type PackListing struct {
+	Name string
+	Size uint64
+	Date time.Time
 }
 
 func ReadMessage(r io.Reader, buf []byte) (Message, error) {

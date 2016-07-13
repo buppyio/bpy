@@ -71,8 +71,9 @@ func (srv *server) handleTOpen(t *proto.TOpen) proto.Message {
 	if ok {
 		return makeError(t.Mid, ErrFidInUse)
 	}
+
 	if t.Name == "packs" {
-		srv.fids[t.Fid] = &packListing{
+		srv.fids[t.Fid] = &packListingFile{
 			packDir: filepath.Join(srv.servePath, "packs"),
 		}
 		return &proto.ROpen{

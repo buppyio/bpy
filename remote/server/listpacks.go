@@ -1,12 +1,12 @@
 package server
 
 import (
+	"acha.ninja/bpy/remote/proto"
 	"encoding/binary"
 	"errors"
 	"io"
 	"io/ioutil"
 	"strings"
-	"time"
 )
 
 var (
@@ -14,27 +14,21 @@ var (
 	ErrBadReadOffset    = errors.New("bad read offset")
 )
 
-type packListingEnt struct {
-	Name string
-	Size uint64
-	Date time.Time
-}
-
-type packListing struct {
+type packListingFile struct {
 	offset  uint64
 	packDir string
-	entries []packListingEnt
+	entries []proto.PackListing
 }
 
-func listPacks(dir string) ([]packListingEnt, error) {
-	listing := make([]packListingEnt, 0, 32)
+func listPacks(dir string) ([]proto.PackListing, error) {
+	listing := make([]proto.PackListing, 0, 32)
 	stats, err := ioutil.ReadDir(dir)
 	if err != nil {
 		return listing, err
 	}
 	for _, stat := range stats {
 		if !strings.HasSuffix(stat.Name(), ".tmp") {
-			listing = append(listing, packListingEnt{
+			listing = append(listing, proto.PackListing{
 				Name: stat.Name(),
 				Size: uint64(stat.Size()),
 				Date: stat.ModTime(),
@@ -44,7 +38,7 @@ func listPacks(dir string) ([]packListingEnt, error) {
 	return listing, nil
 }
 
-func (pl *packListing) ReadAtOffset(buf []byte, offset uint64) (int, error) {
+func (pl *packListingFile) ReadAtOffset(buf []byte, offset uint64) (int, error) {
 	if offset == 0 {
 		listing, err := listPacks(pl.packDir)
 		if err != nil {
@@ -81,6 +75,6 @@ func (pl *packListing) ReadAtOffset(buf []byte, offset uint64) (int, error) {
 	return nwritten, nil
 }
 
-func (pl *packListing) Close() error {
+func (pl *packListingFile) Close() error {
 	return nil
 }
