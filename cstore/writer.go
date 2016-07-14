@@ -2,16 +2,13 @@ package cstore
 
 import (
 	"acha.ninja/bpy/bpack"
-	"acha.ninja/bpy/client9"
-	"acha.ninja/bpy/proto9"
+	"acha.ninja/bpy/remote/client"
 	"bufio"
 	"bytes"
 	"compress/flate"
 	"crypto/sha256"
-	"encoding/hex"
 	"io"
 	"io/ioutil"
-	"path"
 )
 
 type bufferedWriteCloser struct {
@@ -32,10 +29,10 @@ func (bwc *bufferedWriteCloser) Close() error {
 }
 
 type Writer struct {
-	store        *client9.Client
+	store        *client.Client
 	pack         *bpack.Writer
 	cachepath    string
-	tmpname      string
+	name         string
 	workingSetSz uint64
 	key          [32]byte
 	midx         []metaIndexEnt
@@ -43,7 +40,7 @@ type Writer struct {
 	flatew       *flate.Writer
 }
 
-func NewWriter(store *client9.Client, key [32]byte, cachepath string) (*Writer, error) {
+func NewWriter(store *client.Client, key [32]byte, cachepath string) (*Writer, error) {
 	midx, err := readAndCacheMetaIndex(store, key, cachepath)
 	if err != nil {
 		return nil, err
@@ -74,21 +71,7 @@ func (w *Writer) flushWorkingSet() error {
 	if err != nil {
 		return err
 	}
-	dgst := sha256.New()
-	for _, ent := range idx {
-		_, err := dgst.Write([]byte(ent.Key))
-		if err != nil {
-			return err
-		}
-	}
-	bpackname := hex.EncodeToString(dgst.Sum(nil)) + ".bpack"
-	st := proto9.MaskedStat
-	st.Name = bpackname
-	err = w.store.Wstat(path.Join("packs", w.tmpname), st)
-	if err != nil {
-		return err
-	}
-	err = cacheIndex(bpackname, w.cachepath, idx)
+	err = cacheIndex(w.name, w.cachepath, idx)
 	if err != nil {
 		return err
 	}
@@ -100,11 +83,11 @@ func (w *Writer) Put(data []byte) ([32]byte, error) {
 
 	h := sha256.Sum256(data)
 	if w.pack == nil {
-		w.tmpname, err = randFileName()
+		name, err := randFileName()
 		if err != nil {
 			return h, err
 		}
-		f, err := w.store.Create(path.Join("packs", w.tmpname), 0777, proto9.OWRITE)
+		f, err := w.store.NewPack("packs/" + name + ".ebpack")
 		if err != nil {
 			return h, err
 		}
@@ -114,8 +97,7 @@ func (w *Writer) Put(data []byte) ([32]byte, error) {
 		}
 		w.pack, err = bpack.NewEncryptedWriter(bwc, w.key)
 		if err != nil {
-			f.Close()
-			w.store.Remove(w.tmpname)
+			f.Cancel()
 			return h, err
 		}
 	}

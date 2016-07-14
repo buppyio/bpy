@@ -36,3 +36,9 @@ func (p *Pack) Close() error {
 	_, err := p.c.TClosePack(p.pid)
 	return err
 }
+
+func (p *Pack) Cancel() error {
+	p.c.freePid(p.pid)
+	_, err := p.c.TCancelPack(p.pid)
+	return err
+}

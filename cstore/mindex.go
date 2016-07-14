@@ -2,8 +2,7 @@ package cstore
 
 import (
 	"acha.ninja/bpy/bpack"
-	"acha.ninja/bpy/client9"
-	"acha.ninja/bpy/proto9"
+	"acha.ninja/bpy/remote/client"
 	"crypto/rand"
 	"encoding/hex"
 	"io"
@@ -24,14 +23,14 @@ func searchMetaIndex(midx []metaIndexEnt, hash [32]byte) (metaIndexEnt, bpack.In
 	return metaIndexEnt{}, bpack.IndexEnt{}, false
 }
 
-func readAndCacheMetaIndex(store *client9.Client, key [32]byte, cachepath string) ([]metaIndexEnt, error) {
-	dirents, err := store.Ls("packs")
+func readAndCacheMetaIndex(store *client.Client, key [32]byte, cachepath string) ([]metaIndexEnt, error) {
+	listing, err := store.Ls("packs")
 	if err != nil {
 		return nil, err
 	}
 	midx := make([]metaIndexEnt, 0, 16)
 	for _, dirent := range dirents {
-		if strings.HasSuffix(dirent.Name, ".bpack") {
+		if strings.HasSuffix(dirent.Name, ".ebpack") {
 			idx, err := getAndCacheIndex(store, key, dirent.Name, cachepath)
 			if err != nil {
 				return nil, err
@@ -91,7 +90,7 @@ func cacheIndex(packname, cachepath string, index bpack.Index) error {
 	return nil
 }
 
-func getAndCacheIndex(store *client9.Client, key [32]byte, packname, cachepath string) (bpack.Index, error) {
+func getAndCacheIndex(store *client.Client, key [32]byte, packname, cachepath string) (bpack.Index, error) {
 	idxpath := filepath.Join(cachepath, packname+".index")
 	_, err := os.Stat(idxpath)
 	if err == nil {
@@ -105,15 +104,16 @@ func getAndCacheIndex(store *client9.Client, key [32]byte, packname, cachepath s
 	if !os.IsNotExist(err) {
 		return nil, err
 	}
-	stat, err := store.Stat(path.Join("packs", packname))
+	packPath := path.Join("packs", packname)
+	stat, err := store.Stat(packPath)
 	if err != nil {
 		return nil, err
 	}
-	f, err := store.Open(path.Join("packs", packname), proto9.OREAD)
+	f, err := store.Open(packPath)
 	if err != nil {
 		return nil, err
 	}
-	pack, err := bpack.NewEncryptedReader(f, key, int64(stat.Length))
+	pack, err := bpack.NewEncryptedReader(f, key, int64(stat.Size))
 	if err != nil {
 		return nil, err
 	}

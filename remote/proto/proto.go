@@ -12,10 +12,8 @@ const (
 	RERROR = iota
 	TATTACH
 	RATTACH
-	TNEWTAG
-	RNEWTAG
-	TREMOVETAG
-	RREMOVETAG
+	TSTAT
+	RSTAT
 	TOPEN
 	ROPEN
 	TREADAT
@@ -28,6 +26,10 @@ const (
 	RPACKERROR
 	TCLOSEPACK
 	RCLOSEPACK
+	TCANCELPACK
+	RCANCELPACK
+	TREMOVE
+	RREMOVE
 )
 
 const (
@@ -65,26 +67,6 @@ type RAttach struct {
 	MaxMessageSize uint32
 }
 
-type TNewTag struct {
-	Mid   uint16
-	Key   string
-	Value string
-}
-
-type RNewTag struct {
-	Mid uint16
-}
-
-type TRemoveTag struct {
-	Mid      uint16
-	Key      string
-	OldValue string
-}
-
-type RRemoveTag struct {
-	Mid uint16
-}
-
 type TOpen struct {
 	Mid  uint16
 	Fid  uint32
@@ -93,6 +75,17 @@ type TOpen struct {
 
 type ROpen struct {
 	Mid uint16
+}
+
+type TStat struct {
+	Mid  uint16
+	Path string
+}
+
+type RStat struct {
+	Size uint64
+	Date uint64
+	Mid  uint16
 }
 
 type TReadAt struct {
@@ -145,6 +138,24 @@ type RClosePack struct {
 	Mid uint16
 }
 
+type TCancelPack struct {
+	Mid uint16
+	Pid uint32
+}
+
+type RCancelPack struct {
+	Mid uint16
+}
+
+type TRemove struct {
+	Mid  uint16
+	Path string
+}
+
+type RRemove struct {
+	Mid uint16
+}
+
 type PackListing struct {
 	Name string
 	Size uint64
@@ -190,14 +201,6 @@ func UnpackMessage(buf []byte) (Message, error) {
 		m = &TAttach{}
 	case RATTACH:
 		m = &RAttach{}
-	case TNEWTAG:
-		m = &TNewTag{}
-	case RNEWTAG:
-		m = &RNewTag{}
-	case TREMOVETAG:
-		m = &TRemoveTag{}
-	case RREMOVETAG:
-		m = &RRemoveTag{}
 	case TOPEN:
 		m = &TOpen{}
 	case ROPEN:
@@ -222,6 +225,10 @@ func UnpackMessage(buf []byte) (Message, error) {
 		m = &TClosePack{}
 	case RCLOSEPACK:
 		m = &RClosePack{}
+	case TCANCELPACK:
+		m = &TCancelPack{}
+	case RCANCELPACK:
+		m = &RCancelPack{}
 	default:
 		return nil, ErrMsgCorrupt
 	}
@@ -291,14 +298,6 @@ func GetMessageType(m Message) byte {
 		return TATTACH
 	case *RAttach:
 		return RATTACH
-	case *TNewTag:
-		return TNEWTAG
-	case *RNewTag:
-		return RNEWTAG
-	case *TRemoveTag:
-		return TREMOVETAG
-	case *RRemoveTag:
-		return RREMOVETAG
 	case *TOpen:
 		return TOPEN
 	case *ROpen:
@@ -323,6 +322,10 @@ func GetMessageType(m Message) byte {
 		return TCLOSEPACK
 	case *RClosePack:
 		return RCLOSEPACK
+	case *TCancelPack:
+		return TCANCELPACK
+	case *RCancelPack:
+		return RCANCELPACK
 	}
 	panic("GetMessageType: internal error")
 }
@@ -334,14 +337,6 @@ func GetMessageId(m Message) uint16 {
 	case *TAttach:
 		return m.Mid
 	case *RAttach:
-		return m.Mid
-	case *TNewTag:
-		return m.Mid
-	case *RNewTag:
-		return m.Mid
-	case *TRemoveTag:
-		return m.Mid
-	case *RRemoveTag:
 		return m.Mid
 	case *TOpen:
 		return m.Mid
@@ -366,6 +361,10 @@ func GetMessageId(m Message) uint16 {
 	case *TClosePack:
 		return m.Mid
 	case *RClosePack:
+		return m.Mid
+	case *TCancelPack:
+		return m.Mid
+	case *RCancelPack:
 		return m.Mid
 	}
 	panic("GetMessageId: internal error")

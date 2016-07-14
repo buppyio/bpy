@@ -332,6 +332,26 @@ func (c *Client) TClosePack(pid uint32) (*proto.RClosePack, error) {
 	}
 }
 
+func (c *Client) TCancelPack(pid uint32) (*proto.RCancelPack, error) {
+	ch, mid, err := c.newCall()
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.Call(&proto.TCancelPack{
+		Mid: mid,
+		Pid: pid,
+	}, ch, mid)
+	if err != nil {
+		return nil, err
+	}
+	switch resp := resp.(type) {
+	case *proto.RCancelPack:
+		return resp, nil
+	default:
+		return nil, ErrBadResponse
+	}
+}
+
 func (c *Client) nextPid() (uint32, error) {
 	c.pidLock.Lock()
 	defer c.pidLock.Unlock()

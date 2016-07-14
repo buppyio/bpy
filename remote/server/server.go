@@ -199,6 +199,25 @@ func (srv *server) handleTClosePack(t *proto.TClosePack) proto.Message {
 	}
 }
 
+func (srv *server) handleTCancelPack(t *proto.TCancelPack) proto.Message {
+	state, ok := srv.pids[t.Pid]
+	if !ok {
+		return makeError(t.Mid, ErrNoSuchPid)
+	}
+	delete(srv.pids, t.Pid)
+	err := state.file.Close()
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+	err = os.Remove(state.tmpPath)
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+	return &proto.RCancelPack{
+		Mid: t.Mid,
+	}
+}
+
 func handleAttach(conn ReadWriteCloser, root string) (*server, error) {
 	maxsz := uint32(1024 * 1024)
 	buf := make([]byte, maxsz, maxsz)
@@ -269,6 +288,8 @@ func Serve(conn ReadWriteCloser, root string) error {
 			r = srv.handleTWritePack(t)
 		case *proto.TClosePack:
 			r = srv.handleTClosePack(t)
+		case *proto.TCancelPack:
+			r = srv.handleTCancelPack(t)
 		case *proto.TReadAt:
 			r = srv.handleTReadAt(t)
 		case *proto.TClose:
