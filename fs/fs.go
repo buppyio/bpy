@@ -185,15 +185,15 @@ type FileReader struct {
 
 func (r *FileReader) Seek(off int64, whence int) (int64, error) {
 	switch whence {
-	case 0:
+	case io.SeekStart:
 		o, err := r.rdr.Seek(uint64(off))
 		r.offset = o
 		return int64(o), err
-	case 1:
+	case io.SeekCurrent:
 		o, err := r.rdr.Seek(r.offset + uint64(off))
 		r.offset = o
 		return int64(o), err
-	case 2:
+	case io.SeekEnd:
 		o, err := r.rdr.Seek(uint64(r.fsize + off))
 		r.offset = o
 		return int64(o), err
@@ -210,7 +210,7 @@ func (r *FileReader) Read(buf []byte) (int, error) {
 
 func (r *FileReader) ReadAt(buf []byte, off int64) (int, error) {
 	if r.offset != uint64(off) {
-		_, err := r.Seek(off, 0)
+		_, err := r.Seek(off, io.SeekStart)
 		if err != nil {
 			return 0, err
 		}

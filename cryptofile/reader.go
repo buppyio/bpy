@@ -43,7 +43,7 @@ func NewReader(r ReadSeekCloser, block cipher.Block, fsize int64) (*Reader, erro
 }
 
 func (r *Reader) Seek(offset int64, whence int) (int64, error) {
-	if whence != 0 {
+	if whence != io.SeekStart {
 		return r.offset, errors.New("unsupported whence")
 	}
 	if offset < 0 {
@@ -82,7 +82,7 @@ func (r *Reader) readBlocks(idx int64, buf []byte) (int, error) {
 		buf = buf[:r.size-idx*blocksz]
 	}
 
-	_, err := r.r.Seek((1+idx)*blocksz, 0)
+	_, err := r.r.Seek((1+idx)*blocksz, io.SeekStart)
 	if err != nil {
 		return 0, err
 	}

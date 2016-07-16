@@ -67,13 +67,15 @@ func (kl keyList) Swap(i, j int)      { kl[i], kl[j] = kl[j], kl[i] }
 func (kl keyList) Less(i, j int) bool { return bpack.KeyCmp(string(kl[i][:]), string(kl[j][:])) < 0 }
 
 func (w *Writer) flushWorkingSet() error {
-	idx, err := w.pack.Close()
-	if err != nil {
-		return err
-	}
-	err = cacheIndex(w.name, w.cachepath, idx)
-	if err != nil {
-		return err
+	if w.pack != nil {
+		idx, err := w.pack.Close()
+		if err != nil {
+			return err
+		}
+		err = cacheIndex(w.name, w.cachepath, idx)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

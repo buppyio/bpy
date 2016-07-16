@@ -32,8 +32,8 @@ func (f *File) Read(buf []byte) (int, error) {
 
 func (f *File) Seek(offset int64, whence int) (int64, error) {
 	switch whence {
-	case 0:
-		f.offset += uint64(offset)
+	case io.SeekStart:
+		f.offset = uint64(offset)
 		return int64(f.offset), nil
 	default:
 		return int64(f.offset), errors.New("seek unsupported")

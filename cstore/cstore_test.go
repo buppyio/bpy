@@ -73,6 +73,7 @@ func TestCStore(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+
 		for j := 0; j < int(r.Int31())%500; j++ {
 			nbytes := r.Int31() % 50
 			rbytes := make([]byte, nbytes, nbytes)
@@ -86,6 +87,7 @@ func TestCStore(t *testing.T) {
 			}
 			testvals[hash] = rbytes
 		}
+
 		err = w.Close()
 		if err != nil {
 			t.Fatal(err)

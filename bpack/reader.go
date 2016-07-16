@@ -7,6 +7,8 @@ import (
 	"io"
 )
 
+var NotFound = errors.New("Not Found")
+
 type ReadSeekCloser interface {
 	io.Reader
 	io.Seeker
@@ -26,8 +28,6 @@ func NewReader(r ReadSeekCloser, size uint64) *Reader {
 	}
 }
 
-var NotFound = errors.New("Not Found")
-
 func (r *Reader) Get(key string) ([]byte, error) {
 	idx, ok := r.Idx.Search(key)
 	if !ok {
@@ -40,7 +40,7 @@ func (r *Reader) Get(key string) ([]byte, error) {
 
 func (r *Reader) GetAt(offset uint64, sz uint32) ([]byte, error) {
 	buf := make([]byte, sz, sz)
-	r.r.Seek(int64(offset), 0)
+	r.r.Seek(int64(offset), io.SeekStart)
 	_, err := io.ReadFull(r.r, buf)
 	return buf, err
 }
@@ -50,7 +50,7 @@ func (r *Reader) Close() error {
 }
 
 func (r *Reader) ReadIndex() error {
-	_, err := r.r.Seek(int64(r.size)-8, 0)
+	_, err := r.r.Seek(int64(r.size)-8, io.SeekStart)
 	if err != nil {
 		return err
 	}
@@ -58,7 +58,7 @@ func (r *Reader) ReadIndex() error {
 	if err != nil {
 		return err
 	}
-	_, err = r.r.Seek(int64(offset), 0)
+	_, err = r.r.Seek(int64(offset), io.SeekStart)
 	if err != nil {
 		return err
 	}

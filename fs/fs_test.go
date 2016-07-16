@@ -112,7 +112,7 @@ func TestSeek(t *testing.T) {
 		}
 
 		for i := 0; i < len(data); i++ {
-			_, err = f.Seek(int64(i), 0)
+			_, err = f.Seek(int64(i), io.SeekStart)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -127,11 +127,11 @@ func TestSeek(t *testing.T) {
 			}
 		}
 		for i := 0; i < len(data); i++ {
-			_, err = f.Seek(0, 0)
+			_, err = f.Seek(0, io.SeekStart)
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, err = f.Seek(int64(i), 1)
+			_, err = f.Seek(int64(i), io.SeekCurrent)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -146,7 +146,7 @@ func TestSeek(t *testing.T) {
 			}
 		}
 		for i := 0; i < len(data); i++ {
-			_, err = f.Seek(-int64(i), 2)
+			_, err = f.Seek(-int64(i), io.SeekEnd)
 			if err != nil {
 				t.Fatal(err)
 			}
