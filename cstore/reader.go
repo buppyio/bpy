@@ -2,8 +2,7 @@ package cstore
 
 import (
 	"acha.ninja/bpy/bpack"
-	"acha.ninja/bpy/client9"
-	"acha.ninja/bpy/proto9"
+	"acha.ninja/bpy/remote/client"
 	"bytes"
 	"compress/flate"
 	"container/list"
@@ -21,11 +20,12 @@ type lruent struct {
 
 type metaIndexEnt struct {
 	packname string
+	packsize uint64
 	idx      bpack.Index
 }
 
 type Reader struct {
-	store     *client9.Client
+	store     *client.Client
 	cachepath string
 	midx      []metaIndexEnt
 	lru       *list.List
@@ -33,7 +33,7 @@ type Reader struct {
 	flatebuf  bytes.Buffer
 }
 
-func NewReader(store *client9.Client, key [32]byte, cachepath string) (*Reader, error) {
+func NewReader(store *client.Client, key [32]byte, cachepath string) (*Reader, error) {
 	midx, err := readAndCacheMetaIndex(store, key, cachepath)
 	if err != nil {
 		return nil, err
@@ -52,7 +52,7 @@ func (r *Reader) Get(hash [32]byte) ([]byte, error) {
 	if !ok {
 		return nil, NotFound
 	}
-	packrdr, err := r.getPackReader(midxent.packname, midxent.idx)
+	packrdr, err := r.getPackReader(midxent.packname, midxent.packsize, midxent.idx)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (r *Reader) Get(hash [32]byte) ([]byte, error) {
 	return decompressed, nil
 }
 
-func (r *Reader) getPackReader(packname string, idx bpack.Index) (*bpack.Reader, error) {
+func (r *Reader) getPackReader(packname string, packsize uint64, idx bpack.Index) (*bpack.Reader, error) {
 	for e := r.lru.Front(); e != nil; e = e.Next() {
 		ent := e.Value.(lruent)
 		if ent.packname == packname {
@@ -88,15 +88,11 @@ func (r *Reader) getPackReader(packname string, idx bpack.Index) (*bpack.Reader,
 		}
 	}
 	packPath := path.Join("packs", packname)
-	stat, err := r.store.Stat(packPath)
+	f, err := r.store.Open(packPath)
 	if err != nil {
 		return nil, err
 	}
-	f, err := r.store.Open(packPath, proto9.OREAD)
-	if err != nil {
-		return nil, err
-	}
-	pack, err := bpack.NewEncryptedReader(f, r.key, int64(stat.Length))
+	pack, err := bpack.NewEncryptedReader(f, r.key, int64(packsize))
 	if err != nil {
 		return nil, err
 	}

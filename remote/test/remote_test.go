@@ -1,6 +1,7 @@
-package remote
+package test
 
 import (
+	"acha.ninja/bpy/remote"
 	"acha.ninja/bpy/remote/client"
 	"acha.ninja/bpy/remote/server"
 	"bytes"
@@ -80,7 +81,7 @@ func TestRemote(t *testing.T) {
 	if !reflect.DeepEqual(buf, data) {
 		t.Fatal("data differs\n")
 	}
-	packs, err := c.ListPacks()
+	packs, err := remote.ListPacks(c)
 	if err != nil {
 		t.Fatal(err)
 	}

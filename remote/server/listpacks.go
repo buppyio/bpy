@@ -1,7 +1,7 @@
 package server
 
 import (
-	"acha.ninja/bpy/remote/proto"
+	"acha.ninja/bpy/remote"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -17,18 +17,18 @@ var (
 type packListingFile struct {
 	offset  uint64
 	packDir string
-	entries []proto.PackListing
+	entries []remote.PackListing
 }
 
-func listPacks(dir string) ([]proto.PackListing, error) {
-	listing := make([]proto.PackListing, 0, 32)
+func listPacks(dir string) ([]remote.PackListing, error) {
+	listing := make([]remote.PackListing, 0, 32)
 	stats, err := ioutil.ReadDir(dir)
 	if err != nil {
 		return listing, err
 	}
 	for _, stat := range stats {
 		if !strings.HasSuffix(stat.Name(), ".tmp") {
-			listing = append(listing, proto.PackListing{
+			listing = append(listing, remote.PackListing{
 				Name: stat.Name(),
 				Size: uint64(stat.Size()),
 				Date: stat.ModTime(),

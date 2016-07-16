@@ -2,6 +2,7 @@ package cstore
 
 import (
 	"acha.ninja/bpy/bpack"
+	"acha.ninja/bpy/remote"
 	"acha.ninja/bpy/remote/client"
 	"crypto/rand"
 	"encoding/hex"
@@ -9,7 +10,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 )
 
 func searchMetaIndex(midx []metaIndexEnt, hash [32]byte) (metaIndexEnt, bpack.IndexEnt, bool) {
@@ -24,23 +24,22 @@ func searchMetaIndex(midx []metaIndexEnt, hash [32]byte) (metaIndexEnt, bpack.In
 }
 
 func readAndCacheMetaIndex(store *client.Client, key [32]byte, cachepath string) ([]metaIndexEnt, error) {
-	listing, err := store.Ls("packs")
+	listing, err := remote.ListPacks(store)
 	if err != nil {
 		return nil, err
 	}
 	midx := make([]metaIndexEnt, 0, 16)
-	for _, dirent := range dirents {
-		if strings.HasSuffix(dirent.Name, ".ebpack") {
-			idx, err := getAndCacheIndex(store, key, dirent.Name, cachepath)
-			if err != nil {
-				return nil, err
-			}
-			midxent := metaIndexEnt{
-				packname: dirent.Name,
-				idx:      idx,
-			}
-			midx = append(midx, midxent)
+	for _, pack := range listing {
+		idx, err := getAndCacheIndex(store, key, pack.Name, pack.Size, cachepath)
+		if err != nil {
+			return nil, err
 		}
+		midxent := metaIndexEnt{
+			packname: pack.Name,
+			packsize: pack.Size,
+			idx:      idx,
+		}
+		midx = append(midx, midxent)
 	}
 	return midx, nil
 }
@@ -90,7 +89,7 @@ func cacheIndex(packname, cachepath string, index bpack.Index) error {
 	return nil
 }
 
-func getAndCacheIndex(store *client.Client, key [32]byte, packname, cachepath string) (bpack.Index, error) {
+func getAndCacheIndex(store *client.Client, key [32]byte, packname string, packsize uint64, cachepath string) (bpack.Index, error) {
 	idxpath := filepath.Join(cachepath, packname+".index")
 	_, err := os.Stat(idxpath)
 	if err == nil {
@@ -105,15 +104,11 @@ func getAndCacheIndex(store *client.Client, key [32]byte, packname, cachepath st
 		return nil, err
 	}
 	packPath := path.Join("packs", packname)
-	stat, err := store.Stat(packPath)
-	if err != nil {
-		return nil, err
-	}
 	f, err := store.Open(packPath)
 	if err != nil {
 		return nil, err
 	}
-	pack, err := bpack.NewEncryptedReader(f, key, int64(stat.Size))
+	pack, err := bpack.NewEncryptedReader(f, key, int64(packsize))
 	if err != nil {
 		return nil, err
 	}

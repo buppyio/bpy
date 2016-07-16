@@ -1,9 +1,8 @@
 package cstore
 
 import (
-	"acha.ninja/bpy/client9"
-	"acha.ninja/bpy/proto9"
-	"acha.ninja/bpy/remote"
+	"acha.ninja/bpy/remote/client"
+	"acha.ninja/bpy/remote/server"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -58,18 +57,8 @@ func TestCStore(t *testing.T) {
 	clientcon, servercon := MakeConnection()
 	defer clientcon.Close()
 	defer servercon.Close()
-
-	srv, err := remote.NewServer(servercon, storepath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	go srv.Serve()
-
-	store, err := client9.NewClient(proto9.NewConn(clientcon, clientcon))
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = store.Attach("", "test")
+	go server.Serve(servercon, storepath)
+	store, err := client.Attach(clientcon, "1234")
 	if err != nil {
 		t.Fatal(err)
 	}
