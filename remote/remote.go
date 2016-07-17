@@ -12,6 +12,7 @@ var (
 	ErrTooSmallForEntry   = errors.New("buffer too small for stat entry")
 	ErrBadReadOffset      = errors.New("bad read offset")
 	ErrCorruptPackListing = errors.New("corrupt pack listing")
+	ErrCorruptTagListing  = errors.New("corrupt tag listing")
 )
 
 type PackListing struct {
@@ -45,6 +46,31 @@ func ListPacks(c *client.Client) ([]PackListing, error) {
 			Date: time.Unix(int64(binary.BigEndian.Uint64(data[10+namesz:18+namesz])), 0),
 		})
 		data = data[18+namesz:]
+	}
+	return listing, nil
+}
+
+func ListTags(c *client.Client) ([]string, error) {
+	f, err := c.Open("tags")
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	data, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+	listing := []string{}
+	for len(data) != 0 {
+		if len(data) < 2 {
+			return nil, ErrCorruptPackListing
+		}
+		namesz := int(binary.BigEndian.Uint16(data[0:2]))
+		if len(data) < namesz+2 {
+			return nil, ErrCorruptTagListing
+		}
+		listing = append(listing, string(data[2:2+namesz]))
+		data = data[2+namesz:]
 	}
 	return listing, nil
 }
