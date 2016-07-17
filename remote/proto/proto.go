@@ -29,6 +29,14 @@ const (
 	RCANCELPACK
 	TREMOVE
 	RREMOVE
+	TTAG
+	RTAG
+	TGETTAG
+	RGETTAG
+	TCASTAG
+	RCASTAG
+	TREMOVETAG
+	RREMOVETAG
 )
 
 const (
@@ -52,6 +60,47 @@ type Message interface {
 type RError struct {
 	Mid     uint16
 	Message string
+}
+
+type TTag struct {
+	Mid   uint16
+	Name  string
+	Value string
+}
+
+type RTag struct {
+	Mid uint16
+}
+
+type TGetTag struct {
+	Mid  uint16
+	Name string
+}
+
+type RGetTag struct {
+	Mid   uint16
+	Value string
+}
+
+type TCasTag struct {
+	Mid      uint16
+	Name     string
+	OldValue string
+	NewValue string
+}
+
+type RCasTag struct {
+	Mid uint16
+	Ok  bool
+}
+
+type TRemoveTag struct {
+	Mid  uint16
+	Name string
+}
+
+type RRemoveTag struct {
+	Mid uint16
 }
 
 type TAttach struct {
@@ -222,10 +271,130 @@ func UnpackMessage(buf []byte) (Message, error) {
 		m = &TCancelPack{}
 	case RCANCELPACK:
 		m = &RCancelPack{}
+	case TTAG:
+		m = &TTag{}
+	case RTAG:
+		m = &RTag{}
+	case TGETTAG:
+		m = &TGetTag{}
+	case RGETTAG:
+		m = &RGetTag{}
+	case TCASTAG:
+		m = &TCasTag{}
+	case RCASTAG:
+		m = &RCasTag{}
+	case TREMOVETAG:
+		m = &TRemoveTag{}
+	case RREMOVETAG:
+		m = &RRemoveTag{}
 	default:
 		return nil, ErrMsgCorrupt
 	}
 	return m, unpackFields(m, buf[5:])
+}
+
+func GetMessageType(m Message) byte {
+	switch m.(type) {
+	case *RError:
+		return RERROR
+	case *TAttach:
+		return TATTACH
+	case *RAttach:
+		return RATTACH
+	case *TOpen:
+		return TOPEN
+	case *ROpen:
+		return ROPEN
+	case *TReadAt:
+		return TREADAT
+	case *RReadAt:
+		return RREADAT
+	case *TClose:
+		return TCLOSE
+	case *RClose:
+		return RCLOSE
+	case *TNewPack:
+		return TNEWPACK
+	case *RNewPack:
+		return RNEWPACK
+	case *TWritePack:
+		return TWRITEPACK
+	case *RPackError:
+		return RPACKERROR
+	case *TClosePack:
+		return TCLOSEPACK
+	case *RClosePack:
+		return RCLOSEPACK
+	case *TCancelPack:
+		return TCANCELPACK
+	case *RCancelPack:
+		return RCANCELPACK
+	case *TTag:
+		return TTAG
+	case *RTag:
+		return RTAG
+	case *TGetTag:
+		return TGETTAG
+	case *RGetTag:
+		return RGETTAG
+	case *TRemoveTag:
+		return TREMOVETAG
+	case *RRemoveTag:
+		return RREMOVETAG
+	}
+	panic("GetMessageType: internal error")
+}
+
+func GetMessageId(m Message) uint16 {
+	switch m := m.(type) {
+	case *RError:
+		return m.Mid
+	case *TAttach:
+		return m.Mid
+	case *RAttach:
+		return m.Mid
+	case *TOpen:
+		return m.Mid
+	case *ROpen:
+		return m.Mid
+	case *TReadAt:
+		return m.Mid
+	case *RReadAt:
+		return m.Mid
+	case *TClose:
+		return m.Mid
+	case *RClose:
+		return m.Mid
+	case *TNewPack:
+		return m.Mid
+	case *RNewPack:
+		return m.Mid
+	case *TWritePack:
+		return NOMID
+	case *RPackError:
+		return NOMID
+	case *TClosePack:
+		return m.Mid
+	case *RClosePack:
+		return m.Mid
+	case *TCancelPack:
+		return m.Mid
+	case *RCancelPack:
+		return m.Mid
+	case *TTag:
+		return m.Mid
+	case *RTag:
+		return m.Mid
+	case *TGetTag:
+		return m.Mid
+	case *RGetTag:
+		return m.Mid
+	case *TRemoveTag:
+		return m.Mid
+	case *RRemoveTag:
+		return m.Mid
+	}
+	panic("GetMessageId: internal error")
 }
 
 func unpackFields(m Message, buf []byte) error {
@@ -233,6 +402,12 @@ func unpackFields(m Message, buf []byte) error {
 	for i := 0; i < v.NumField(); i++ {
 		v := v.Field(i)
 		switch v.Kind() {
+		case reflect.Bool:
+			if len(buf) < 1 {
+				return ErrMsgCorrupt
+			}
+			v.SetBool(buf[0] != 0)
+			buf = buf[1:]
 		case reflect.Uint16:
 			if len(buf) < 2 {
 				return ErrMsgCorrupt
@@ -283,86 +458,6 @@ func unpackFields(m Message, buf []byte) error {
 	return nil
 }
 
-func GetMessageType(m Message) byte {
-	switch m.(type) {
-	case *RError:
-		return RERROR
-	case *TAttach:
-		return TATTACH
-	case *RAttach:
-		return RATTACH
-	case *TOpen:
-		return TOPEN
-	case *ROpen:
-		return ROPEN
-	case *TReadAt:
-		return TREADAT
-	case *RReadAt:
-		return RREADAT
-	case *TClose:
-		return TCLOSE
-	case *RClose:
-		return RCLOSE
-	case *TNewPack:
-		return TNEWPACK
-	case *RNewPack:
-		return RNEWPACK
-	case *TWritePack:
-		return TWRITEPACK
-	case *RPackError:
-		return RPACKERROR
-	case *TClosePack:
-		return TCLOSEPACK
-	case *RClosePack:
-		return RCLOSEPACK
-	case *TCancelPack:
-		return TCANCELPACK
-	case *RCancelPack:
-		return RCANCELPACK
-	}
-	panic("GetMessageType: internal error")
-}
-
-func GetMessageId(m Message) uint16 {
-	switch m := m.(type) {
-	case *RError:
-		return m.Mid
-	case *TAttach:
-		return m.Mid
-	case *RAttach:
-		return m.Mid
-	case *TOpen:
-		return m.Mid
-	case *ROpen:
-		return m.Mid
-	case *TReadAt:
-		return m.Mid
-	case *RReadAt:
-		return m.Mid
-	case *TClose:
-		return m.Mid
-	case *RClose:
-		return m.Mid
-	case *TNewPack:
-		return m.Mid
-	case *RNewPack:
-		return m.Mid
-	case *TWritePack:
-		return NOMID
-	case *RPackError:
-		return NOMID
-	case *TClosePack:
-		return m.Mid
-	case *RClosePack:
-		return m.Mid
-	case *TCancelPack:
-		return m.Mid
-	case *RCancelPack:
-		return m.Mid
-	}
-	panic("GetMessageId: internal error")
-}
-
 func PackMessage(m Message, buf []byte) (int, error) {
 	origbuf := buf
 	if len(buf) < 5 {
@@ -374,6 +469,16 @@ func PackMessage(m Message, buf []byte) (int, error) {
 	for i := 0; i < v.NumField(); i++ {
 		v := v.Field(i)
 		switch v.Kind() {
+		case reflect.Bool:
+			if len(buf) < 1 {
+				return 0, ErrMsgTooLarge
+			}
+			if v.Bool() {
+				buf[0] = 1
+			} else {
+				buf[0] = 0
+			}
+			buf = buf[1:]
 		case reflect.Uint16:
 			if len(buf) < 2 {
 				return 0, ErrMsgTooLarge
