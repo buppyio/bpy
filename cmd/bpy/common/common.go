@@ -2,9 +2,8 @@ package common
 
 import (
 	"acha.ninja/bpy"
-	"acha.ninja/bpy/client9"
 	"acha.ninja/bpy/cstore"
-	"acha.ninja/bpy/proto9"
+	"acha.ninja/bpy/remote/client"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -13,6 +12,10 @@ import (
 	"os/user"
 	"path/filepath"
 	"regexp"
+)
+
+const (
+	CachePermissions = 0755
 )
 
 type slave struct {
@@ -92,33 +95,39 @@ func GetKey() (bpy.Key, error) {
 	return bpy.ReadKey(f)
 }
 
-func GetRemote(k *bpy.Key) (*client9.Client, error) {
+func GetRemote(k *bpy.Key) (*client.Client, error) {
 	url := os.Getenv("BPY_REMOTE")
 	slv, err := dialRemote(url)
 	if err != nil {
 		return nil, err
 	}
-	remote, err := client9.NewClient(proto9.NewConn(slv, slv))
-	if err != nil {
-		return nil, err
-	}
-	err = remote.Attach("nobody", hex.EncodeToString(k.Id[:]))
+	remote, err := client.Attach(slv, hex.EncodeToString(k.Id[:]))
 	if err != nil {
 		return nil, err
 	}
 	return remote, nil
 }
 
-func GetCStoreReader(k *bpy.Key, remote *client9.Client) (bpy.CStoreReader, error) {
+func GetCStoreReader(k *bpy.Key, remote *client.Client) (bpy.CStoreReader, error) {
 	cache, err := GetCacheDir()
 	if err != nil {
 		return nil, err
 	}
-	return cstore.NewReader(remote, k.CipherKey, filepath.Join(cache, hex.EncodeToString(k.Id[:])))
+	curCache := filepath.Join(cache, hex.EncodeToString(k.Id[:]))
+	err = os.MkdirAll(curCache, CachePermissions)
+	if err != nil {
+		return nil, err
+	}
+	return cstore.NewReader(remote, k.CipherKey, curCache)
 }
 
-func GetCStoreWriter(k *bpy.Key, remote *client9.Client) (bpy.CStoreWriter, error) {
+func GetCStoreWriter(k *bpy.Key, remote *client.Client) (bpy.CStoreWriter, error) {
 	cache, err := GetCacheDir()
+	if err != nil {
+		return nil, err
+	}
+	curCache := filepath.Join(cache, hex.EncodeToString(k.Id[:]))
+	err = os.MkdirAll(curCache, CachePermissions)
 	if err != nil {
 		return nil, err
 	}

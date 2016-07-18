@@ -3,7 +3,7 @@ package tag
 import (
 	"acha.ninja/bpy"
 	"acha.ninja/bpy/cmd/bpy/common"
-	"acha.ninja/bpy/tags"
+	"acha.ninja/bpy/remote"
 	"flag"
 	"fmt"
 	"os"
@@ -28,11 +28,13 @@ func create() {
 	if err != nil {
 		common.Die("error getting bpy key data: %s\n", err.Error())
 	}
-	remote, err := common.GetRemote(&k)
+	c, err := common.GetRemote(&k)
 	if err != nil {
 		common.Die("error getting remote: %s\n", err.Error())
 	}
-	err = tags.Create(remote, flag.Args()[0], flag.Args()[1])
+	defer c.Close()
+
+	err = remote.Tag(c, flag.Args()[0], flag.Args()[1])
 	if err != nil {
 		common.Die("error create tag: %s\n", err.Error())
 	}
@@ -47,11 +49,12 @@ func get() {
 	if err != nil {
 		common.Die("error getting bpy key data: %s\n", err.Error())
 	}
-	remote, err := common.GetRemote(&k)
+	c, err := common.GetRemote(&k)
 	if err != nil {
 		common.Die("error getting remote: %s\n", err.Error())
 	}
-	hash, err := tags.Get(remote, flag.Args()[0])
+	defer c.Close()
+	hash, err := remote.GetTag(c, flag.Args()[0])
 	if err != nil {
 		common.Die("error setting tag: %s\n", err.Error())
 	}
@@ -70,16 +73,18 @@ func remove() {
 	if err != nil {
 		common.Die("error getting bpy key data: %s\n", err.Error())
 	}
-	remote, err := common.GetRemote(&k)
+	c, err := common.GetRemote(&k)
 	if err != nil {
 		common.Die("error getting remote: %s\n", err.Error())
 	}
-	err = tags.Remove(remote, flag.Args()[0], flag.Args()[1])
+	defer c.Close()
+	err = remote.RemoveTag(c, flag.Args()[0], flag.Args()[1])
 	if err != nil {
 		common.Die("error removing tag: %s\n", err.Error())
 	}
 }
 
+/*
 func cas() {
 	flag.Parse()
 	if len(flag.Args()) != 3 {
@@ -97,26 +102,29 @@ func cas() {
 	if err != nil {
 		common.Die("error getting bpy key data: %s\n", err.Error())
 	}
-	remote, err := common.GetRemote(&k)
+	c, err := common.GetRemote(&k)
 	if err != nil {
 		common.Die("error getting remote: %s\n", err.Error())
 	}
-	err = tags.Cas(remote, flag.Args()[0], flag.Args()[1], flag.Args()[2])
+	defer c.Close()
+	err = tags.Cas(c, flag.Args()[0], flag.Args()[1], flag.Args()[2])
 	if err != nil {
 		common.Die("error setting tag: %s\n", err.Error())
 	}
 }
+*/
 
 func list() {
 	k, err := common.GetKey()
 	if err != nil {
 		common.Die("error getting bpy key data: %s\n", err.Error())
 	}
-	remote, err := common.GetRemote(&k)
+	c, err := common.GetRemote(&k)
 	if err != nil {
 		common.Die("error getting remote: %s", err.Error())
 	}
-	taglist, err := tags.List(remote)
+	defer c.Close()
+	taglist, err := remote.ListTags(c)
 	if err != nil {
 		common.Die("error getting tag list: %s", err.Error())
 	}
@@ -134,8 +142,8 @@ func Tag() {
 		switch os.Args[1] {
 		case "create":
 			cmd = create
-		case "cas":
-			cmd = cas
+		//case "cas":
+		//	cmd = cas
 		case "get":
 			cmd = get
 		case "remove":

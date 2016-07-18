@@ -5,7 +5,7 @@ import (
 	"acha.ninja/bpy/cmd/bpy/common"
 	"acha.ninja/bpy/fs"
 	"acha.ninja/bpy/fs/fsutil"
-	"acha.ninja/bpy/tags"
+	"acha.ninja/bpy/remote"
 	"flag"
 )
 
@@ -36,18 +36,19 @@ func Get() {
 		common.Die("error getting bpy key data: %s\n", err.Error())
 	}
 
-	remote, err := common.GetRemote(&k)
+	c, err := common.GetRemote(&k)
 	if err != nil {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
+	defer c.Close()
 
-	store, err := common.GetCStoreReader(&k, remote)
+	store, err := common.GetCStoreReader(&k, c)
 	if err != nil {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
 
 	if *tagArg != "" {
-		tagHash, err := tags.Get(remote, *tagArg)
+		tagHash, err := remote.GetTag(c, *tagArg)
 		if err != nil {
 			common.Die("error fetching tag hash: %s\n", err.Error())
 		}

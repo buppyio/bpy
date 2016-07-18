@@ -3,7 +3,7 @@ package put
 import (
 	"acha.ninja/bpy/cmd/bpy/common"
 	"acha.ninja/bpy/fs/fsutil"
-	"acha.ninja/bpy/tags"
+	"acha.ninja/bpy/remote"
 	"encoding/hex"
 	"flag"
 	"fmt"
@@ -22,12 +22,13 @@ func Put() {
 		common.Die("error getting bpy key data: %s\n", err.Error())
 	}
 
-	remote, err := common.GetRemote(&k)
+	c, err := common.GetRemote(&k)
 	if err != nil {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
+	defer c.Close()
 
-	store, err := common.GetCStoreWriter(&k, remote)
+	store, err := common.GetCStoreWriter(&k, c)
 	if err != nil {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
@@ -48,7 +49,7 @@ func Put() {
 	}
 
 	if *tagArg != "" {
-		err = tags.Create(remote, *tagArg, hex.EncodeToString(hash[:]))
+		err = remote.Tag(c, *tagArg, hex.EncodeToString(hash[:]))
 		if err != nil {
 			common.Die("error creating tag: %s\n", err.Error())
 		}

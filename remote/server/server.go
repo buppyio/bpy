@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/boltdb/bolt"
 	"io"
-	"log"
+	//"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -369,7 +369,7 @@ func Serve(conn ReadWriteCloser, root string) error {
 		if err != nil {
 			return err
 		}
-		log.Printf("t=%#v", t)
+		// log.Printf("t=%#v", t)
 		switch t := t.(type) {
 		case *proto.TOpen:
 			r = srv.handleTOpen(t)
@@ -395,7 +395,7 @@ func Serve(conn ReadWriteCloser, root string) error {
 			return ErrBadRequest
 		}
 		if r != nil {
-			log.Printf("r=%#v", r)
+			// log.Printf("r=%#v", r)
 			err = proto.WriteMessage(conn, r, srv.buf)
 			if err != nil {
 				return err

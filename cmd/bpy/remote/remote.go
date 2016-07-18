@@ -1,7 +1,7 @@
 package remote
 
 import (
-	"acha.ninja/bpy/remote"
+	"acha.ninja/bpy/remote/server"
 	"flag"
 	"io"
 	"log"
@@ -22,12 +22,8 @@ func Remote() {
 	if len(flag.Args()) != 1 {
 		log.Fatal("please specify a directory\n")
 	}
-	export, err := remote.NewServer(&remoteInputOutput{
+	server.Serve(&remoteInputOutput{
 		stdin:  os.Stdin,
 		stdout: os.Stdout,
 	}, flag.Args()[0])
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Fatal(export.Serve())
 }
