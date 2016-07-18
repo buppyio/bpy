@@ -1,10 +1,8 @@
 package remote
 
 import (
-	"acha.ninja/bpy"
 	"acha.ninja/bpy/remote/client"
 	"encoding/binary"
-	"encoding/hex"
 	"errors"
 	"io/ioutil"
 	"time"
@@ -77,20 +75,20 @@ func ListTags(c *client.Client) ([]string, error) {
 	return listing, nil
 }
 
-func Tag(c *client.Client, name string, hash [32]byte) error {
-	_, err := c.TTag(name, hex.EncodeToString(hash[:]))
+func Tag(c *client.Client, name, value string) error {
+	_, err := c.TTag(name, value)
 	return err
 }
 
-func GetTag(c *client.Client, name string) ([32]byte, error) {
+func GetTag(c *client.Client, name string) (string, error) {
 	r, err := c.TGetTag(name)
 	if err != nil {
-		return [32]byte{}, err
+		return "", err
 	}
-	return bpy.ParseHash(r.Value)
+	return r.Value, nil
 }
 
-func RemoveTag(c *client.Client, name string) error {
-	_, err := c.TRemoveTag(name)
+func RemoveTag(c *client.Client, name, oldValue string) error {
+	_, err := c.TRemoveTag(name, oldValue)
 	return err
 }

@@ -95,3 +95,72 @@ func TestRemote(t *testing.T) {
 		t.Fatal("incorrect pack size")
 	}
 }
+
+func TestTags(t *testing.T) {
+	testPath, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(testPath)
+	cliConn, srvConn := newTestConnPair()
+	go server.Serve(srvConn, testPath)
+	c, err := client.Attach(cliConn, "abc")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testvals := make(map[string]string)
+	testvals["foo"] = "bar"
+	testvals["foo1"] = "bang"
+	testvals["foo2"] = "baz"
+
+	for k, v := range testvals {
+		err = remote.Tag(c, k, v)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	tags, err := remote.ListTags(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(tags) != 3 {
+		t.Fatal("incorrect number of tags")
+	}
+
+	if tags[0] != "foo" || tags[1] != "foo1" || tags[2] != "foo2" {
+		t.Fatal("incorrect tag listing")
+	}
+
+	for k, v := range testvals {
+		val, err := remote.GetTag(c, k)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if val != v {
+			t.Fatalf("value got('%s') != expected('%v')", v, val)
+		}
+	}
+
+	err = remote.RemoveTag(c, "foo", "...")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	err = remote.RemoveTag(c, "foo", "bar")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = remote.GetTag(c, "foo")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	tags, err = remote.ListTags(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tags) != 2 {
+		t.Fatal("incorrect number of tags")
+	}
+}

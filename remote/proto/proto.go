@@ -95,8 +95,9 @@ type RCasTag struct {
 }
 
 type TRemoveTag struct {
-	Mid  uint16
-	Name string
+	Mid      uint16
+	Name     string
+	OldValue string
 }
 
 type RRemoveTag struct {
@@ -123,17 +124,6 @@ type TOpen struct {
 
 type ROpen struct {
 	Mid uint16
-}
-
-type TStat struct {
-	Mid  uint16
-	Path string
-}
-
-type RStat struct {
-	Size uint64
-	Date uint64
-	Mid  uint16
 }
 
 type TReadAt struct {

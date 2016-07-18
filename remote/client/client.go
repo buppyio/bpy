@@ -282,14 +282,15 @@ func (c *Client) TGetTag(name string) (*proto.RGetTag, error) {
 	}
 }
 
-func (c *Client) TRemoveTag(name string) (*proto.RRemoveTag, error) {
+func (c *Client) TRemoveTag(name, oldValue string) (*proto.RRemoveTag, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
 	}
 	resp, err := c.Call(&proto.TRemoveTag{
-		Mid:  mid,
-		Name: name,
+		Mid:      mid,
+		Name:     name,
+		OldValue: oldValue,
 	}, ch, mid)
 	if err != nil {
 		return nil, err

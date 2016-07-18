@@ -21,6 +21,7 @@ var (
 	ErrNoSuchFid          = errors.New("no such fid")
 	ErrNoSuchTag          = errors.New("no such tag")
 	ErrTagAlreadyExists   = errors.New("tag already exists")
+	ErrStaleTagValue      = errors.New("tag value stale (concurrent write?)")
 	ErrGeneratingPackName = errors.New("error generating pack name")
 )
 
@@ -292,13 +293,17 @@ func (srv *server) handleTRemoveTag(t *proto.TRemoveTag) proto.Message {
 	defer db.Close()
 	err = db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(TagBucketName))
+		valueBytes := b.Get([]byte(t.Name))
+		if string(valueBytes) != t.OldValue {
+			return ErrStaleTagValue
+		}
 		err := b.Delete([]byte(t.Name))
 		return err
 	})
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
-	return &proto.RTag{
+	return &proto.RRemoveTag{
 		Mid: t.Mid,
 	}
 }
