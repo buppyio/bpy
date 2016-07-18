@@ -4,6 +4,7 @@ import (
 	"acha.ninja/bpy/remote/proto"
 	"errors"
 	"fmt"
+	"github.com/boltdb/bolt"
 	"io"
 	"log"
 	"os"
@@ -18,7 +19,14 @@ var (
 	ErrFidInUse           = errors.New("fid in use")
 	ErrNoSuchPid          = errors.New("no such pid")
 	ErrNoSuchFid          = errors.New("no such fid")
+	ErrNoSuchTag          = errors.New("no such tag")
+	ErrTagAlreadyExists   = errors.New("tag already exists")
 	ErrGeneratingPackName = errors.New("error generating pack name")
+)
+
+const (
+	TagBucketName = "tags"
+	TagDBName     = "tags.db"
 )
 
 type ReadWriteCloser interface {
@@ -42,6 +50,7 @@ type uploadState struct {
 
 type server struct {
 	servePath string
+	tagDBPath string
 	buf       []byte
 	fids      map[uint32]file
 	pids      map[uint32]*uploadState
@@ -75,6 +84,15 @@ func (srv *server) handleTOpen(t *proto.TOpen) proto.Message {
 	if t.Name == "packs" {
 		srv.fids[t.Fid] = &packListingFile{
 			packDir: filepath.Join(srv.servePath, "packs"),
+		}
+		return &proto.ROpen{
+			Mid: t.Mid,
+		}
+	}
+
+	if t.Name == "tags" {
+		srv.fids[t.Fid] = &tagListingFile{
+			tagDBPath: srv.tagDBPath,
 		}
 		return &proto.ROpen{
 			Mid: t.Mid,
@@ -219,15 +237,70 @@ func (srv *server) handleTCancelPack(t *proto.TCancelPack) proto.Message {
 }
 
 func (srv *server) handleTTag(t *proto.TTag) proto.Message {
-	return makeError(t.Mid, errors.New("unimplemented tag"))
+	db, err := openTagDB(srv.tagDBPath)
+	if err != nil {
+		makeError(t.Mid, err)
+	}
+	defer db.Close()
+	err = db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(TagBucketName))
+		valueBytes := b.Get([]byte(t.Name))
+		if valueBytes != nil {
+			return ErrTagAlreadyExists
+		}
+		err := b.Put([]byte(t.Name), []byte(t.Value))
+		return err
+	})
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+	return &proto.RTag{
+		Mid: t.Mid,
+	}
 }
 
 func (srv *server) handleTGetTag(t *proto.TGetTag) proto.Message {
-	return makeError(t.Mid, errors.New("unimplemented get tag"))
+	db, err := openTagDB(srv.tagDBPath)
+	if err != nil {
+		makeError(t.Mid, err)
+	}
+	defer db.Close()
+	var value string
+	err = db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(TagBucketName))
+		valueBytes := b.Get([]byte(t.Name))
+		if valueBytes == nil {
+			return ErrNoSuchTag
+		}
+		value = string(valueBytes)
+		return nil
+	})
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+	return &proto.RGetTag{
+		Mid:   t.Mid,
+		Value: value,
+	}
 }
 
 func (srv *server) handleTRemoveTag(t *proto.TRemoveTag) proto.Message {
-	return makeError(t.Mid, errors.New("unimplemented remove tag"))
+	db, err := openTagDB(srv.tagDBPath)
+	if err != nil {
+		makeError(t.Mid, err)
+	}
+	defer db.Close()
+	err = db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(TagBucketName))
+		err := b.Delete([]byte(t.Name))
+		return err
+	})
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+	return &proto.RTag{
+		Mid: t.Mid,
+	}
 }
 
 func handleAttach(conn ReadWriteCloser, root string) (*server, error) {
@@ -267,6 +340,7 @@ func handleAttach(conn ReadWriteCloser, root string) (*server, error) {
 		}
 		return &server{
 			servePath: servePath,
+			tagDBPath: filepath.Join(servePath, TagDBName),
 			buf:       buf,
 			fids:      make(map[uint32]file),
 			pids:      make(map[uint32]*uploadState),

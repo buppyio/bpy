@@ -2,23 +2,60 @@ package server
 
 import (
 	"encoding/binary"
+	"github.com/boltdb/bolt"
 	"io"
+	"time"
 )
 
 type tagListingFile struct {
-	offset  uint64
-	tagFile string
-	entries []string
+	offset    uint64
+	tagDBPath string
+	entries   []string
 }
 
-func listTags(dir string) ([]string, error) {
+func openTagDB(dbPath string) (*bolt.DB, error) {
+	db, err := bolt.Open(dbPath, 0600, &bolt.Options{Timeout: 1 * time.Second})
+	if err != nil {
+		return nil, err
+	}
+	err = db.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte(TagBucketName))
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+	return db, nil
+}
+
+func listTags(dbPath string) ([]string, error) {
 	listing := make([]string, 0, 32)
+	db, err := openTagDB(dbPath)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+	err = db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("tags"))
+		c := b.Cursor()
+		for k, _ := c.First(); k != nil; k, _ = c.Next() {
+			listing = append(listing, string(k))
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
 	return listing, nil
 }
 
 func (tl *tagListingFile) ReadAtOffset(buf []byte, offset uint64) (int, error) {
 	if offset == 0 {
-		listing, err := listTags(tl.tagFile)
+		listing, err := listTags(tl.tagDBPath)
 		if err != nil {
 			return 0, err
 		}
