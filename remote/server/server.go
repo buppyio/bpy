@@ -218,6 +218,18 @@ func (srv *server) handleTCancelPack(t *proto.TCancelPack) proto.Message {
 	}
 }
 
+func (srv *server) handleTTag(t *proto.TTag) proto.Message {
+	return makeError(t.Mid, errors.New("unimplemented tag"))
+}
+
+func (srv *server) handleTGetTag(t *proto.TGetTag) proto.Message {
+	return makeError(t.Mid, errors.New("unimplemented get tag"))
+}
+
+func (srv *server) handleTRemoveTag(t *proto.TRemoveTag) proto.Message {
+	return makeError(t.Mid, errors.New("unimplemented remove tag"))
+}
+
 func handleAttach(conn ReadWriteCloser, root string) (*server, error) {
 	maxsz := uint32(1024 * 1024)
 	buf := make([]byte, maxsz, maxsz)
@@ -294,6 +306,12 @@ func Serve(conn ReadWriteCloser, root string) error {
 			r = srv.handleTReadAt(t)
 		case *proto.TClose:
 			r = srv.handleTClose(t)
+		case *proto.TTag:
+			r = srv.handleTTag(t)
+		case *proto.TGetTag:
+			r = srv.handleTGetTag(t)
+		case *proto.TRemoveTag:
+			r = srv.handleTRemoveTag(t)
 		default:
 			return ErrBadRequest
 		}
