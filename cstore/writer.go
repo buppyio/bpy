@@ -76,6 +76,7 @@ func (w *Writer) flushWorkingSet() error {
 		if err != nil {
 			return err
 		}
+		w.pack = nil
 	}
 	return nil
 }

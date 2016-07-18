@@ -42,7 +42,7 @@ func TestCStore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(d)
+	defer os.RemoveAll(d)
 	storepath := filepath.Join(d, "packs")
 	cachepath := filepath.Join(d, "cache")
 	err = os.MkdirAll(storepath, 0777)
@@ -68,12 +68,11 @@ func TestCStore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 10; i++ {
 		w, err := NewWriter(store, key, cachepath)
 		if err != nil {
 			t.Fatal(err)
 		}
-
 		for j := 0; j < int(r.Int31())%500; j++ {
 			nbytes := r.Int31() % 50
 			rbytes := make([]byte, nbytes, nbytes)
