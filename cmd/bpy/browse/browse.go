@@ -20,6 +20,7 @@ type httpFs struct {
 }
 
 func (httpFs *httpFs) Open(path string) (http.File, error) {
+	log.Printf("open: %s", path)
 	tag, err := remote.GetTag(httpFs.c, httpFs.tag)
 	if err != nil {
 		return nil, err
@@ -111,6 +112,7 @@ func (d *httpDir) Readdir(count int) ([]os.FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	ents = ents[1:]
 	finfo := make([]os.FileInfo, len(ents), len(ents))
 	for idx := range ents {
 		finfo[idx] = &ents[idx]
@@ -123,6 +125,7 @@ func (d *httpDir) Readdir(count int) ([]os.FileInfo, error) {
 
 func Browse() {
 	tagArg := flag.String("tag", "", "tag of directory to list")
+	addrArg := flag.String("addr", "127.0.0.1:8080", "address to listen on ")
 	flag.Parse()
 
 	if *tagArg == "" {
@@ -134,6 +137,7 @@ func Browse() {
 		common.Die("error getting key: %s\n", err.Error())
 	}
 
+	log.Printf("connecting to remote\n")
 	c, err := common.GetRemote(&k)
 	if err != nil {
 		common.Die("error connecting to remote: %s\n", err.Error())
@@ -144,7 +148,8 @@ func Browse() {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
 
-	log.Fatal(http.ListenAndServe(":8080", http.FileServer(&httpFs{
+	log.Printf("serving on http://%s\n", *addrArg)
+	log.Fatal(http.ListenAndServe(*addrArg, http.FileServer(&httpFs{
 		c:     c,
 		store: store,
 		tag:   *tagArg,
