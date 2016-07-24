@@ -12,20 +12,28 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"time"
 )
 
 type DirEnts []DirEnt
 
 type DirEnt struct {
-	Name    string
-	Size    int64
-	ModTime int64
-	Mode    os.FileMode
-	Data    [32]byte
+	EntName    string
+	EntSize    int64
+	EntModTime int64
+	EntMode    os.FileMode
+	Data       [32]byte
 }
 
+func (ent *DirEnt) Name() string       { return ent.EntName }
+func (ent *DirEnt) Size() int64        { return ent.EntSize }
+func (ent *DirEnt) Mode() os.FileMode  { return ent.EntMode }
+func (ent *DirEnt) ModTime() time.Time { return time.Unix(ent.EntModTime, 0) }
+func (ent *DirEnt) IsDir() bool        { return ent.EntMode.IsDir() }
+func (ent *DirEnt) Sys() interface{}   { return nil }
+
 func (dir DirEnts) Len() int           { return len(dir) }
-func (dir DirEnts) Less(i, j int) bool { return dir[i].Name < dir[j].Name }
+func (dir DirEnts) Less(i, j int) bool { return dir[i].EntName < dir[j].EntName }
 func (dir DirEnts) Swap(i, j int)      { dir[i], dir[j] = dir[j], dir[i] }
 
 func WriteDir(store bpy.CStoreWriter, indir DirEnts, mode os.FileMode) ([32]byte, error) {
@@ -43,40 +51,40 @@ func WriteDir(store bpy.CStoreWriter, indir DirEnts, mode os.FileMode) ([32]byte
 	}
 	copy(dir[1:], indir)
 	mode |= os.ModeDir
-	dir[0] = DirEnt{Name: "", Mode: mode}
+	dir[0] = DirEnt{EntName: "", EntMode: mode}
 
 	sort.Sort(dir)
 	for i := 0; i < len(dir)-1; i++ {
-		if dir[i].Name == dir[i+1].Name {
-			return [32]byte{}, fmt.Errorf("duplicate directory entry '%s'", dir[i].Name)
+		if dir[i].EntName == dir[i+1].EntName {
+			return [32]byte{}, fmt.Errorf("duplicate directory entry '%s'", dir[i].EntName)
 		}
-		if dir[i].Name == "." {
+		if dir[i].EntName == "." {
 			return [32]byte{}, fmt.Errorf("cannot name file or folder '.'")
 		}
 	}
-	dir[0].Name = "."
+	dir[0].EntName = "."
 
 	nbytes := 0
 	for i := range dir {
-		nbytes += 2 + len(dir[i].Name) + 8 + 4 + 8 + 32
+		nbytes += 2 + len(dir[i].EntName) + 8 + 4 + 8 + 32
 	}
 	buf := bytes.NewBuffer(make([]byte, 0, nbytes))
 	for _, e := range dir {
 		// err is always nil for buf writes, no need to check.
-		if len(e.Name) > 65535 {
-			return [32]byte{}, fmt.Errorf("directory entry name '%s' too long", e.Name)
+		if len(e.EntName) > 65535 {
+			return [32]byte{}, fmt.Errorf("directory entry name '%s' too long", e.EntName)
 		}
-		binary.LittleEndian.PutUint16(numbytes[0:2], uint16(len(e.Name)))
+		binary.LittleEndian.PutUint16(numbytes[0:2], uint16(len(e.EntName)))
 		buf.Write(numbytes[0:2])
-		buf.WriteString(e.Name)
+		buf.WriteString(e.EntName)
 
-		binary.LittleEndian.PutUint64(numbytes[0:8], uint64(e.Size))
+		binary.LittleEndian.PutUint64(numbytes[0:8], uint64(e.EntSize))
 		buf.Write(numbytes[0:8])
 
-		binary.LittleEndian.PutUint32(numbytes[0:4], uint32(e.Mode))
+		binary.LittleEndian.PutUint32(numbytes[0:4], uint32(e.EntMode))
 		buf.Write(numbytes[0:4])
 
-		binary.LittleEndian.PutUint64(numbytes[0:8], uint64(e.ModTime))
+		binary.LittleEndian.PutUint64(numbytes[0:8], uint64(e.EntModTime))
 		buf.Write(numbytes[0:8])
 
 		buf.Write(e.Data[:])
@@ -116,11 +124,11 @@ func ReadDir(store bpy.CStoreReader, hash [32]byte) (DirEnts, error) {
 		copy(hash[:], dirdata[0:32])
 		dirdata = dirdata[32:]
 		dir = append(dir, DirEnt{
-			Name:    name,
-			Size:    size,
-			Mode:    mode,
-			ModTime: modtime,
-			Data:    hash,
+			EntName:    name,
+			EntSize:    size,
+			EntMode:    mode,
+			EntModTime: modtime,
+			Data:       hash,
 		})
 	}
 	// fill in the hash for "."
@@ -154,7 +162,7 @@ func Walk(store bpy.CStoreReader, hash [32]byte, fpath string) (DirEnt, error) {
 		found := false
 		j := 0
 		for j = range ents {
-			if ents[j].Name == entname {
+			if ents[j].EntName == entname {
 				found = true
 				break
 			}
@@ -163,15 +171,15 @@ func Walk(store bpy.CStoreReader, hash [32]byte, fpath string) (DirEnt, error) {
 			return result, fmt.Errorf("no such directory: %s", entname)
 		}
 		if i != end-1 {
-			if !ents[j].Mode.IsDir() {
-				return result, fmt.Errorf("not a directory: %s", ents[j].Name)
+			if !ents[j].EntMode.IsDir() {
+				return result, fmt.Errorf("not a directory: %s", ents[j].EntName)
 			}
 			hash = ents[j].Data
 		} else {
 			result = ents[j]
 		}
 	}
-	if result.Name == "." {
+	if result.EntName == "." {
 		result.Data = hash
 	}
 	return result, nil
@@ -229,7 +237,7 @@ func Open(store bpy.CStoreReader, roothash [32]byte, fpath string) (*FileReader,
 	if err != nil {
 		return nil, err
 	}
-	if dirent.Mode.IsDir() {
+	if dirent.EntMode.IsDir() {
 		return nil, fmt.Errorf("%s is a directory", fpath)
 	}
 	rdr, err := htree.NewReader(store, dirent.Data)
@@ -238,7 +246,7 @@ func Open(store bpy.CStoreReader, roothash [32]byte, fpath string) (*FileReader,
 	}
 	return &FileReader{
 		offset: 0,
-		fsize:  dirent.Size,
+		fsize:  dirent.EntSize,
 		rdr:    rdr,
 	}, nil
 }
@@ -248,7 +256,7 @@ func Ls(store bpy.CStoreReader, roothash [32]byte, fpath string) (DirEnts, error
 	if err != nil {
 		return nil, err
 	}
-	if !dirent.Mode.IsDir() {
+	if !dirent.EntMode.IsDir() {
 		return nil, fmt.Errorf("%s is not a directory", fpath)
 	}
 	ents, err := ReadDir(store, dirent.Data)

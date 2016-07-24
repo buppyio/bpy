@@ -67,16 +67,16 @@ func Ls() {
 	}
 
 	for _, ent := range ents[1:] {
-		if ent.Mode.IsDir() {
-			_, err = fmt.Printf("%s/\n", ent.Name)
+		if ent.EntMode.IsDir() {
+			_, err = fmt.Printf("%s/\n", ent.EntName)
 			if err != nil {
 				common.Die("io error: %s\n", err.Error())
 			}
 		}
 	}
 	for _, ent := range ents[1:] {
-		if !ent.Mode.IsDir() {
-			_, err = fmt.Printf("%s\n", ent.Name)
+		if !ent.EntMode.IsDir() {
+			_, err = fmt.Printf("%s\n", ent.EntName)
 			if err != nil {
 				common.Die("io error: %s\n", err.Error())
 			}

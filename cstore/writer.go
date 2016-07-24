@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"io"
 	"io/ioutil"
+	"sync"
 )
 
 type bufferedWriteCloser struct {
@@ -29,6 +30,7 @@ func (bwc *bufferedWriteCloser) Close() error {
 }
 
 type Writer struct {
+	lock         sync.Mutex
 	store        *client.Client
 	pack         *bpack.Writer
 	cachepath    string
@@ -77,11 +79,14 @@ func (w *Writer) flushWorkingSet() error {
 			return err
 		}
 		w.pack = nil
+		w.workingSetSz = 0
 	}
 	return nil
 }
 
 func (w *Writer) Put(data []byte) ([32]byte, error) {
+	w.lock.Lock()
+	defer w.lock.Unlock()
 	var err error
 
 	h := sha256.Sum256(data)
@@ -136,5 +141,7 @@ func (w *Writer) Put(data []byte) ([32]byte, error) {
 }
 
 func (w *Writer) Close() error {
+	w.lock.Lock()
+	defer w.lock.Unlock()
 	return w.flushWorkingSet()
 }

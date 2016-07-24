@@ -12,8 +12,8 @@ import (
 
 func TestDir(t *testing.T) {
 	dir := DirEnts{
-		{Name: "Bar", Size: 4, Mode: 5, ModTime: 6, Data: [32]byte{1, 2, 3, 4}},
-		{Name: "Foo", Size: 0xffffff, Mode: 0xffffff, ModTime: 0xffff},
+		{EntName: "Bar", EntSize: 4, EntMode: 5, EntModTime: 6, Data: [32]byte{1, 2, 3, 4}},
+		{EntName: "Foo", EntSize: 0xffffff, EntMode: 0xffffff, EntModTime: 0xffff},
 	}
 	store := testhelp.NewMemStore()
 	hash, err := WriteDir(store, dir, 0777)
@@ -24,7 +24,7 @@ func TestDir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rdir[0].Name != "." {
+	if rdir[0].EntName != "." {
 		t.Fatal("missing current dir entry\n")
 	}
 	if !reflect.DeepEqual(dir, rdir[1:]) {
@@ -35,12 +35,12 @@ func TestDir(t *testing.T) {
 func TestWalk(t *testing.T) {
 
 	store := testhelp.NewMemStore()
-	f := DirEnt{Name: "f", Size: 10, Mode: 0}
+	f := DirEnt{EntName: "f", EntSize: 10, EntMode: 0}
 	hash, err := WriteDir(store, DirEnts{f}, 0777)
 	if err != nil {
 		t.Fatal(err)
 	}
-	d := DirEnt{Name: "d", Size: 0, Mode: os.ModeDir, Data: hash}
+	d := DirEnt{EntName: "d", EntSize: 0, EntMode: os.ModeDir, Data: hash}
 	for i := 0; i < 3; i++ {
 		hash, err = WriteDir(store, DirEnts{d}, 0777)
 		if err != nil {
@@ -66,14 +66,14 @@ func TestWalk(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !ent.Mode.IsDir() {
+	if !ent.EntMode.IsDir() {
 		t.Fatal("expected dir")
 	}
 	ent, err = Walk(store, hash, "/d/d/d/f")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ent.Size != 10 {
+	if ent.EntSize != 10 {
 		t.Fatal("bad size")
 	}
 }
@@ -97,10 +97,10 @@ func TestSeek(t *testing.T) {
 		}
 		dhash, err := WriteDir(store,
 			DirEnts{DirEnt{
-				Name: "f",
-				Mode: 0777,
-				Size: int64(len(data)),
-				Data: thash,
+				EntName: "f",
+				EntMode: 0777,
+				EntSize: int64(len(data)),
+				Data:    thash,
 			}}, 0777)
 		if err != nil {
 			t.Fatal(err)

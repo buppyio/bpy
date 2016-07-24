@@ -98,20 +98,25 @@ func Attach(conn ReadWriteCloser, keyId string) (*Client, error) {
 		pids:  make(map[uint32]error),
 	}
 	c.setMaxMessageSize(maxsz)
-	go readMessages(c)
-
-	ch, mid, err := c.newCall()
-	if err != nil {
-		return nil, err
-	}
-	resp, err := c.Call(&proto.TAttach{
-		Mid:            mid,
+	err := c.WriteMessage(&proto.TAttach{
+		Mid:            1,
 		MaxMessageSize: maxsz,
 		Version:        "buppy1",
 		KeyId:          keyId,
-	}, ch, mid)
+	})
 	if err != nil {
+		conn.Close()
 		return nil, err
+	}
+	resp, err := proto.ReadMessage(c.conn, c.rBuf)
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
+	mid := proto.GetMessageId(resp)
+	if mid != 1 {
+		conn.Close()
+		return nil, ErrBadResponse
 	}
 	switch resp := resp.(type) {
 	case *proto.RAttach:
@@ -119,8 +124,13 @@ func Attach(conn ReadWriteCloser, keyId string) (*Client, error) {
 			return nil, ErrBadResponse
 		}
 		c.setMaxMessageSize(resp.MaxMessageSize)
+		go readMessages(c)
 		return c, nil
+	case *proto.RError:
+		conn.Close()
+		return nil, errors.New(resp.Message)
 	default:
+		conn.Close()
 		return nil, ErrBadResponse
 	}
 }

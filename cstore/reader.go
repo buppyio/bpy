@@ -9,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"path"
+	"sync"
 )
 
 var NotFound = errors.New("hash not in cstore")
@@ -25,6 +26,7 @@ type metaIndexEnt struct {
 }
 
 type Reader struct {
+	lock      sync.Mutex
 	store     *client.Client
 	cachepath string
 	midx      []metaIndexEnt
@@ -48,6 +50,8 @@ func NewReader(store *client.Client, key [32]byte, cachepath string) (*Reader, e
 }
 
 func (r *Reader) Get(hash [32]byte) ([]byte, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
 	midxent, packidxent, ok := searchMetaIndex(r.midx, hash)
 	if !ok {
 		return nil, NotFound
@@ -106,6 +110,8 @@ func (r *Reader) getPackReader(packname string, packsize uint64, idx bpack.Index
 }
 
 func (r *Reader) Close() error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
 	for e := r.lru.Front(); e != nil; e = e.Next() {
 		ent := e.Value.(lruent)
 		err := ent.pack.Close()
