@@ -205,7 +205,11 @@ func (srv *server) handleTClosePack(t *proto.TClosePack) proto.Message {
 		state.file.Close()
 		return makeError(t.Mid, state.err)
 	}
-	err := state.file.Close()
+	err := state.file.Sync()
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+	err = state.file.Close()
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
