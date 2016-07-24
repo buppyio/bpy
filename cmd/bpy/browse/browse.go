@@ -8,9 +8,11 @@ import (
 	"acha.ninja/bpy/remote/client"
 	"errors"
 	"flag"
+	"github.com/pkg/browser"
 	"log"
 	"net/http"
 	"os"
+	"time"
 )
 
 type httpFs struct {
@@ -148,7 +150,12 @@ func Browse() {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
 
-	log.Printf("serving on http://%s\n", *addrArg)
+	url := "http://" + *addrArg
+	log.Printf("serving on %s\n", url)
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		browser.OpenURL(url)
+	}()
 	log.Fatal(http.ListenAndServe(*addrArg, http.FileServer(&httpFs{
 		c:     c,
 		store: store,
