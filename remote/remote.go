@@ -88,6 +88,14 @@ func GetTag(c *client.Client, name string) (string, bool, error) {
 	return r.Value, r.Ok, nil
 }
 
+func CasTag(c *client.Client, name, oldValue, newValue string) (bool, error) {
+	r, err := c.TCasTag(name, oldValue, newValue)
+	if err != nil {
+		return false, err
+	}
+	return r.Ok, nil
+}
+
 func RemoveTag(c *client.Client, name, oldValue string) error {
 	_, err := c.TRemoveTag(name, oldValue)
 	return err

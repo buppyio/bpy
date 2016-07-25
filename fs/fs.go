@@ -36,33 +36,22 @@ func (dir DirEnts) Len() int           { return len(dir) }
 func (dir DirEnts) Less(i, j int) bool { return dir[i].EntName < dir[j].EntName }
 func (dir DirEnts) Swap(i, j int)      { dir[i], dir[j] = dir[j], dir[i] }
 
-func WriteDir(store bpy.CStoreWriter, indir DirEnts, mode os.FileMode) ([32]byte, error) {
+func WriteDir(store bpy.CStoreWriter, indir DirEnts, mode os.FileMode) (DirEnt, error) {
 	var numbytes [8]byte
-	var dirBuf [256]DirEnt
-	var dir DirEnts
-
-	// Best effort at stack allocating this slice
-	// XXX todo benchmark the affect of this.
-	// XXX should probably factor code so it doesn't need to do this copy
-	if len(indir)+1 < len(dirBuf) {
-		dir = dirBuf[0 : len(indir)+1]
-	} else {
-		dir = make(DirEnts, len(indir)+1, len(indir)+1)
-	}
+	dir := make(DirEnts, len(indir)+1, len(indir)+1)
 	copy(dir[1:], indir)
 	mode |= os.ModeDir
-	dir[0] = DirEnt{EntName: "", EntMode: mode}
-
-	sort.Sort(dir)
-	for i := 0; i < len(dir)-1; i++ {
-		if dir[i].EntName == dir[i+1].EntName {
-			return [32]byte{}, fmt.Errorf("duplicate directory entry '%s'", dir[i].EntName)
-		}
+	ent := DirEnt{EntName: ".", EntMode: mode}
+	dir[0] = ent
+	sort.Sort(dir[1:])
+	for i := 1; i < len(dir)-1; i++ {
 		if dir[i].EntName == "." {
-			return [32]byte{}, fmt.Errorf("cannot name file or folder '.'")
+			return DirEnt{}, fmt.Errorf("cannot name file or folder '.'")
+		}
+		if dir[i].EntName == dir[i+1].EntName {
+			return DirEnt{}, fmt.Errorf("duplicate directory entry '%s'", dir[i].EntName)
 		}
 	}
-	dir[0].EntName = "."
 
 	nbytes := 0
 	for i := range dir {
@@ -72,7 +61,7 @@ func WriteDir(store bpy.CStoreWriter, indir DirEnts, mode os.FileMode) ([32]byte
 	for _, e := range dir {
 		// err is always nil for buf writes, no need to check.
 		if len(e.EntName) > 65535 {
-			return [32]byte{}, fmt.Errorf("directory entry name '%s' too long", e.EntName)
+			return DirEnt{}, fmt.Errorf("directory entry name '%s' too long", e.EntName)
 		}
 		binary.LittleEndian.PutUint16(numbytes[0:2], uint16(len(e.EntName)))
 		buf.Write(numbytes[0:2])
@@ -93,10 +82,15 @@ func WriteDir(store bpy.CStoreWriter, indir DirEnts, mode os.FileMode) ([32]byte
 	tw := htree.NewWriter(store)
 	_, err := tw.Write(buf.Bytes())
 	if err != nil {
-		return [32]byte{}, err
+		return DirEnt{}, err
 	}
 
-	return tw.Close()
+	data, err := tw.Close()
+	if err != nil {
+		return DirEnt{}, err
+	}
+	ent.Data = data
+	return ent, nil
 }
 
 func ReadDir(store bpy.CStoreReader, hash [32]byte) (DirEnts, error) {
@@ -266,11 +260,11 @@ func Ls(store bpy.CStoreReader, roothash [32]byte, fpath string) (DirEnts, error
 	return ents, nil
 }
 
-func EmptyDir(store bpy.CStoreWriter, mode os.FileMode) ([32]byte, error) {
+func EmptyDir(store bpy.CStoreWriter, mode os.FileMode) (DirEnt, error) {
 	return WriteDir(store, []DirEnt{}, mode)
 }
 
-func Insert(rstore bpy.CStoreReader, wstore bpy.CStoreWriter, dest [32]byte, destPath string, ent DirEnt) ([32]byte, error) {
+func Insert(rstore bpy.CStoreReader, wstore bpy.CStoreWriter, dest [32]byte, destPath string, ent DirEnt) (DirEnt, error) {
 	if destPath == "" || destPath[0] != '/' {
 		destPath = "/" + destPath
 	}
@@ -282,10 +276,10 @@ func Insert(rstore bpy.CStoreReader, wstore bpy.CStoreWriter, dest [32]byte, des
 	return insert(rstore, wstore, dest, pathElems, ent)
 }
 
-func insert(rstore bpy.CStoreReader, wstore bpy.CStoreWriter, dest [32]byte, destPath []string, ent DirEnt) ([32]byte, error) {
+func insert(rstore bpy.CStoreReader, wstore bpy.CStoreWriter, dest [32]byte, destPath []string, ent DirEnt) (DirEnt, error) {
 	destEnts, err := ReadDir(rstore, dest)
 	if err != nil {
-		return [32]byte{}, err
+		return DirEnt{}, err
 	}
 	if len(destPath) == 0 {
 		mode := destEnts[0].EntMode
@@ -296,15 +290,15 @@ func insert(rstore bpy.CStoreReader, wstore bpy.CStoreWriter, dest [32]byte, des
 	for i := 0; i < len(destEnts); i++ {
 		if destEnts[i].EntName == destPath[0] {
 			if !destEnts[i].IsDir() {
-				return [32]byte{}, fmt.Errorf("%s is not a directory", destEnts[i].EntName)
+				return DirEnt{}, fmt.Errorf("%s is not a directory", destEnts[i].EntName)
 			}
-			newData, err := insert(rstore, wstore, destEnts[i].Data, destPath[1:], ent)
+			newEnt, err := insert(rstore, wstore, destEnts[i].Data, destPath[1:], ent)
 			if err != nil {
-				return [32]byte{}, err
+				return DirEnt{}, err
 			}
-			destEnts[i].Data = newData
+			destEnts[i].Data = newEnt.Data
 			return WriteDir(wstore, destEnts[1:], destEnts[0].EntMode)
 		}
 	}
-	return [32]byte{}, fmt.Errorf("no folder or file '%s'", destPath[0])
+	return DirEnt{}, fmt.Errorf("no folder or file '%s'", destPath[0])
 }

@@ -16,11 +16,11 @@ func TestDir(t *testing.T) {
 		{EntName: "Foo", EntSize: 0xffffff, EntMode: 0xffffff, EntModTime: 0xffff},
 	}
 	store := testhelp.NewMemStore()
-	hash, err := WriteDir(store, dir, 0777)
+	dirEnt, err := WriteDir(store, dir, 0777)
 	if err != nil {
 		t.Fatal(err)
 	}
-	rdir, err := ReadDir(store, hash)
+	rdir, err := ReadDir(store, dirEnt.Data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,40 +35,40 @@ func TestDir(t *testing.T) {
 func TestWalk(t *testing.T) {
 	store := testhelp.NewMemStore()
 	f := DirEnt{EntName: "f", EntSize: 10, EntMode: 0}
-	hash, err := WriteDir(store, DirEnts{f}, 0777)
+	dirEnt, err := WriteDir(store, DirEnts{f}, 0777)
 	if err != nil {
 		t.Fatal(err)
 	}
-	d := DirEnt{EntName: "d", EntSize: 0, EntMode: os.ModeDir, Data: hash}
+	d := DirEnt{EntName: "d", EntSize: 0, EntMode: os.ModeDir, Data: dirEnt.Data}
 	for i := 0; i < 3; i++ {
-		hash, err = WriteDir(store, DirEnts{d}, 0777)
+		dirEnt, err = WriteDir(store, DirEnts{d}, 0777)
 		if err != nil {
 			t.Fatal(err)
 		}
-		d.Data = hash
+		d.Data = dirEnt.Data
 	}
-	ent, err := Walk(store, hash, "/")
+	ent, err := Walk(store, dirEnt.Data, "/")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ent.Data != hash {
+	if ent.Data != dirEnt.Data {
 		t.Fatal("empty walk failed")
 	}
-	ent, err = Walk(store, hash, "")
+	ent, err = Walk(store, dirEnt.Data, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ent.Data != hash {
+	if ent.Data != dirEnt.Data {
 		t.Fatal("empty walk failed")
 	}
-	ent, err = Walk(store, hash, "/d/d/d/")
+	ent, err = Walk(store, dirEnt.Data, "/d/d/d/")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !ent.EntMode.IsDir() {
 		t.Fatal("expected dir")
 	}
-	ent, err = Walk(store, hash, "/d/d/d/f")
+	ent, err = Walk(store, dirEnt.Data, "/d/d/d/f")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func TestSeek(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		dhash, err := WriteDir(store,
+		dirEnt, err := WriteDir(store,
 			DirEnts{DirEnt{
 				EntName: "f",
 				EntMode: 0777,
@@ -105,7 +105,7 @@ func TestSeek(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		f, err := Open(store, dhash, "f")
+		f, err := Open(store, dirEnt.Data, "f")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -168,22 +168,22 @@ func TestInsert(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rdir, err := ReadDir(store, empty)
+	rdir, err := ReadDir(store, empty.Data)
 	if err != nil {
 		t.Fatal(err)
 	}
 	ent := rdir[0]
 	ent.EntName = "foo"
-	notEmpty1, err := Insert(store, store, empty, "", ent)
+	notEmpty1, err := Insert(store, store, empty.Data, "", ent)
 	if err != nil {
 		t.Fatal(err)
 	}
 	ent.EntName = "bar"
-	notEmpty2, err := Insert(store, store, notEmpty1, "/foo/", ent)
+	notEmpty2, err := Insert(store, store, notEmpty1.Data, "/foo/", ent)
 	if err != nil {
 		t.Fatal(err)
 	}
-	barEnt, err := Walk(store, notEmpty2, "/foo/bar/")
+	barEnt, err := Walk(store, notEmpty2.Data, "/foo/bar/")
 	if err != nil {
 		t.Fatal(err)
 	}

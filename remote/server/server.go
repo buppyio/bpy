@@ -280,7 +280,7 @@ func (srv *server) handleTGetTag(t *proto.TGetTag) proto.Message {
 		value = string(valueBytes)
 		return nil
 	})
-	if err != nil && err == ErrNoSuchTag {
+	if err == ErrNoSuchTag {
 		return &proto.RGetTag{
 			Mid: t.Mid,
 			Ok:  false,
@@ -293,6 +293,38 @@ func (srv *server) handleTGetTag(t *proto.TGetTag) proto.Message {
 		Mid:   t.Mid,
 		Value: value,
 		Ok:    true,
+	}
+}
+
+func (srv *server) handleTCasTag(t *proto.TCasTag) proto.Message {
+	db, err := openTagDB(srv.tagDBPath)
+	if err != nil {
+		makeError(t.Mid, err)
+	}
+	defer db.Close()
+	err = db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(TagBucketName))
+		valueBytes := b.Get([]byte(t.Name))
+		if valueBytes == nil {
+			return ErrNoSuchTag
+		}
+		if string(valueBytes) != t.OldValue {
+			return ErrStaleTagValue
+		}
+		return b.Put([]byte(t.Name), []byte(t.NewValue))
+	})
+	if err == ErrStaleTagValue {
+		return &proto.RCasTag{
+			Mid: t.Mid,
+			Ok:  false,
+		}
+	}
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+	return &proto.RCasTag{
+		Mid: t.Mid,
+		Ok:  true,
 	}
 }
 
@@ -400,6 +432,8 @@ func Serve(conn ReadWriteCloser, root string) error {
 			r = srv.handleTTag(t)
 		case *proto.TGetTag:
 			r = srv.handleTGetTag(t)
+		case *proto.TCasTag:
+			r = srv.handleTCasTag(t)
 		case *proto.TRemoveTag:
 			r = srv.handleTRemoveTag(t)
 		default:

@@ -27,14 +27,14 @@ func hostFileToHashTree(store bpy.CStoreWriter, path string) ([32]byte, error) {
 	return fout.Close()
 }
 
-func CpHostDirToFs(store bpy.CStoreWriter, path string) ([32]byte, error) {
+func CpHostDirToFs(store bpy.CStoreWriter, path string) (fs.DirEnt, error) {
 	st, err := os.Stat(path)
 	if err != nil {
-		return [32]byte{}, err
+		return fs.DirEnt{}, err
 	}
 	ents, err := ioutil.ReadDir(path)
 	if err != nil {
-		return [32]byte{}, err
+		return fs.DirEnt{}, err
 	}
 	dir := make(fs.DirEnts, 0, 16)
 	for _, e := range ents {
@@ -42,7 +42,7 @@ func CpHostDirToFs(store bpy.CStoreWriter, path string) ([32]byte, error) {
 		case e.Mode().IsRegular():
 			hash, err := hostFileToHashTree(store, filepath.Join(path, e.Name()))
 			if err != nil {
-				return [32]byte{}, err
+				return fs.DirEnt{}, err
 			}
 			dir = append(dir, fs.DirEnt{
 				EntName: e.Name(),
@@ -51,14 +51,14 @@ func CpHostDirToFs(store bpy.CStoreWriter, path string) ([32]byte, error) {
 				EntMode: e.Mode(),
 			})
 		case e.IsDir():
-			hash, err := CpHostDirToFs(store, filepath.Join(path, e.Name()))
+			newEnt, err := CpHostDirToFs(store, filepath.Join(path, e.Name()))
 			if err != nil {
-				return [32]byte{}, err
+				return fs.DirEnt{}, err
 			}
 			dir = append(dir, fs.DirEnt{
 				EntName: e.Name(),
 				EntMode: e.Mode(),
-				Data:    hash,
+				Data:    newEnt.Data,
 			})
 		}
 	}

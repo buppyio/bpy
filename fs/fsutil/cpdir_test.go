@@ -35,11 +35,11 @@ func TestStoreDirAndRestore(t *testing.T) {
 			t.Fatal(err)
 		}
 		store := testhelp.NewMemStore()
-		hash, err := CpHostDirToFs(store, randd)
+		dirEnt, err := CpHostDirToFs(store, randd)
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = CpFsDirToHost(store, hash, restored)
+		err = CpFsDirToHost(store, dirEnt.Data, restored)
 		if err != nil {
 			t.Fatal(err)
 		}
