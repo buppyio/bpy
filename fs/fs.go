@@ -265,3 +265,46 @@ func Ls(store bpy.CStoreReader, roothash [32]byte, fpath string) (DirEnts, error
 	}
 	return ents, nil
 }
+
+/*
+func Insert(store bpy.CStoreReader, dest [32]byte, destPath string, ent DirEnt) ([32]byte, error) {
+	if destPath == "" || destPath[0] != '/' {
+		destPath = "/" + destPath
+	}
+	destPath = path.Clean(destPath)
+	pathElems := strings.Split(destPath, "/")
+	if pathElems[len(pathElems)-1] == "" {
+		pathElems = pathElems[:len(pathElems)-1]
+	}
+	return insert(store, dest, pathElems, ent)
+}
+
+func insert(store bpy.CStoreReader, dest [32]byte, destPath []string, ent DirEnt) ([32]byte, error) {
+	destEnts, err := ReadDir(store, dest)
+	if err != nil {
+		return [32]byte{}, err
+	}
+
+	if len(destPath) == 0 {
+		mode := destEnts[0].EntMode
+		// Reuse . entry for new entry
+		destEnts[0] = ent
+		return WriteDir(store, destEnts[1:], mode)
+	}
+
+	for i := 0; i < len(destEnts); i++ {
+		if destEnts[i].Name == destPath[0] {
+			if !destEnts[i].IsDir() {
+				return [32]byte{}, fmt.Errorf("%s is not a directory", destEnts[i].EntName)
+			}
+			newData, err := insert(destEnts[i].Data, destPath[1:], ent)
+			if err != nil {
+				return [32]byte{}, err
+			}
+			destEnts[i].Data = newData
+			return WriteDir(store, destEnts[1:], destEnts[0].EntMode)
+		}
+	}
+	return [32]byte{}, fmt.Errorf("no folder or file named", destPath[0])
+}
+*/
