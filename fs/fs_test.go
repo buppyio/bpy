@@ -33,7 +33,6 @@ func TestDir(t *testing.T) {
 }
 
 func TestWalk(t *testing.T) {
-
 	store := testhelp.NewMemStore()
 	f := DirEnt{EntName: "f", EntSize: 10, EntMode: 0}
 	hash, err := WriteDir(store, DirEnts{f}, 0777)
@@ -160,5 +159,35 @@ func TestSeek(t *testing.T) {
 				t.Fatal("bad value")
 			}
 		}
+	}
+}
+
+func TestInsert(t *testing.T) {
+	store := testhelp.NewMemStore()
+	empty, err := EmptyDir(store, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rdir, err := ReadDir(store, empty)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ent := rdir[0]
+	ent.EntName = "foo"
+	notEmpty1, err := Insert(store, store, empty, "", ent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ent.EntName = "bar"
+	notEmpty2, err := Insert(store, store, notEmpty1, "/foo/", ent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	barEnt, err := Walk(store, notEmpty2, "/foo/bar/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(ent, barEnt) {
+		t.Fatal("expected empty file")
 	}
 }
