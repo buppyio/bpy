@@ -1,14 +1,20 @@
-- Add signature to tags
-- Add counter to tags which remote only allows to increment
+Alpha:
+
 - Make put etc operate on a 'default' tag using cas
 - Allow put to 'put' put files in addition to folders
-- Implement hash split in htree
-- Make browse ui polished
-- Rename 'Pack' remote api to 'Stream'
-- Add download as zip/tar to browse ui
-- Add more user friendly failure messages for ssh failure (maybe use crypto/go ssh client)
-- Write comprehensive man pages
+
+Improvements:
+
 - Add command to merge small pack files
 - Add command to migrate tags between key files
 - Add tests for cstore that excercises packfile rotation
 - Add client side chunk caching
+- Write comprehensive man pages
+- Add more user friendly failure messages for ssh failure (maybe use crypto/go ssh client)
+- Add download as zip/tar to browse ui
+- Rename 'Pack' remote api to 'Stream'
+- Make browse ui polished
+- Add signature to tags
+- Add counter to tags which remote only allows to increment
+- Implement hash split in htree
+
