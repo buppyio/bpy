@@ -18,4 +18,7 @@ Improvements:
 - Add counter to tags which remote only allows to increment
 - Implement hash split in htree
 - Test every message type in proto packing/unpack tests
+- Combine cstore reader/writer so the can share a metaindex and half memory requirements
+  of commands like put which do both.
+- Steal ideas like bloom filters, cstore is actually just an LSM.
 
