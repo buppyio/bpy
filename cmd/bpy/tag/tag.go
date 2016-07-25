@@ -87,7 +87,6 @@ func remove() {
 	}
 }
 
-/*
 func cas() {
 	flag.Parse()
 	if len(flag.Args()) != 3 {
@@ -110,12 +109,14 @@ func cas() {
 		common.Die("error getting remote: %s\n", err.Error())
 	}
 	defer c.Close()
-	err = tags.Cas(c, flag.Args()[0], flag.Args()[1], flag.Args()[2])
+	ok, err := remote.CasTag(c, flag.Args()[0], flag.Args()[1], flag.Args()[2])
 	if err != nil {
 		common.Die("error setting tag: %s\n", err.Error())
 	}
+	if !ok {
+		common.Die("tag value stale")
+	}
 }
-*/
 
 func list() {
 	k, err := common.GetKey()
@@ -145,8 +146,8 @@ func Tag() {
 		switch os.Args[1] {
 		case "create":
 			cmd = create
-		//case "cas":
-		//	cmd = cas
+		case "cas":
+			cmd = cas
 		case "get":
 			cmd = get
 		case "remove":

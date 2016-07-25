@@ -57,13 +57,14 @@ func WriteDir(store bpy.CStoreWriter, indir DirEnts, mode os.FileMode) (DirEnt, 
 	for i := range dir {
 		nbytes += 2 + len(dir[i].EntName) + 8 + 4 + 8 + 32
 	}
+
 	buf := bytes.NewBuffer(make([]byte, 0, nbytes))
 	for _, e := range dir {
-		// err is always nil for buf writes, no need to check.
 		if len(e.EntName) > 65535 {
 			return DirEnt{}, fmt.Errorf("directory entry name '%s' too long", e.EntName)
 		}
 		binary.LittleEndian.PutUint16(numbytes[0:2], uint16(len(e.EntName)))
+		// err is always nil for buf writes, no need to check.
 		buf.Write(numbytes[0:2])
 		buf.WriteString(e.EntName)
 

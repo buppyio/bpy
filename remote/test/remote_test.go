@@ -169,4 +169,30 @@ func TestTags(t *testing.T) {
 	if len(tags) != 2 {
 		t.Fatal("incorrect number of tags")
 	}
+
+	ok, err = remote.CasTag(c, "foo2", "ba", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok {
+		t.Fatal("expected cas fail")
+	}
+	ok, err = remote.CasTag(c, "foo2", "baz", "casval")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Fatal("expected cas success")
+	}
+
+	val, ok, err := remote.GetTag(c, "foo2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Fatal("expected get success")
+	}
+	if val != "casval" {
+		t.Fatal("bad val")
+	}
 }

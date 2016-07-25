@@ -328,6 +328,10 @@ func GetMessageType(m Message) byte {
 		return TGETTAG
 	case *RGetTag:
 		return RGETTAG
+	case *TCasTag:
+		return TCASTAG
+	case *RCasTag:
+		return RCASTAG
 	case *TRemoveTag:
 		return TREMOVETAG
 	case *RRemoveTag:
@@ -379,6 +383,10 @@ func GetMessageId(m Message) uint16 {
 	case *TGetTag:
 		return m.Mid
 	case *RGetTag:
+		return m.Mid
+	case *TCasTag:
+		return m.Mid
+	case *RCasTag:
 		return m.Mid
 	case *TRemoveTag:
 		return m.Mid

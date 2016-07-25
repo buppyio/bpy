@@ -130,7 +130,7 @@ func (d *httpDir) Readdir(count int) ([]os.FileInfo, error) {
 }
 
 func Browse() {
-	tagArg := flag.String("tag", "", "tag of directory to list")
+	tagArg := flag.String("tag", "default", "tag of directory to list")
 	addrArg := flag.String("addr", "127.0.0.1:8080", "address to listen on ")
 	flag.Parse()
 
