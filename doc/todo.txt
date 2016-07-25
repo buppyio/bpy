@@ -17,4 +17,5 @@ Improvements:
 - Add signature to tags
 - Add counter to tags which remote only allows to increment
 - Implement hash split in htree
+- Test every message type in proto packing/unpack tests
 
