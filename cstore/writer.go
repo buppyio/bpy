@@ -37,7 +37,7 @@ type Writer struct {
 	name         string
 	workingSetSz uint64
 	key          [32]byte
-	midx         []metaIndexEnt
+	midx         metaIndex
 	flatebuf     bytes.Buffer
 	flatew       *flate.Writer
 }

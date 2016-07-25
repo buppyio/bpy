@@ -19,17 +19,11 @@ type lruent struct {
 	pack     *bpack.Reader
 }
 
-type metaIndexEnt struct {
-	packname string
-	packsize uint64
-	idx      bpack.Index
-}
-
 type Reader struct {
 	lock      sync.Mutex
 	store     *client.Client
 	cachepath string
-	midx      []metaIndexEnt
+	midx      metaIndex
 	lru       *list.List
 	key       [32]byte
 	flatebuf  bytes.Buffer
@@ -52,11 +46,11 @@ func NewReader(store *client.Client, key [32]byte, cachepath string) (*Reader, e
 func (r *Reader) Get(hash [32]byte) ([]byte, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	midxent, packidxent, ok := searchMetaIndex(r.midx, hash)
+	packInfo, packidxent, ok := searchMetaIndex(r.midx, hash)
 	if !ok {
 		return nil, NotFound
 	}
-	packrdr, err := r.getPackReader(midxent.packname, midxent.packsize, midxent.idx)
+	packrdr, err := r.getPackReader(packInfo.Name, packInfo.Size, packInfo.Idx)
 	if err != nil {
 		return nil, err
 	}

@@ -12,34 +12,46 @@ import (
 	"path/filepath"
 )
 
-func searchMetaIndex(midx []metaIndexEnt, hash [32]byte) (metaIndexEnt, bpack.IndexEnt, bool) {
-	k := string(hash[:])
-	for i := range midx {
-		packidx, ok := midx[i].idx.Search(k)
-		if ok {
-			return midx[i], midx[i].idx[packidx], true
-		}
-	}
-	return metaIndexEnt{}, bpack.IndexEnt{}, false
+type packInfo struct {
+	Name string
+	Size uint64
+	Idx  bpack.Index
 }
 
-func readAndCacheMetaIndex(store *client.Client, key [32]byte, cachepath string) ([]metaIndexEnt, error) {
+type metaIndex map[string]*packInfo
+
+func searchMetaIndex(midx metaIndex, hash [32]byte) (*packInfo, bpack.IndexEnt, bool) {
+	k := string(hash[:])
+	info, ok := midx[k]
+	if ok {
+		packIdx, ok := info.Idx.Search(k)
+		if !ok {
+			panic("corrupt meta index")
+		}
+		return info, info.Idx[packIdx], true
+	}
+	return nil, bpack.IndexEnt{}, false
+}
+
+func readAndCacheMetaIndex(store *client.Client, key [32]byte, cachepath string) (metaIndex, error) {
 	listing, err := remote.ListPacks(store)
 	if err != nil {
 		return nil, err
 	}
-	midx := make([]metaIndexEnt, 0, 16)
+	midx := make(metaIndex)
 	for _, pack := range listing {
 		idx, err := getAndCacheIndex(store, key, pack.Name, pack.Size, cachepath)
 		if err != nil {
 			return nil, err
 		}
-		midxent := metaIndexEnt{
-			packname: pack.Name,
-			packsize: pack.Size,
-			idx:      idx,
+		info := &packInfo{
+			Name: pack.Name,
+			Size: pack.Size,
+			Idx:  idx,
 		}
-		midx = append(midx, midxent)
+		for i := range idx {
+			midx[idx[i].Key] = info
+		}
 	}
 	return midx, nil
 }
