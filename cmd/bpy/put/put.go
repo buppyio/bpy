@@ -54,32 +54,13 @@ func Put() {
 	if err != nil {
 		common.Die("error fetching tag hash: %s\n", err.Error())
 	}
-	var destHash [32]byte
-	if ok {
-		destHash, err = bpy.ParseHash(tagHash)
-		if err != nil {
-			common.Die("error parsing hash: %s\n", err.Error())
-		}
-	} else {
-		empty, err := fs.EmptyDir(wstore, 0755)
-		if err != nil {
-			common.Die("error creating empty dir: %s\n", err.Error())
-		}
-		destHash = empty.Data
-		err = wstore.Close()
-		if err != nil {
-			common.Die("error closing remote: %s\n", err.Error())
-		}
+	if !ok {
+		common.Die("tag '%s' does not exist\n", *tagArg)
+	}
 
-		err = rstore.Close()
-		if err != nil {
-			common.Die("error closing remote: %s\n", err.Error())
-		}
-		err = remote.Tag(c, *tagArg, hex.EncodeToString(destHash[:]))
-		if err != nil {
-			common.Die("error creating tag: %s\n", err.Error())
-		}
-		common.Die("initialized tag rerun command")
+	destHash, err := bpy.ParseHash(tagHash)
+	if err != nil {
+		common.Die("error parsing hash: %s\n", err.Error())
 	}
 
 	log.Printf("copying host dir cstore...")

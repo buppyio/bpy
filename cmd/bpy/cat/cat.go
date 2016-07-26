@@ -12,21 +12,8 @@ import (
 
 func Cat() {
 	var root [32]byte
-	tagArg := flag.String("tag", "", "tag of directory to list")
-	hashArg := flag.String("hash", "", "hash of directory to list")
+	tagArg := flag.String("tag", "default", "tag of directory to list")
 	flag.Parse()
-
-	if *hashArg == "" && *tagArg == "" || *hashArg != "" && *tagArg != "" {
-		common.Die("please specify a hash or a tag to list\n")
-	}
-
-	if *hashArg != "" {
-		hash, err := bpy.ParseHash(*hashArg)
-		if err != nil {
-			common.Die("error parsing hash: %s\n", err.Error())
-		}
-		root = hash
-	}
 
 	if len(flag.Args()) != 1 {
 		common.Die("please specify a path\n")
@@ -48,18 +35,18 @@ func Cat() {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
 
-	if *tagArg != "" {
-		tagHash, ok, err := remote.GetTag(c, *tagArg)
-		if err != nil {
-			common.Die("error fetching tag hash: %s\n", err.Error())
-		}
-		if !ok {
-			common.Die("tag '%s' does not exist", *tagArg)
-		}
-		root, err = bpy.ParseHash(tagHash)
-		if err != nil {
-			common.Die("error parsing hash: %s\n", err.Error())
-		}
+	tagHash, ok, err := remote.GetTag(c, *tagArg)
+	if err != nil {
+		common.Die("error fetching tag hash: %s\n", err.Error())
+	}
+
+	if !ok {
+		common.Die("tag '%s' does not exist\n", *tagArg)
+	}
+
+	root, err = bpy.ParseHash(tagHash)
+	if err != nil {
+		common.Die("error parsing hash: %s\n", err.Error())
 	}
 
 	for _, fpath := range flag.Args() {

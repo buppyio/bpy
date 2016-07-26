@@ -9,6 +9,7 @@ Bugs:
 
 Improvements:
 
+- Give refs infinite history to allow error recovery
 - Rename tags to refs or roots, make tags more like git tags
 - Add command to merge small pack files
 - Add command to migrate tags between key files

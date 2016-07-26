@@ -3,6 +3,8 @@ package common
 import (
 	"acha.ninja/bpy"
 	"acha.ninja/bpy/cstore"
+	"acha.ninja/bpy/fs"
+	"acha.ninja/bpy/remote"
 	"acha.ninja/bpy/remote/client"
 	"encoding/hex"
 	"fmt"
@@ -101,11 +103,39 @@ func GetRemote(k *bpy.Key) (*client.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	remote, err := client.Attach(slv, hex.EncodeToString(k.Id[:]))
+	c, err := client.Attach(slv, hex.EncodeToString(k.Id[:]))
 	if err != nil {
 		return nil, err
 	}
-	return remote, nil
+	_, ok, err := remote.GetTag(c, "default")
+	if !ok {
+		k, err := GetKey()
+		if err != nil {
+			c.Close()
+			return nil, fmt.Errorf("error getting key: %s", err.Error())
+		}
+		w, err := GetCStoreWriter(&k, c)
+		if err != nil {
+			c.Close()
+			return nil, fmt.Errorf("error getting store writer: %s", err.Error())
+		}
+		ent, err := fs.EmptyDir(w, 0755)
+		if err != nil {
+			c.Close()
+			return nil, fmt.Errorf("error creating empty default root: %s", err.Error())
+		}
+		err = w.Close()
+		if err != nil {
+			c.Close()
+			return nil, fmt.Errorf("error closing writer: %s", err.Error())
+		}
+		err = remote.Tag(c, "default", hex.EncodeToString(ent.Data[:]))
+		if err != nil {
+			c.Close()
+			return nil, fmt.Errorf("error initizializing default tag: %s", err.Error())
+		}
+	}
+	return c, nil
 }
 
 func GetCStoreReader(k *bpy.Key, remote *client.Client) (bpy.CStoreReader, error) {
