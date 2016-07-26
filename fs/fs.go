@@ -5,6 +5,7 @@ import (
 	"acha.ninja/bpy/htree"
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -302,4 +303,55 @@ func insert(rstore bpy.CStoreReader, wstore bpy.CStoreWriter, dest [32]byte, des
 		}
 	}
 	return DirEnt{}, fmt.Errorf("no folder or file '%s'", destPath[0])
+}
+
+func Remove(rstore bpy.CStoreReader, wstore bpy.CStoreWriter, root [32]byte, filePath string) (DirEnt, error) {
+	if filePath == "" || filePath[0] != '/' {
+		filePath = "/" + filePath
+	}
+	filePath = path.Clean(filePath)
+	if filePath == "/" {
+		return DirEnt{}, errors.New("cannot remove root directory")
+	}
+	pathElems := strings.Split(filePath, "/")[1:]
+	if pathElems[len(pathElems)-1] == "" {
+		pathElems = pathElems[:len(pathElems)-1]
+	}
+	return remove(rstore, wstore, root, pathElems)
+}
+
+func remove(rstore bpy.CStoreReader, wstore bpy.CStoreWriter, root [32]byte, filePath []string) (DirEnt, error) {
+	dirEnts, err := ReadDir(rstore, root)
+	if err != nil {
+		return DirEnt{}, err
+	}
+	if len(filePath) == 1 {
+		mode := dirEnts[0].EntMode
+		dirEnts = dirEnts[1:]
+		nents := len(dirEnts) - 1
+		newDir := make(DirEnts, 0, nents)
+		for i := 0; i < len(dirEnts); i++ {
+			if filePath[0] != dirEnts[i].EntName {
+				newDir = append(newDir, dirEnts[i])
+			}
+		}
+		if len(newDir) > nents {
+			return DirEnt{}, fmt.Errorf("no file called '%s'", filePath[0])
+		}
+		return WriteDir(wstore, newDir, mode)
+	}
+	for i := 0; i < len(dirEnts); i++ {
+		if dirEnts[i].EntName == filePath[0] {
+			if !dirEnts[i].IsDir() {
+				return DirEnt{}, fmt.Errorf("%s is not a directory", dirEnts[i].EntName)
+			}
+			newEnt, err := remove(rstore, wstore, dirEnts[i].Data, filePath[1:])
+			if err != nil {
+				return DirEnt{}, err
+			}
+			dirEnts[i].Data = newEnt.Data
+			return WriteDir(wstore, dirEnts[1:], dirEnts[0].EntMode)
+		}
+	}
+	return DirEnt{}, fmt.Errorf("no folder or file '%s'", filePath[0])
 }

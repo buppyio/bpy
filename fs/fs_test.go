@@ -201,3 +201,31 @@ func TestInsert(t *testing.T) {
 		t.Fatal("expected empty file")
 	}
 }
+
+func TestRemove(t *testing.T) {
+	store := testhelp.NewMemStore()
+	empty, err := EmptyDir(store, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rdir, err := ReadDir(store, empty.Data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rdir) != 1 {
+		t.Fatal("expected empty dir")
+	}
+	ent := rdir[0]
+	ent.EntName = "foo"
+	notEmpty1, err := Insert(store, store, empty.Data, "", ent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withFooRemoved, err := Remove(store, store, notEmpty1.Data, "foo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(empty, withFooRemoved) {
+		t.Fatal("expected empty file")
+	}
+}
