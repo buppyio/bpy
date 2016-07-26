@@ -4,7 +4,7 @@
 
 # NAME
 
-bpy - Buppy file storage.
+bpy - Buppy file storage from https://buppy.io
 
 # SYNOPSIS
 
@@ -32,11 +32,18 @@ server.
 export BUPPY_REMOTE="ssh://yourserver/home/youruser/bpydata"
 ```
 
-Finally, store a backup and tag it with a human readable tag/name.
+Finally, store a backup
 
 ```
 echo "important document" > document.txt
-bpy put -tag="$(PWD) $(DATE)" .
+bpy put .
+```
+
+View your data with 'ls' or 'browse'
+
+```
+bpy ls
+bpy browse
 ```
 
 # SEE ALSO
