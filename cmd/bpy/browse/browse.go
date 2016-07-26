@@ -8,6 +8,7 @@ import (
 	"acha.ninja/bpy/remote/client"
 	"errors"
 	"flag"
+	"fmt"
 	"github.com/pkg/browser"
 	"log"
 	"net/http"
@@ -23,9 +24,12 @@ type httpFs struct {
 
 func (httpFs *httpFs) Open(path string) (http.File, error) {
 	log.Printf("open: %s", path)
-	tag, err := remote.GetTag(httpFs.c, httpFs.tag)
+	tag, ok, err := remote.GetTag(httpFs.c, httpFs.tag)
 	if err != nil {
 		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("tag '%s' does not exist", httpFs.tag)
 	}
 	root, err := bpy.ParseHash(tag)
 	if err != nil {

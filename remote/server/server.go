@@ -280,12 +280,19 @@ func (srv *server) handleTGetTag(t *proto.TGetTag) proto.Message {
 		value = string(valueBytes)
 		return nil
 	})
+	if err != nil && err == ErrNoSuchTag {
+		return &proto.RGetTag{
+			Mid: t.Mid,
+			Ok:  false,
+		}
+	}
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
 	return &proto.RGetTag{
 		Mid:   t.Mid,
 		Value: value,
+		Ok:    true,
 	}
 }
 

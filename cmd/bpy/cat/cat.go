@@ -49,9 +49,12 @@ func Cat() {
 	}
 
 	if *tagArg != "" {
-		tagHash, err := remote.GetTag(c, *tagArg)
+		tagHash, ok, err := remote.GetTag(c, *tagArg)
 		if err != nil {
 			common.Die("error fetching tag hash: %s\n", err.Error())
+		}
+		if !ok {
+			common.Die("tag '%s' does not exist", *tagArg)
 		}
 		root, err = bpy.ParseHash(tagHash)
 		if err != nil {

@@ -79,6 +79,7 @@ type TGetTag struct {
 
 type RGetTag struct {
 	Mid   uint16
+	Ok    bool
 	Value string
 }
 

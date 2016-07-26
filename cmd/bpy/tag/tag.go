@@ -54,9 +54,12 @@ func get() {
 		common.Die("error getting remote: %s\n", err.Error())
 	}
 	defer c.Close()
-	hash, err := remote.GetTag(c, flag.Args()[0])
+	hash, ok, err := remote.GetTag(c, flag.Args()[0])
 	if err != nil {
 		common.Die("error setting tag: %s\n", err.Error())
+	}
+	if !ok {
+		common.Die("tag '%s' does not exist", flag.Args()[0])
 	}
 	_, err = fmt.Println(hash)
 	if err != nil {

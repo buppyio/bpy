@@ -135,9 +135,12 @@ func TestTags(t *testing.T) {
 	}
 
 	for k, v := range testvals {
-		val, err := remote.GetTag(c, k)
+		val, ok, err := remote.GetTag(c, k)
 		if err != nil {
 			t.Fatal(err)
+		}
+		if !ok {
+			t.Fatal("expected tag")
 		}
 		if val != v {
 			t.Fatalf("value got('%s') != expected('%v')", v, val)
@@ -152,9 +155,12 @@ func TestTags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = remote.GetTag(c, "foo")
-	if err == nil {
-		t.Fatal("expected error")
+	_, ok, err := remote.GetTag(c, "foo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok {
+		t.Fatal("expected no tag")
 	}
 	tags, err = remote.ListTags(c)
 	if err != nil {

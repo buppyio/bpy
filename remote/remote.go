@@ -80,12 +80,12 @@ func Tag(c *client.Client, name, value string) error {
 	return err
 }
 
-func GetTag(c *client.Client, name string) (string, error) {
+func GetTag(c *client.Client, name string) (string, bool, error) {
 	r, err := c.TGetTag(name)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
-	return r.Value, nil
+	return r.Value, r.Ok, nil
 }
 
 func RemoveTag(c *client.Client, name, oldValue string) error {
