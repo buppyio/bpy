@@ -9,13 +9,15 @@ import (
 	"acha.ninja/bpy/cmd/bpy/put"
 	"acha.ninja/bpy/cmd/bpy/remote"
 	"acha.ninja/bpy/cmd/bpy/tag"
+	"acha.ninja/bpy/cmd/bpy/tar"
+	"acha.ninja/bpy/cmd/bpy/zip"
 	"fmt"
 	"os"
 )
 
 func help() {
 	fmt.Println("Please specify one of the following subcommands:")
-	fmt.Println("browse, cat, get, ls, new-key, put, tag")
+	fmt.Println("browse, cat, get, ls, new-key, put, tag, tar, zip")
 	fmt.Println("")
 	fmt.Println("For more use -h on the sub commands.")
 	fmt.Println("Also check the docs at https://buppy.io/docs")
@@ -40,10 +42,14 @@ func main() {
 			cmd = remote.Remote
 		case "tag":
 			cmd = tag.Tag
+		case "tar":
+			cmd = tar.Tar
 		case "dbg":
 			cmd = dbg
 		case "new-key":
 			cmd = newkey.NewKey
+		case "zip":
+			cmd = zip.Zip
 		default:
 			cmd = help
 		}
