@@ -188,8 +188,7 @@ func TestInsert(t *testing.T) {
 	if len(rdir) != 2 {
 		t.Fatal("expected single folder")
 	}
-	ent.EntName = "bar"
-	notEmpty2, err := Insert(store, store, notEmpty1.Data, "/foo/", ent)
+	notEmpty2, err := Insert(store, store, notEmpty1.Data, "/foo/bar", ent)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,5 +226,51 @@ func TestRemove(t *testing.T) {
 	}
 	if !reflect.DeepEqual(empty, withFooRemoved) {
 		t.Fatal("expected empty file")
+	}
+}
+
+func TestCopy(t *testing.T) {
+	store := testhelp.NewMemStore()
+	empty, err := EmptyDir(store, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	notEmpty1, err := Copy(store, store, empty.Data, "/foo", "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	walkEnt, err := Walk(store, notEmpty1.Data, "/foo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(empty.Data, walkEnt.Data) {
+		t.Fatal("expected empty folder")
+	}
+}
+
+func TestMove(t *testing.T) {
+	store := testhelp.NewMemStore()
+	empty, err := EmptyDir(store, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	notEmpty1, err := Copy(store, store, empty.Data, "/foo", "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	moveDir, err := Move(store, store, notEmpty1.Data, "/bar", "/foo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = Walk(store, moveDir.Data, "/foo")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	walkEnt, err := Walk(store, moveDir.Data, "/bar")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(empty.Data, walkEnt.Data) {
+		t.Fatal("expected empty folder")
 	}
 }

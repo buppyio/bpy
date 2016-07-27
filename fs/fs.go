@@ -270,6 +270,10 @@ func Insert(rstore bpy.CStoreReader, wstore bpy.CStoreWriter, dest [32]byte, des
 	if destPath == "" || destPath[0] != '/' {
 		destPath = "/" + destPath
 	}
+	if !strings.HasSuffix(destPath, "/") {
+		ent.EntName = path.Base(destPath)
+		destPath = path.Dir(destPath)
+	}
 	destPath = path.Clean(destPath)
 	pathElems := strings.Split(destPath, "/")[1:]
 	if pathElems[len(pathElems)-1] == "" {
@@ -354,4 +358,28 @@ func remove(rstore bpy.CStoreReader, wstore bpy.CStoreWriter, root [32]byte, fil
 		}
 	}
 	return DirEnt{}, fmt.Errorf("no folder or file '%s'", filePath[0])
+}
+
+func Copy(rstore bpy.CStoreReader, wstore bpy.CStoreWriter, root [32]byte, destPath, srcPath string) (DirEnt, error) {
+	srcEnt, err := Walk(rstore, root, srcPath)
+	if err != nil {
+		return DirEnt{}, err
+	}
+	newRoot, err := Insert(rstore, wstore, root, destPath, srcEnt)
+	if err != nil {
+		return DirEnt{}, err
+	}
+	return newRoot, nil
+}
+
+func Move(rstore bpy.CStoreReader, wstore bpy.CStoreWriter, root [32]byte, destPath, srcPath string) (DirEnt, error) {
+	copyRoot, err := Copy(rstore, wstore, root, destPath, srcPath)
+	if err != nil {
+		return DirEnt{}, err
+	}
+	newRoot, err := Remove(rstore, wstore, copyRoot.Data, srcPath)
+	if err != nil {
+		return DirEnt{}, err
+	}
+	return newRoot, nil
 }
