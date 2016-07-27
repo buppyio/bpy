@@ -1,5 +1,3 @@
-// Copyright (C) 2015  Andrew Chambers - andrewchamberss@gmail.com
-
 package archive
 
 import (

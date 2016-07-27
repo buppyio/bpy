@@ -8,7 +8,6 @@ import (
 	"acha.ninja/bpy/remote"
 	"encoding/hex"
 	"flag"
-	"log"
 	"path"
 	"path/filepath"
 	"strings"
@@ -33,7 +32,6 @@ func Put() {
 		common.Die("error getting bpy key data: %s\n", err.Error())
 	}
 
-	log.Printf("getting remote...")
 	c, err := common.GetRemote(&k)
 	if err != nil {
 		common.Die("error connecting to remote: %s\n", err.Error())
@@ -49,7 +47,6 @@ func Put() {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
 
-	log.Printf("getting tag...")
 	tagHash, ok, err := remote.GetTag(c, *tagArg)
 	if err != nil {
 		common.Die("error fetching tag hash: %s\n", err.Error())
@@ -63,7 +60,6 @@ func Put() {
 		common.Die("error parsing hash: %s\n", err.Error())
 	}
 
-	log.Printf("copying host dir cstore...")
 	srcDirEnt, err := fsutil.CpHostDirToFs(wstore, srcPath)
 	if err != nil {
 		common.Die("error copying data: %s\n", err.Error())
@@ -75,34 +71,29 @@ func Put() {
 		srcDirEnt.EntName = path.Base(destPath)
 	}
 
-	log.Printf("running insert... %s %s", srcDirEnt.EntName, destPath)
 	newRoot, err := fs.Insert(rstore, wstore, destHash, destPath, srcDirEnt)
 	if err != nil {
 		common.Die("error inserting src into folder: %s\n", err.Error())
 	}
 
-	for {
-		log.Printf("running cas...")
-		ok, err := remote.CasTag(c, *tagArg, hex.EncodeToString(destHash[:]), hex.EncodeToString(newRoot.Data[:]))
-		if err != nil {
-			common.Die("creating tag: %s\n", err.Error())
-		}
-		if ok {
-			log.Printf("cas done...")
-			break
-		}
-	}
-
-	log.Printf("shutting down...")
 	err = wstore.Close()
 	if err != nil {
-		common.Die("error closing remote: %s\n", err.Error())
+		common.Die("error closing wstore: %s\n", err.Error())
 	}
-	log.Printf("shutting down...")
+
 	err = rstore.Close()
 	if err != nil {
 		common.Die("error closing remote: %s\n", err.Error())
 	}
 
-	log.Printf("done...")
+	ok, err = remote.CasTag(c, *tagArg, hex.EncodeToString(destHash[:]), hex.EncodeToString(newRoot.Data[:]))
+	if err != nil {
+		common.Die("creating tag: %s\n", err.Error())
+	}
+
+	if !ok {
+		// XXX: loop here
+		common.Die("tag concurrently modified, try again\n")
+	}
+
 }
