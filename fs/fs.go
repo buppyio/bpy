@@ -38,7 +38,6 @@ func (dir DirEnts) Less(i, j int) bool { return dir[i].EntName < dir[j].EntName 
 func (dir DirEnts) Swap(i, j int)      { dir[i], dir[j] = dir[j], dir[i] }
 
 func WriteDir(store bpy.CStoreWriter, indir DirEnts, mode os.FileMode) (DirEnt, error) {
-	var numbytes [8]byte
 	dir := make(DirEnts, len(indir)+1, len(indir)+1)
 	copy(dir[1:], indir)
 	mode |= os.ModeDir
@@ -61,22 +60,23 @@ func WriteDir(store bpy.CStoreWriter, indir DirEnts, mode os.FileMode) (DirEnt, 
 
 	buf := bytes.NewBuffer(make([]byte, 0, nbytes))
 	for _, e := range dir {
+		var buffer [8]byte
 		if len(e.EntName) > 65535 {
 			return DirEnt{}, fmt.Errorf("directory entry name '%s' too long", e.EntName)
 		}
-		binary.LittleEndian.PutUint16(numbytes[0:2], uint16(len(e.EntName)))
+		binary.LittleEndian.PutUint16(buffer[0:2], uint16(len(e.EntName)))
 		// err is always nil for buf writes, no need to check.
-		buf.Write(numbytes[0:2])
+		buf.Write(buffer[0:2])
 		buf.WriteString(e.EntName)
 
-		binary.LittleEndian.PutUint64(numbytes[0:8], uint64(e.EntSize))
-		buf.Write(numbytes[0:8])
+		binary.LittleEndian.PutUint64(buffer[0:8], uint64(e.EntSize))
+		buf.Write(buffer[0:8])
 
-		binary.LittleEndian.PutUint32(numbytes[0:4], uint32(e.EntMode))
-		buf.Write(numbytes[0:4])
+		binary.LittleEndian.PutUint32(buffer[0:4], uint32(e.EntMode))
+		buf.Write(buffer[0:4])
 
-		binary.LittleEndian.PutUint64(numbytes[0:8], uint64(e.EntModTime))
-		buf.Write(numbytes[0:8])
+		binary.LittleEndian.PutUint64(buffer[0:8], uint64(e.EntModTime))
+		buf.Write(buffer[0:8])
 
 		buf.Write(e.Data[:])
 	}

@@ -5,39 +5,42 @@ import (
 	"acha.ninja/bpy/cmd/bpy/common"
 	"flag"
 	"fmt"
-	"io"
 	"os"
 )
 
 func NewKey() {
-	var o io.WriteCloser
 
 	keyFile := flag.String("f", "", "file to write the key to. (defaults to stdout)")
 
 	flag.Parse()
 
 	if *keyFile == "" {
-		o = os.Stdout
-	} else {
-		f, err := os.OpenFile(*keyFile, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
-		if err != nil {
-			common.Die("error creating key file: %s", err.Error())
-		}
-		o = f
+
+	}
+
+	f, err := os.OpenFile(*keyFile, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	if err != nil {
+		common.Die("error creating key file: %s\n", err.Error())
 	}
 
 	k, err := bpy.NewKey()
 	if err != nil {
-		common.Die("%s", err.Error())
+		common.Die("%s\n", err.Error())
 	}
 
-	err = bpy.WriteKey(o, &k)
+	err = bpy.WriteKey(f, &k)
 	if err != nil {
-		common.Die("%s", err.Error())
+		common.Die("%s\n", err.Error())
 	}
 
-	_, err = fmt.Fprintln(o, "")
+	_, err = fmt.Fprintln(f, "")
 	if err != nil {
-		common.Die("%s", err.Error())
+		common.Die("%s\n", err.Error())
 	}
+
+	err = f.Close()
+	if err != nil {
+		common.Die("%s\n", err.Error())
+	}
+
 }

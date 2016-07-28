@@ -6,6 +6,7 @@ import (
 	"acha.ninja/bpy/cmd/bpy/cp"
 	"acha.ninja/bpy/cmd/bpy/get"
 	"acha.ninja/bpy/cmd/bpy/ls"
+	"acha.ninja/bpy/cmd/bpy/mv"
 	"acha.ninja/bpy/cmd/bpy/newkey"
 	"acha.ninja/bpy/cmd/bpy/put"
 	"acha.ninja/bpy/cmd/bpy/remote"
@@ -40,6 +41,8 @@ func main() {
 			cmd = get.Get
 		case "ls":
 			cmd = ls.Ls
+		case "mv":
+			cmd = mv.Mv
 		case "put":
 			cmd = put.Put
 		case "remote":

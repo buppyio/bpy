@@ -28,6 +28,10 @@ func hostFileToHashTree(store bpy.CStoreWriter, path string) ([32]byte, error) {
 }
 
 func CpHostDirToFs(store bpy.CStoreWriter, path string) (fs.DirEnt, error) {
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return fs.DirEnt{}, err
+	}
 	st, err := os.Stat(path)
 	if err != nil {
 		return fs.DirEnt{}, err
@@ -62,7 +66,9 @@ func CpHostDirToFs(store bpy.CStoreWriter, path string) (fs.DirEnt, error) {
 			})
 		}
 	}
-	return fs.WriteDir(store, dir, st.Mode())
+	dirEnt, err := fs.WriteDir(store, dir, st.Mode())
+	dirEnt.EntName = filepath.Base(path)
+	return dirEnt, err
 }
 
 func CpHashTreeToHostFile(store bpy.CStoreReader, hash [32]byte, dst string, mode os.FileMode) error {

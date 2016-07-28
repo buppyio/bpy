@@ -1,16 +1,12 @@
-package cp
+package mv
 
 import (
 	"acha.ninja/bpy"
 	"acha.ninja/bpy/cmd/bpy/common"
 	"acha.ninja/bpy/fs"
-	"acha.ninja/bpy/fs/fsutil"
 	"acha.ninja/bpy/remote"
 	"encoding/hex"
 	"flag"
-	"path"
-	"path/filepath"
-	"strings"
 )
 
 func Mv() {
