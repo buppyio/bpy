@@ -1,31 +1,21 @@
-package put
+package rm
 
 import (
 	"acha.ninja/bpy"
 	"acha.ninja/bpy/cmd/bpy/common"
 	"acha.ninja/bpy/fs"
-	"acha.ninja/bpy/fs/fsutil"
 	"acha.ninja/bpy/remote"
 	"encoding/hex"
 	"flag"
-	"path"
-	"path/filepath"
-	"strings"
 )
 
-func Put() {
-	tagArg := flag.String("tag", "default", "tag put data into")
-	destArg := flag.String("dest", "/", "destination path")
+func Rm() {
+	tagArg := flag.String("tag", "default", "tag put rm from")
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {
-		common.Die("please specify the local folder to put into dest\n")
+		common.Die("please path to remove\n")
 	}
-	srcPath, err := filepath.Abs(flag.Args()[0])
-	if err != nil {
-		common.Die("error getting src path: %s\n", err.Error())
-	}
-	destPath := *destArg
 
 	k, err := common.GetKey()
 	if err != nil {
@@ -55,38 +45,27 @@ func Put() {
 		common.Die("tag '%s' does not exist\n", *tagArg)
 	}
 
-	destHash, err := bpy.ParseHash(tagHash)
+	rootHash, err := bpy.ParseHash(tagHash)
 	if err != nil {
 		common.Die("error parsing hash: %s\n", err.Error())
 	}
 
-	srcDirEnt, err := fsutil.CpHostDirToFs(wstore, srcPath)
+	newRoot, err := fs.Remove(rstore, wstore, rootHash, flag.Args()[0])
 	if err != nil {
-		common.Die("error copying data: %s\n", err.Error())
-	}
-
-	if strings.HasSuffix(destPath, "/") {
-		srcDirEnt.EntName = filepath.Base(srcPath)
-	} else {
-		srcDirEnt.EntName = path.Base(destPath)
-	}
-
-	newRoot, err := fs.Insert(rstore, wstore, destHash, destPath, srcDirEnt)
-	if err != nil {
-		common.Die("error inserting src into folder: %s\n", err.Error())
+		common.Die("error removing file: %s\n", err.Error())
 	}
 
 	err = wstore.Close()
 	if err != nil {
-		common.Die("error closing wstore: %s\n", err.Error())
+		common.Die("error closing store: %s\n", err.Error())
 	}
 
 	err = rstore.Close()
 	if err != nil {
-		common.Die("error closing remote: %s\n", err.Error())
+		common.Die("error closing store: %s\n", err.Error())
 	}
 
-	ok, err = remote.CasTag(c, *tagArg, hex.EncodeToString(destHash[:]), hex.EncodeToString(newRoot.Data[:]))
+	ok, err = remote.CasTag(c, *tagArg, hex.EncodeToString(rootHash[:]), hex.EncodeToString(newRoot.Data[:]))
 	if err != nil {
 		common.Die("creating tag: %s\n", err.Error())
 	}

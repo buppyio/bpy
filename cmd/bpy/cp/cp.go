@@ -1,29 +1,23 @@
-package put
+package cp
 
 import (
 	"acha.ninja/bpy"
 	"acha.ninja/bpy/cmd/bpy/common"
 	"acha.ninja/bpy/fs"
-	"acha.ninja/bpy/fs/fsutil"
 	"acha.ninja/bpy/remote"
 	"encoding/hex"
 	"flag"
-	"path/filepath"
 )
 
-func Put() {
+func Cp() {
 	tagArg := flag.String("tag", "default", "tag put data into")
-	destArg := flag.String("dest", "/", "destination path")
 	flag.Parse()
 
-	if len(flag.Args()) != 1 {
-		common.Die("please specify the local folder to put into dest\n")
+	if len(flag.Args()) != 2 {
+		common.Die("please specify a src and dest\n")
 	}
-	srcPath, err := filepath.Abs(flag.Args()[0])
-	if err != nil {
-		common.Die("error getting src path: %s\n", err.Error())
-	}
-	destPath := *destArg
+	srcPath := flag.Args()[0]
+	destPath := flag.Args()[1]
 
 	k, err := common.GetKey()
 	if err != nil {
@@ -35,6 +29,7 @@ func Put() {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
 	defer c.Close()
+
 	wstore, err := common.GetCStoreWriter(&k, c)
 	if err != nil {
 		common.Die("error getting content store: %s\n", err.Error())
@@ -45,7 +40,7 @@ func Put() {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
 
-	tagHash, ok, err := remote.GetTag(c, *tagArg)
+	tagVal, ok, err := remote.GetTag(c, *tagArg)
 	if err != nil {
 		common.Die("error fetching tag hash: %s\n", err.Error())
 	}
@@ -53,19 +48,14 @@ func Put() {
 		common.Die("tag '%s' does not exist\n", *tagArg)
 	}
 
-	destHash, err := bpy.ParseHash(tagHash)
+	rootHash, err := bpy.ParseHash(tagVal)
 	if err != nil {
 		common.Die("error parsing hash: %s\n", err.Error())
 	}
 
-	srcDirEnt, err := fsutil.CpHostDirToFs(wstore, srcPath)
+	newRoot, err := fs.Copy(rstore, wstore, rootHash, destPath, srcPath)
 	if err != nil {
-		common.Die("error copying data: %s\n", err.Error())
-	}
-
-	newRoot, err := fs.Insert(rstore, wstore, destHash, destPath, srcDirEnt)
-	if err != nil {
-		common.Die("error inserting src into folder: %s\n", err.Error())
+		common.Die("error copying src to dest: %s\n", err.Error())
 	}
 
 	err = wstore.Close()
@@ -78,7 +68,7 @@ func Put() {
 		common.Die("error closing remote: %s\n", err.Error())
 	}
 
-	ok, err = remote.CasTag(c, *tagArg, hex.EncodeToString(destHash[:]), hex.EncodeToString(newRoot.Data[:]))
+	ok, err = remote.CasTag(c, *tagArg, tagVal, hex.EncodeToString(newRoot.Data[:]))
 	if err != nil {
 		common.Die("creating tag: %s\n", err.Error())
 	}
