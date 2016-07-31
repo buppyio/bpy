@@ -3,6 +3,7 @@ package browse
 import (
 	"acha.ninja/bpy"
 	"acha.ninja/bpy/cmd/bpy/common"
+	"acha.ninja/bpy/cstore"
 	"acha.ninja/bpy/fs"
 	"acha.ninja/bpy/remote"
 	"acha.ninja/bpy/remote/client"
@@ -162,7 +163,7 @@ func Browse() {
 	}()
 	log.Fatal(http.ListenAndServe(*addrArg, http.FileServer(&httpFs{
 		c:     c,
-		store: store,
+		store: cstore.NewMemCachedCStore(store, 64*1024*1024),
 		tag:   *tagArg,
 	})))
 }
