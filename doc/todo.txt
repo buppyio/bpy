@@ -8,6 +8,8 @@ Bugs:
 
 Improvements:
 
+- Rename cstore.Writer to just CStore
+- Double check cstore memcache + mindex need to be string maps, and can't use arrays directly.
 - Delete old ebpack/tmp files on attach if they are older than some age
 - Give refs infinite history to allow error recovery
 - Rename tags to refs or roots, make tags more like git tags

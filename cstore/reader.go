@@ -14,7 +14,7 @@ import (
 
 var NotFound = errors.New("hash not in cstore")
 
-type lruent struct {
+type packlruent struct {
 	packname string
 	pack     *bpack.Reader
 }
@@ -110,7 +110,7 @@ func (r *Reader) Get(hash [32]byte) ([]byte, error) {
 
 func (r *Reader) getPackReader(packname string, packsize uint64, idx bpack.Index) (*bpack.Reader, error) {
 	for e := r.lru.Front(); e != nil; e = e.Next() {
-		ent := e.Value.(lruent)
+		ent := e.Value.(packlruent)
 		if ent.packname == packname {
 			r.lru.MoveToFront(e)
 			return ent.pack, nil
@@ -126,9 +126,9 @@ func (r *Reader) getPackReader(packname string, packsize uint64, idx bpack.Index
 		return nil, err
 	}
 	pack.Idx = idx
-	r.lru.PushFront(lruent{packname: packname, pack: pack})
+	r.lru.PushFront(packlruent{packname: packname, pack: pack})
 	if r.lru.Len() > 5 {
-		ent := r.lru.Remove(r.lru.Back()).(lruent)
+		ent := r.lru.Remove(r.lru.Back()).(packlruent)
 		ent.pack.Close()
 	}
 	return pack, nil
@@ -138,7 +138,7 @@ func (r *Reader) Close() error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	for e := r.lru.Front(); e != nil; e = e.Next() {
-		ent := e.Value.(lruent)
+		ent := e.Value.(packlruent)
 		err := ent.pack.Close()
 		if err != nil {
 			return err
