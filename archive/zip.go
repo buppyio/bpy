@@ -8,7 +8,7 @@ import (
 	"path"
 )
 
-func Zip(store bpy.CStoreReader, dirHash [32]byte, out io.Writer) error {
+func Zip(store bpy.CStore, dirHash [32]byte, out io.Writer) error {
 	zw := zip.NewWriter(out)
 	err := writeZip(store, "", dirHash, zw)
 	if err != nil {
@@ -17,7 +17,7 @@ func Zip(store bpy.CStoreReader, dirHash [32]byte, out io.Writer) error {
 	return zw.Close()
 }
 
-func writeZip(store bpy.CStoreReader, curpath string, dirHash [32]byte, out *zip.Writer) error {
+func writeZip(store bpy.CStore, curpath string, dirHash [32]byte, out *zip.Writer) error {
 	ents, err := fs.ReadDir(store, dirHash)
 	if err != nil {
 		return err

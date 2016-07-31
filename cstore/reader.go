@@ -43,13 +43,44 @@ func NewReader(store *client.Client, key [32]byte, cachepath string) (*Reader, e
 	}, nil
 }
 
+func (r *Reader) Has(hash [32]byte) (bool, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	_, _, err := r.search(hash)
+	if err == nil {
+		return true, nil
+	}
+	if err == NotFound {
+		return false, nil
+	}
+	return false, err
+}
+
+func (r *Reader) search(hash [32]byte) (*packInfo, bpack.IndexEnt, error) {
+	packInfo, packidxent, ok := searchMetaIndex(r.midx, hash)
+	if !ok {
+		midx, err := readAndCacheMetaIndex(r.store, r.key, r.cachepath)
+		if err != nil {
+			return nil, bpack.IndexEnt{}, err
+		}
+		r.midx = midx
+		packInfo, packidxent, ok = searchMetaIndex(r.midx, hash)
+		if !ok {
+			return nil, bpack.IndexEnt{}, NotFound
+		}
+	}
+	return packInfo, packidxent, nil
+}
+
 func (r *Reader) Get(hash [32]byte) ([]byte, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	packInfo, packidxent, ok := searchMetaIndex(r.midx, hash)
-	if !ok {
-		return nil, NotFound
+
+	packInfo, packidxent, err := r.search(hash)
+	if err != nil {
+		return nil, err
 	}
+
 	packrdr, err := r.getPackReader(packInfo.Name, packInfo.Size, packInfo.Idx)
 	if err != nil {
 		return nil, err

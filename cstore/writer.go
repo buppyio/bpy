@@ -35,15 +35,16 @@ type Writer struct {
 	pack         *bpack.Writer
 	cachepath    string
 	name         string
+	workingSet   map[string][]byte
 	workingSetSz uint64
 	key          [32]byte
-	midx         metaIndex
 	flatebuf     bytes.Buffer
 	flatew       *flate.Writer
+	rdr          *Reader
 }
 
 func NewWriter(store *client.Client, key [32]byte, cachepath string) (*Writer, error) {
-	midx, err := readAndCacheMetaIndex(store, key, cachepath)
+	rdr, err := NewReader(store, key, cachepath)
 	if err != nil {
 		return nil, err
 	}
@@ -54,11 +55,12 @@ func NewWriter(store *client.Client, key [32]byte, cachepath string) (*Writer, e
 	}
 
 	return &Writer{
-		cachepath: cachepath,
-		midx:      midx,
-		store:     store,
-		key:       key,
-		flatew:    flatew,
+		cachepath:  cachepath,
+		store:      store,
+		key:        key,
+		flatew:     flatew,
+		rdr:        rdr,
+		workingSet: make(map[string][]byte),
 	}, nil
 }
 
@@ -80,8 +82,29 @@ func (w *Writer) flushWorkingSet() error {
 		}
 		w.pack = nil
 		w.workingSetSz = 0
+		w.workingSet = make(map[string][]byte)
 	}
 	return nil
+}
+
+func (w *Writer) Get(hash [32]byte) ([]byte, error) {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+	val, ok := w.workingSet[string(hash[:])]
+	if ok {
+		return val, nil
+	}
+	return w.rdr.Get(hash)
+}
+
+func (w *Writer) has(hash [32]byte) ([]byte, error) {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+	val, ok := w.workingSet[string(hash[:])]
+	if ok {
+		return val, nil
+	}
+	return w.rdr.Get(hash)
 }
 
 func (w *Writer) Put(data []byte) ([32]byte, error) {
@@ -109,10 +132,14 @@ func (w *Writer) Put(data []byte) ([32]byte, error) {
 			return h, err
 		}
 	}
-	if w.pack.Has(string(h[:])) {
+	_, ok := w.workingSet[string(h[:])]
+	if ok {
 		return h, nil
 	}
-	_, _, ok := searchMetaIndex(w.midx, h)
+	ok, err = w.rdr.Has(h)
+	if err != nil {
+		return h, err
+	}
 	if ok {
 		return h, nil
 	}
@@ -138,6 +165,12 @@ func (w *Writer) Put(data []byte) ([32]byte, error) {
 	} else {
 		return h, nil
 	}
+}
+
+func (w *Writer) Flush() error {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+	return w.flushWorkingSet()
 }
 
 func (w *Writer) Close() error {

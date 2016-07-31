@@ -27,12 +27,8 @@ func Rm() {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
 	defer c.Close()
-	wstore, err := common.GetCStoreWriter(&k, c)
-	if err != nil {
-		common.Die("error getting content store: %s\n", err.Error())
-	}
 
-	rstore, err := common.GetCStoreReader(&k, c)
+	store, err := common.GetCStore(&k, c)
 	if err != nil {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
@@ -50,17 +46,12 @@ func Rm() {
 		common.Die("error parsing hash: %s\n", err.Error())
 	}
 
-	newRoot, err := fs.Remove(rstore, wstore, rootHash, flag.Args()[0])
+	newRoot, err := fs.Remove(store, rootHash, flag.Args()[0])
 	if err != nil {
 		common.Die("error removing file: %s\n", err.Error())
 	}
 
-	err = wstore.Close()
-	if err != nil {
-		common.Die("error closing store: %s\n", err.Error())
-	}
-
-	err = rstore.Close()
+	err = store.Close()
 	if err != nil {
 		common.Die("error closing store: %s\n", err.Error())
 	}

@@ -37,7 +37,7 @@ func (dir DirEnts) Len() int           { return len(dir) }
 func (dir DirEnts) Less(i, j int) bool { return dir[i].EntName < dir[j].EntName }
 func (dir DirEnts) Swap(i, j int)      { dir[i], dir[j] = dir[j], dir[i] }
 
-func WriteDir(store bpy.CStoreWriter, indir DirEnts, mode os.FileMode) (DirEnt, error) {
+func WriteDir(store bpy.CStore, indir DirEnts, mode os.FileMode) (DirEnt, error) {
 	dir := make(DirEnts, len(indir)+1, len(indir)+1)
 	copy(dir[1:], indir)
 	mode |= os.ModeDir
@@ -95,7 +95,7 @@ func WriteDir(store bpy.CStoreWriter, indir DirEnts, mode os.FileMode) (DirEnt, 
 	return ent, nil
 }
 
-func ReadDir(store bpy.CStoreReader, hash [32]byte) (DirEnts, error) {
+func ReadDir(store bpy.CStore, hash [32]byte) (DirEnts, error) {
 	var dir DirEnts
 	rdr, err := htree.NewReader(store, hash)
 	if err != nil {
@@ -132,7 +132,7 @@ func ReadDir(store bpy.CStoreReader, hash [32]byte) (DirEnts, error) {
 	return dir, nil
 }
 
-func Walk(store bpy.CStoreReader, hash [32]byte, fpath string) (DirEnt, error) {
+func Walk(store bpy.CStore, hash [32]byte, fpath string) (DirEnt, error) {
 	var result DirEnt
 	var end int
 
@@ -228,7 +228,7 @@ func (r *FileReader) Close() error {
 	return nil
 }
 
-func Open(store bpy.CStoreReader, roothash [32]byte, fpath string) (*FileReader, error) {
+func Open(store bpy.CStore, roothash [32]byte, fpath string) (*FileReader, error) {
 	dirent, err := Walk(store, roothash, fpath)
 	if err != nil {
 		return nil, err
@@ -247,7 +247,7 @@ func Open(store bpy.CStoreReader, roothash [32]byte, fpath string) (*FileReader,
 	}, nil
 }
 
-func Ls(store bpy.CStoreReader, roothash [32]byte, fpath string) (DirEnts, error) {
+func Ls(store bpy.CStore, roothash [32]byte, fpath string) (DirEnts, error) {
 	dirent, err := Walk(store, roothash, fpath)
 	if err != nil {
 		return nil, err
@@ -262,11 +262,11 @@ func Ls(store bpy.CStoreReader, roothash [32]byte, fpath string) (DirEnts, error
 	return ents, nil
 }
 
-func EmptyDir(store bpy.CStoreWriter, mode os.FileMode) (DirEnt, error) {
+func EmptyDir(store bpy.CStore, mode os.FileMode) (DirEnt, error) {
 	return WriteDir(store, []DirEnt{}, mode)
 }
 
-func Insert(rstore bpy.CStoreReader, wstore bpy.CStoreWriter, dest [32]byte, destPath string, ent DirEnt) (DirEnt, error) {
+func Insert(store bpy.CStore, dest [32]byte, destPath string, ent DirEnt) (DirEnt, error) {
 	if destPath == "" || destPath[0] != '/' {
 		destPath = "/" + destPath
 	}
@@ -279,11 +279,11 @@ func Insert(rstore bpy.CStoreReader, wstore bpy.CStoreWriter, dest [32]byte, des
 	if pathElems[len(pathElems)-1] == "" {
 		pathElems = pathElems[:len(pathElems)-1]
 	}
-	return insert(rstore, wstore, dest, pathElems, ent)
+	return insert(store, dest, pathElems, ent)
 }
 
-func insert(rstore bpy.CStoreReader, wstore bpy.CStoreWriter, dest [32]byte, destPath []string, ent DirEnt) (DirEnt, error) {
-	destEnts, err := ReadDir(rstore, dest)
+func insert(store bpy.CStore, dest [32]byte, destPath []string, ent DirEnt) (DirEnt, error) {
+	destEnts, err := ReadDir(store, dest)
 	if err != nil {
 		return DirEnt{}, err
 	}
@@ -291,25 +291,25 @@ func insert(rstore bpy.CStoreReader, wstore bpy.CStoreWriter, dest [32]byte, des
 		mode := destEnts[0].EntMode
 		// Reuse '.' entry for new entry
 		destEnts[0] = ent
-		return WriteDir(wstore, destEnts, mode)
+		return WriteDir(store, destEnts, mode)
 	}
 	for i := 0; i < len(destEnts); i++ {
 		if destEnts[i].EntName == destPath[0] {
 			if !destEnts[i].IsDir() {
 				return DirEnt{}, fmt.Errorf("%s is not a directory", destEnts[i].EntName)
 			}
-			newEnt, err := insert(rstore, wstore, destEnts[i].Data, destPath[1:], ent)
+			newEnt, err := insert(store, destEnts[i].Data, destPath[1:], ent)
 			if err != nil {
 				return DirEnt{}, err
 			}
 			destEnts[i].Data = newEnt.Data
-			return WriteDir(wstore, destEnts[1:], destEnts[0].EntMode)
+			return WriteDir(store, destEnts[1:], destEnts[0].EntMode)
 		}
 	}
 	return DirEnt{}, fmt.Errorf("no folder or file '%s'", destPath[0])
 }
 
-func Remove(rstore bpy.CStoreReader, wstore bpy.CStoreWriter, root [32]byte, filePath string) (DirEnt, error) {
+func Remove(store bpy.CStore, root [32]byte, filePath string) (DirEnt, error) {
 	if filePath == "" || filePath[0] != '/' {
 		filePath = "/" + filePath
 	}
@@ -321,11 +321,11 @@ func Remove(rstore bpy.CStoreReader, wstore bpy.CStoreWriter, root [32]byte, fil
 	if pathElems[len(pathElems)-1] == "" {
 		pathElems = pathElems[:len(pathElems)-1]
 	}
-	return remove(rstore, wstore, root, pathElems)
+	return remove(store, root, pathElems)
 }
 
-func remove(rstore bpy.CStoreReader, wstore bpy.CStoreWriter, root [32]byte, filePath []string) (DirEnt, error) {
-	dirEnts, err := ReadDir(rstore, root)
+func remove(store bpy.CStore, root [32]byte, filePath []string) (DirEnt, error) {
+	dirEnts, err := ReadDir(store, root)
 	if err != nil {
 		return DirEnt{}, err
 	}
@@ -342,42 +342,42 @@ func remove(rstore bpy.CStoreReader, wstore bpy.CStoreWriter, root [32]byte, fil
 		if len(newDir) > nents {
 			return DirEnt{}, fmt.Errorf("no file called '%s'", filePath[0])
 		}
-		return WriteDir(wstore, newDir, mode)
+		return WriteDir(store, newDir, mode)
 	}
 	for i := 0; i < len(dirEnts); i++ {
 		if dirEnts[i].EntName == filePath[0] {
 			if !dirEnts[i].IsDir() {
 				return DirEnt{}, fmt.Errorf("%s is not a directory", dirEnts[i].EntName)
 			}
-			newEnt, err := remove(rstore, wstore, dirEnts[i].Data, filePath[1:])
+			newEnt, err := remove(store, dirEnts[i].Data, filePath[1:])
 			if err != nil {
 				return DirEnt{}, err
 			}
 			dirEnts[i].Data = newEnt.Data
-			return WriteDir(wstore, dirEnts[1:], dirEnts[0].EntMode)
+			return WriteDir(store, dirEnts[1:], dirEnts[0].EntMode)
 		}
 	}
 	return DirEnt{}, fmt.Errorf("no folder or file '%s'", filePath[0])
 }
 
-func Copy(rstore bpy.CStoreReader, wstore bpy.CStoreWriter, root [32]byte, destPath, srcPath string) (DirEnt, error) {
-	srcEnt, err := Walk(rstore, root, srcPath)
+func Copy(store bpy.CStore, root [32]byte, destPath, srcPath string) (DirEnt, error) {
+	srcEnt, err := Walk(store, root, srcPath)
 	if err != nil {
 		return DirEnt{}, err
 	}
-	newRoot, err := Insert(rstore, wstore, root, destPath, srcEnt)
+	newRoot, err := Insert(store, root, destPath, srcEnt)
 	if err != nil {
 		return DirEnt{}, err
 	}
 	return newRoot, nil
 }
 
-func Move(rstore bpy.CStoreReader, wstore bpy.CStoreWriter, root [32]byte, destPath, srcPath string) (DirEnt, error) {
-	copyRoot, err := Copy(rstore, wstore, root, destPath, srcPath)
+func Move(store bpy.CStore, root [32]byte, destPath, srcPath string) (DirEnt, error) {
+	copyRoot, err := Copy(store, root, destPath, srcPath)
 	if err != nil {
 		return DirEnt{}, err
 	}
-	newRoot, err := Remove(rstore, wstore, copyRoot.Data, srcPath)
+	newRoot, err := Remove(store, copyRoot.Data, srcPath)
 	if err != nil {
 		return DirEnt{}, err
 	}

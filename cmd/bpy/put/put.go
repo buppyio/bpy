@@ -35,12 +35,7 @@ func Put() {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
 	defer c.Close()
-	wstore, err := common.GetCStoreWriter(&k, c)
-	if err != nil {
-		common.Die("error getting content store: %s\n", err.Error())
-	}
-
-	rstore, err := common.GetCStoreReader(&k, c)
+	store, err := common.GetCStore(&k, c)
 	if err != nil {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
@@ -58,22 +53,17 @@ func Put() {
 		common.Die("error parsing hash: %s\n", err.Error())
 	}
 
-	srcDirEnt, err := fsutil.CpHostDirToFs(wstore, srcPath)
+	srcDirEnt, err := fsutil.CpHostDirToFs(store, srcPath)
 	if err != nil {
 		common.Die("error copying data: %s\n", err.Error())
 	}
 
-	newRoot, err := fs.Insert(rstore, wstore, destHash, destPath, srcDirEnt)
+	newRoot, err := fs.Insert(store, destHash, destPath, srcDirEnt)
 	if err != nil {
 		common.Die("error inserting src into folder: %s\n", err.Error())
 	}
 
-	err = wstore.Close()
-	if err != nil {
-		common.Die("error closing wstore: %s\n", err.Error())
-	}
-
-	err = rstore.Close()
+	err = store.Close()
 	if err != nil {
 		common.Die("error closing remote: %s\n", err.Error())
 	}

@@ -68,6 +68,11 @@ func TestCStore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	rdr, err := NewReader(store, key, cachepath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rdr.Close()
 	for i := 0; i < 10; i++ {
 		w, err := NewWriter(store, key, cachepath)
 		if err != nil {
@@ -91,10 +96,6 @@ func TestCStore(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-	}
-	rdr, err := NewReader(store, key, cachepath)
-	if err != nil {
-		t.Fatal(err)
 	}
 	for k, v := range testvals {
 		gotv, err := rdr.Get(k)

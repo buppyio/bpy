@@ -177,7 +177,7 @@ func TestInsert(t *testing.T) {
 	}
 	ent := rdir[0]
 	ent.EntName = "foo"
-	notEmpty1, err := Insert(store, store, empty.Data, "", ent)
+	notEmpty1, err := Insert(store, empty.Data, "", ent)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +188,7 @@ func TestInsert(t *testing.T) {
 	if len(rdir) != 2 {
 		t.Fatal("expected single folder")
 	}
-	notEmpty2, err := Insert(store, store, notEmpty1.Data, "/foo/bar", ent)
+	notEmpty2, err := Insert(store, notEmpty1.Data, "/foo/bar", ent)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,8 +196,8 @@ func TestInsert(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(ent, barEnt) {
-		t.Fatal("expected empty file")
+	if !reflect.DeepEqual(ent.Data, barEnt.Data) {
+		t.Fatal("expected empty file", ent, barEnt)
 	}
 }
 
@@ -216,11 +216,11 @@ func TestRemove(t *testing.T) {
 	}
 	ent := rdir[0]
 	ent.EntName = "foo"
-	notEmpty1, err := Insert(store, store, empty.Data, "", ent)
+	notEmpty1, err := Insert(store, empty.Data, "", ent)
 	if err != nil {
 		t.Fatal(err)
 	}
-	withFooRemoved, err := Remove(store, store, notEmpty1.Data, "foo")
+	withFooRemoved, err := Remove(store, notEmpty1.Data, "foo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -235,7 +235,7 @@ func TestCopy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notEmpty1, err := Copy(store, store, empty.Data, "/foo", "/")
+	notEmpty1, err := Copy(store, empty.Data, "/foo", "/")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -254,11 +254,11 @@ func TestMove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notEmpty1, err := Copy(store, store, empty.Data, "/foo", "/")
+	notEmpty1, err := Copy(store, empty.Data, "/foo", "/")
 	if err != nil {
 		t.Fatal(err)
 	}
-	moveDir, err := Move(store, store, notEmpty1.Data, "/bar", "/foo")
+	moveDir, err := Move(store, notEmpty1.Data, "/bar", "/foo")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -8,7 +8,7 @@ import (
 	"path"
 )
 
-func Tar(store bpy.CStoreReader, dirHash [32]byte, out io.Writer) error {
+func Tar(store bpy.CStore, dirHash [32]byte, out io.Writer) error {
 	tw := tar.NewWriter(out)
 	err := writeTar(store, "", dirHash, tw)
 	if err != nil {
@@ -17,7 +17,7 @@ func Tar(store bpy.CStoreReader, dirHash [32]byte, out io.Writer) error {
 	return tw.Close()
 }
 
-func writeTar(store bpy.CStoreReader, curpath string, dirHash [32]byte, out *tar.Writer) error {
+func writeTar(store bpy.CStore, curpath string, dirHash [32]byte, out *tar.Writer) error {
 	ents, err := fs.ReadDir(store, dirHash)
 	if err != nil {
 		return err

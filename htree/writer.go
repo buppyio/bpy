@@ -6,13 +6,13 @@ import (
 )
 
 type Writer struct {
-	store  bpy.CStoreWriter
+	store  bpy.CStore
 	lvls   [nlevels][maxlen]byte
 	nbytes [nlevels]int
 	offset uint64
 }
 
-func NewWriter(store bpy.CStoreWriter) *Writer {
+func NewWriter(store bpy.CStore) *Writer {
 	w := &Writer{
 		store: store,
 	}

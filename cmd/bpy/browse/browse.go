@@ -18,7 +18,7 @@ import (
 
 type httpFs struct {
 	c     *client.Client
-	store bpy.CStoreReader
+	store bpy.CStore
 	tag   string
 }
 
@@ -149,7 +149,7 @@ func Browse() {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
 
-	store, err := common.GetCStoreReader(&k, c)
+	store, err := common.GetCStore(&k, c)
 	if err != nil {
 		common.Die("error getting content store: %s\n", err.Error())
 	}

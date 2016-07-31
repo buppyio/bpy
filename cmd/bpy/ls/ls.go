@@ -32,7 +32,7 @@ func Ls() {
 	}
 	defer c.Close()
 
-	store, err := common.GetCStoreReader(&k, c)
+	store, err := common.GetCStore(&k, c)
 	if err != nil {
 		common.Die("error getting content store: %s\n", err.Error())
 	}

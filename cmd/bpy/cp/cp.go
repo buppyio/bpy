@@ -30,12 +30,7 @@ func Cp() {
 	}
 	defer c.Close()
 
-	wstore, err := common.GetCStoreWriter(&k, c)
-	if err != nil {
-		common.Die("error getting content store: %s\n", err.Error())
-	}
-
-	rstore, err := common.GetCStoreReader(&k, c)
+	store, err := common.GetCStore(&k, c)
 	if err != nil {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
@@ -53,17 +48,12 @@ func Cp() {
 		common.Die("error parsing hash: %s\n", err.Error())
 	}
 
-	newRoot, err := fs.Copy(rstore, wstore, rootHash, destPath, srcPath)
+	newRoot, err := fs.Copy(store, rootHash, destPath, srcPath)
 	if err != nil {
 		common.Die("error copying src to dest: %s\n", err.Error())
 	}
 
-	err = wstore.Close()
-	if err != nil {
-		common.Die("error closing wstore: %s\n", err.Error())
-	}
-
-	err = rstore.Close()
+	err = store.Close()
 	if err != nil {
 		common.Die("error closing remote: %s\n", err.Error())
 	}

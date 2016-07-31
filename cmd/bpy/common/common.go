@@ -114,20 +114,20 @@ func GetRemote(k *bpy.Key) (*client.Client, error) {
 			c.Close()
 			return nil, fmt.Errorf("error getting key: %s", err.Error())
 		}
-		w, err := GetCStoreWriter(&k, c)
+		store, err := GetCStore(&k, c)
 		if err != nil {
 			c.Close()
 			return nil, fmt.Errorf("error getting store writer: %s", err.Error())
 		}
-		ent, err := fs.EmptyDir(w, 0755)
+		ent, err := fs.EmptyDir(store, 0755)
 		if err != nil {
 			c.Close()
 			return nil, fmt.Errorf("error creating empty default root: %s", err.Error())
 		}
-		err = w.Close()
+		err = store.Close()
 		if err != nil {
 			c.Close()
-			return nil, fmt.Errorf("error closing writer: %s", err.Error())
+			return nil, fmt.Errorf("error closing store writer: %s", err.Error())
 		}
 		err = remote.Tag(c, "default", hex.EncodeToString(ent.Data[:]))
 		if err != nil {
@@ -138,20 +138,7 @@ func GetRemote(k *bpy.Key) (*client.Client, error) {
 	return c, nil
 }
 
-func GetCStoreReader(k *bpy.Key, remote *client.Client) (bpy.CStoreReader, error) {
-	cache, err := GetCacheDir()
-	if err != nil {
-		return nil, err
-	}
-	curCache := filepath.Join(cache, hex.EncodeToString(k.Id[:]))
-	err = os.MkdirAll(curCache, CachePermissions)
-	if err != nil {
-		return nil, err
-	}
-	return cstore.NewReader(remote, k.CipherKey, curCache)
-}
-
-func GetCStoreWriter(k *bpy.Key, remote *client.Client) (bpy.CStoreWriter, error) {
+func GetCStore(k *bpy.Key, remote *client.Client) (bpy.CStore, error) {
 	cache, err := GetCacheDir()
 	if err != nil {
 		return nil, err

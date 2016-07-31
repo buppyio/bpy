@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 )
 
-func hostFileToHashTree(store bpy.CStoreWriter, path string) ([32]byte, error) {
+func hostFileToHashTree(store bpy.CStore, path string) ([32]byte, error) {
 	fin, err := os.Open(path)
 	if err != nil {
 		return [32]byte{}, err
@@ -27,7 +27,7 @@ func hostFileToHashTree(store bpy.CStoreWriter, path string) ([32]byte, error) {
 	return fout.Close()
 }
 
-func CpHostDirToFs(store bpy.CStoreWriter, path string) (fs.DirEnt, error) {
+func CpHostDirToFs(store bpy.CStore, path string) (fs.DirEnt, error) {
 	path, err := filepath.Abs(path)
 	if err != nil {
 		return fs.DirEnt{}, err
@@ -71,7 +71,7 @@ func CpHostDirToFs(store bpy.CStoreWriter, path string) (fs.DirEnt, error) {
 	return dirEnt, err
 }
 
-func CpHashTreeToHostFile(store bpy.CStoreReader, hash [32]byte, dst string, mode os.FileMode) error {
+func CpHashTreeToHostFile(store bpy.CStore, hash [32]byte, dst string, mode os.FileMode) error {
 	f, err := htree.NewReader(store, hash)
 	if err != nil {
 		return err
@@ -89,7 +89,7 @@ func CpHashTreeToHostFile(store bpy.CStoreReader, hash [32]byte, dst string, mod
 
 }
 
-func CpFsDirToHost(store bpy.CStoreReader, hash [32]byte, dest string) error {
+func CpFsDirToHost(store bpy.CStore, hash [32]byte, dest string) error {
 	ents, err := fs.ReadDir(store, hash)
 	if err != nil {
 		return err

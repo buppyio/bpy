@@ -10,13 +10,10 @@ import (
 	"io/ioutil"
 )
 
-type CStoreReader interface {
-	Get([32]byte) ([]byte, error)
-	Close() error
-}
-
-type CStoreWriter interface {
+type CStore interface {
+	Flush() error
 	Put([]byte) ([32]byte, error)
+	Get([32]byte) ([]byte, error)
 	Close() error
 }
 

@@ -25,6 +25,10 @@ func (m *MemStore) Put(val []byte) ([32]byte, error) {
 	return hash, nil
 }
 
+func (m *MemStore) Flush() error {
+	return nil
+}
+
 func (m *MemStore) Close() error {
 	return nil
 }

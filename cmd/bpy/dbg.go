@@ -38,7 +38,7 @@ func inspecthtree() {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
 
-	store, err := common.GetCStoreReader(&k, remote)
+	store, err := common.GetCStore(&k, remote)
 	if err != nil {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
@@ -77,7 +77,7 @@ func writehtree() {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
 
-	store, err := common.GetCStoreWriter(&k, remote)
+	store, err := common.GetCStore(&k, remote)
 	if err != nil {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
