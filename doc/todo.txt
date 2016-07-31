@@ -1,11 +1,10 @@
 Alpha:
 
-- Make put etc operate on a 'default' tag using cas
 - Allow put to 'put' put files in addition to folders
 
 Bugs:
 
-- on windows when you init with no tags, a blank '.index' file appears in the local index cache.
+- you init with no tags, a blank '.index' file appears in the local index cache.
 
 Improvements:
 
@@ -25,7 +24,5 @@ Improvements:
 - Add counter to tags which remote only allows to increment
 - Implement hash split in htree
 - Test every message type in proto packing/unpack tests
-- Combine cstore reader/writer so the can share a metaindex and half memory requirements
-  of commands like put which do both.
 - Steal ideas like bloom filters, cstore is actually just an LSM.
-- Refetch meta index on lookup failure in case new packs have arrived.
+- Only fetch changed indexes instead of reloading entire index when a lookup fails.
