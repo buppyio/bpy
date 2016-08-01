@@ -1159,3 +1159,10 @@ func WriteMsg(w io.Writer, buf []byte, msg Msg) error {
 	}
 	return nil
 }
+
+func MakeError(t Tag, err error) Msg {
+	return &Rerror{
+		Tag: t,
+		Err: err.Error(),
+	}
+}
