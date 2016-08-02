@@ -5,6 +5,7 @@ import (
 	"acha.ninja/bpy/fs"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"strings"
@@ -118,7 +119,7 @@ func (f *file) Qid() (proto9.Qid, error) {
 }
 
 func (f *file) Stat() (proto9.Stat, error) {
-	return proto9.Stat{}, errors.New("unimplemented")
+	return osToProto9Stat(f.qid, &f.dirEnt), nil
 }
 
 func (f *file) NewHandle() (Handle, error) {
@@ -127,7 +128,9 @@ func (f *file) NewHandle() (Handle, error) {
 			file: f,
 		}, nil
 	}
-	return nil, errors.New("unimplemented")
+	return &fileHandle{
+		file: f,
+	}, nil
 }
 
 type dirHandle struct {
@@ -137,7 +140,7 @@ type dirHandle struct {
 }
 
 func (d *dirHandle) GetFile() (File, error) {
-	return nil, errors.New("unimplemented")
+	return d.file, nil
 }
 func (d *dirHandle) GetIounit(maxMessageSize uint32) uint32 {
 	return 0
@@ -151,8 +154,8 @@ func (d *dirHandle) Topen(msg *proto9.Topen) (proto9.Qid, error) {
 	return d.file.qid, nil
 }
 
-func osToProto9Stat(ent os.FileInfo) proto9.Stat {
-	mode := proto9.FileMode(0777)
+func osToProto9Stat(qid proto9.Qid, ent os.FileInfo) proto9.Stat {
+	mode := proto9.FileMode(ent.Mode() & 0777)
 	if ent.Mode().IsDir() {
 		mode |= proto9.DMDIR
 	}
@@ -161,7 +164,7 @@ func osToProto9Stat(ent os.FileInfo) proto9.Stat {
 		Atime:  0,
 		Mtime:  0,
 		Name:   ent.Name(),
-		Qid:    makeQid(ent.Mode().IsDir()),
+		Qid:    qid,
 		Length: uint64(ent.Size()),
 		UID:    "nobody",
 		GID:    "nobody",
@@ -177,7 +180,7 @@ func (d *dirHandle) Tread(msg *proto9.Tread, buf []byte) (uint32, error) {
 		}
 		d.stats = make([]proto9.Stat, len(dirEnts), len(dirEnts))
 		for i, dirEnt := range dirEnts {
-			d.stats[i] = osToProto9Stat(&dirEnt)
+			d.stats[i] = osToProto9Stat(makeQid(dirEnt.IsDir()), &dirEnt)
 		}
 	}
 
@@ -219,7 +222,7 @@ func (d *dirHandle) Tremove(msg *proto9.Tremove) error {
 }
 
 func (d *dirHandle) Tstat(msg *proto9.Tstat) (proto9.Stat, error) {
-	return proto9.Stat{}, errors.New("unimplemented")
+	return d.file.Stat()
 }
 
 func (d *dirHandle) Clunk() error {
@@ -232,22 +235,38 @@ type fileHandle struct {
 }
 
 func (f *fileHandle) GetFile() (File, error) {
-	return nil, errors.New("unimplemented")
+	return f.file, nil
 }
 func (f *fileHandle) GetIounit(maxMessageSize uint32) uint32 {
 	return 0
 }
 
 func (f *fileHandle) Twalk(msg *proto9.Twalk) (File, []proto9.Qid, error) {
-	return nil, nil, fmt.Errorf("%s is a file", f.file.path)
+	return walk(f.file, msg.Names)
 }
 
 func (f *fileHandle) Topen(msg *proto9.Topen) (proto9.Qid, error) {
-	return proto9.Qid{}, errors.New("unimplemented")
+	if f.rdr != nil {
+		f.rdr.Close()
+		f.rdr = nil
+	}
+	var err error
+	f.rdr, err = fs.Open(f.file.srv.store, f.file.srv.root, f.file.path)
+	return f.file.qid, err
 }
 
 func (f *fileHandle) Tread(msg *proto9.Tread, buf []byte) (uint32, error) {
-	return 0, errors.New("unimplemented")
+	if f.rdr == nil {
+		return 0, fmt.Errorf("fid for '%s' is not open", f.file.path)
+	}
+	n, err := f.rdr.Read(buf)
+	if n != 0 {
+		return uint32(n), nil
+	}
+	if err == io.EOF {
+		return 0, nil
+	}
+	return 0, err
 }
 
 func (f *fileHandle) Twrite(msg *proto9.Twrite) (uint32, error) {
@@ -267,9 +286,13 @@ func (f *fileHandle) Tremove(msg *proto9.Tremove) error {
 }
 
 func (f *fileHandle) Tstat(msg *proto9.Tstat) (proto9.Stat, error) {
-	return proto9.Stat{}, errors.New("unimplemented")
+	return f.file.Stat()
 }
 
 func (f *fileHandle) Clunk() error {
-	return errors.New("unimplemented")
+	if f.rdr != nil {
+		f.rdr.Close()
+		f.rdr = nil
+	}
+	return nil
 }

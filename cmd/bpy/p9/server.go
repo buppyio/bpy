@@ -241,7 +241,7 @@ func (srv *Server) handleRead(msg *proto9.Tread) proto9.Msg {
 	buf := make([]byte, nbytes, nbytes)
 	n, err := fh.Tread(msg, buf)
 	if err != nil {
-		return proto9.MakeError(msg.Tag, ErrNoSuchFid)
+		return proto9.MakeError(msg.Tag, err)
 	}
 	return &proto9.Rread{
 		Tag:  msg.Tag,
