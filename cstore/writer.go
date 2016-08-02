@@ -97,14 +97,14 @@ func (w *Writer) Get(hash [32]byte) ([]byte, error) {
 	return w.rdr.Get(hash)
 }
 
-func (w *Writer) has(hash [32]byte) ([]byte, error) {
+func (w *Writer) Has(hash [32]byte) (bool, error) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
-	val, ok := w.workingSet[string(hash[:])]
+	_, ok := w.workingSet[string(hash[:])]
 	if ok {
-		return val, nil
+		return true, nil
 	}
-	return w.rdr.Get(hash)
+	return w.rdr.Has(hash)
 }
 
 func (w *Writer) Put(data []byte) ([32]byte, error) {
@@ -160,6 +160,9 @@ func (w *Writer) Put(data []byte) ([32]byte, error) {
 		return h, err
 	}
 	w.workingSetSz += uint64(len(compressed))
+	dataCopy := make([]byte, len(data), len(data))
+	copy(dataCopy, data)
+	w.workingSet[string(h[:])] = dataCopy
 	if w.workingSetSz > 1024*1024*128 {
 		return h, w.flushWorkingSet()
 	} else {

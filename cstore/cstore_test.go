@@ -89,6 +89,13 @@ func TestCStore(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			gotv, err := w.Get(hash)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(rbytes, gotv) {
+				t.Fatal(fmt.Errorf("values differ %v != %v", rbytes, gotv))
+			}
 			testvals[hash] = rbytes
 		}
 

@@ -254,19 +254,19 @@ func TestMove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notEmpty1, err := Copy(store, empty.Data, "/foo", "/")
+	notEmpty1, err := Copy(store, empty.Data, "/bar", "/")
 	if err != nil {
 		t.Fatal(err)
 	}
-	moveDir, err := Move(store, notEmpty1.Data, "/bar", "/foo")
+	moveDir, err := Move(store, notEmpty1.Data, "/bang", "/bar")
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = Walk(store, moveDir.Data, "/foo")
+	_, err = Walk(store, moveDir.Data, "/bar")
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	walkEnt, err := Walk(store, moveDir.Data, "/bar")
+	walkEnt, err := Walk(store, moveDir.Data, "/bang")
 	if err != nil {
 		t.Fatal(err)
 	}
