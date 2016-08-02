@@ -122,4 +122,4 @@ Launch a 9p server and serve the given ref as a 9p filesystem
 
 # SEE ALSO
 
-**bpy_file_formats(7)** **bpy_env_variables(7)**
+**bpy_directories(7)** **bpy_env_variables(7)** **bpy_file_formats(7)**
