@@ -4,6 +4,7 @@ import (
 	"acha.ninja/bpy"
 	"acha.ninja/bpy/cmd/bpy/common"
 	"acha.ninja/bpy/cmd/bpy/p9/proto9"
+	"acha.ninja/bpy/cstore"
 	"acha.ninja/bpy/remote"
 	"flag"
 	"log"
@@ -50,6 +51,7 @@ func handleConnection(con net.Conn, tag string) {
 		fids:           make(map[proto9.Fid]Handle),
 		client:         c,
 		store:          store,
+		memCachedStore: cstore.NewMemCachedCStore(store, 16*1024*1024),
 		root:           root,
 	}
 	srv.Serve()

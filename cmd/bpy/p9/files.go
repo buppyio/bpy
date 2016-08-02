@@ -95,7 +95,7 @@ func (f *file) Child(name string) (File, error) {
 		return nil, fmt.Errorf("%s is not a dir", f.path)
 	}
 
-	dirEnts, err := fs.ReadDir(f.srv.store, f.dirEnt.Data)
+	dirEnts, err := fs.ReadDir(f.srv.memCachedStore, f.dirEnt.Data)
 	if err != nil {
 		return nil, err
 	}
@@ -142,6 +142,7 @@ type dirHandle struct {
 func (d *dirHandle) GetFile() (File, error) {
 	return d.file, nil
 }
+
 func (d *dirHandle) GetIounit(maxMessageSize uint32) uint32 {
 	return 0
 }
@@ -174,7 +175,7 @@ func osToProto9Stat(qid proto9.Qid, ent os.FileInfo) proto9.Stat {
 
 func (d *dirHandle) Tread(msg *proto9.Tread, buf []byte) (uint32, error) {
 	if msg.Offset == 0 {
-		dirEnts, err := fs.ReadDir(d.file.srv.store, d.file.dirEnt.Data)
+		dirEnts, err := fs.ReadDir(d.file.srv.memCachedStore, d.file.dirEnt.Data)
 		if err != nil {
 			return 0, err
 		}
