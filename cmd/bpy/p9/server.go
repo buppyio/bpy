@@ -1,11 +1,13 @@
 package p9
 
 import (
+	"acha.ninja/bpy"
 	"acha.ninja/bpy/cmd/bpy/p9/proto9"
+	"acha.ninja/bpy/fs"
+	"acha.ninja/bpy/remote/client"
 	"errors"
 	"io"
 	"log"
-	"os"
 	"strings"
 	"time"
 )
@@ -54,8 +56,11 @@ type Server struct {
 	negMessageSize uint32
 	inbuf          []byte
 	outbuf         []byte
-	qidPathCount   uint64
 	fids           map[proto9.Fid]Handle
+	client         *client.Client
+	store          bpy.CStore
+	memCachedStore bpy.CStore
+	root           [32]byte
 }
 
 func makeQid(isdir bool) proto9.Qid {
@@ -67,24 +72,6 @@ func makeQid(isdir bool) proto9.Qid {
 		Type:    ty,
 		Path:    nextPath(),
 		Version: uint32(time.Now().UnixNano() / 1000000),
-	}
-}
-
-func osToStat(ent os.FileInfo) proto9.Stat {
-	mode := proto9.FileMode(0777)
-	if ent.Mode().IsDir() {
-		mode |= proto9.DMDIR
-	}
-	return proto9.Stat{
-		Mode:   mode,
-		Atime:  0,
-		Mtime:  0,
-		Name:   ent.Name(),
-		Qid:    makeQid(ent.Mode().IsDir()),
-		Length: uint64(ent.Size()),
-		UID:    "nobody",
-		GID:    "nobody",
-		MUID:   "nobody",
 	}
 }
 
@@ -123,8 +110,17 @@ func (srv *Server) handleAttach(msg *proto9.Tattach) proto9.Msg {
 		return proto9.MakeError(msg.Tag, ErrAuthNotSupported)
 	}
 
+	rootDirEnt, err := fs.Walk(srv.store, srv.root, "/")
+	if err != nil {
+		return proto9.MakeError(msg.Tag, err)
+	}
+
 	root := &file{
-		srv: srv,
+		srv:    srv,
+		parent: nil,
+		qid:    makeQid(true),
+		path:   "/",
+		dirEnt: rootDirEnt,
 	}
 
 	fh, err := root.NewHandle()
@@ -156,6 +152,9 @@ func (srv *Server) handleWalk(msg *proto9.Twalk) proto9.Msg {
 	}
 	if f != nil {
 		newfh, err := f.NewHandle()
+		if err != nil {
+			return proto9.MakeError(msg.Tag, err)
+		}
 		if msg.NewFid == msg.Fid {
 			fh.Clunk()
 			delete(srv.fids, msg.Fid)
@@ -243,7 +242,7 @@ func (srv *Server) handleRead(msg *proto9.Tread) proto9.Msg {
 	buf := make([]byte, nbytes, nbytes)
 	n, err := fh.Tread(msg, buf)
 	if err != nil {
-		return proto9.MakeError(msg.Tag, ErrNoSuchFid)
+		return proto9.MakeError(msg.Tag, err)
 	}
 	return &proto9.Rread{
 		Tag:  msg.Tag,
