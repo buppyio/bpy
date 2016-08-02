@@ -4,6 +4,9 @@ import (
 	"acha.ninja/bpy/cmd/bpy/p9/proto9"
 	"acha.ninja/bpy/fs"
 	"errors"
+	"fmt"
+	"os"
+	"path"
 	"strings"
 	"sync"
 )
@@ -77,25 +80,53 @@ func nextPath() uint64 {
 type file struct {
 	srv    *Server
 	parent *file
-	root   [32]byte
-	qid    proto9.Qid
 	path   string
+	qid    proto9.Qid
 	dirEnt fs.DirEnt
 }
 
 func (f *file) Parent() (File, error) {
 	return f.parent, nil
 }
+
 func (f *file) Child(name string) (File, error) {
-	return nil, errors.New("unimplemented")
+	if !f.dirEnt.IsDir() {
+		return nil, fmt.Errorf("%s is not a dir", f.path)
+	}
+
+	dirEnts, err := fs.ReadDir(f.srv.store, f.dirEnt.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := 0; i < len(dirEnts); i++ {
+		if dirEnts[i].EntName == name {
+			return &file{
+				srv:    f.srv,
+				parent: f,
+				qid:    makeQid(dirEnts[i].IsDir()),
+				path:   path.Join(f.path, name),
+				dirEnt: dirEnts[i],
+			}, nil
+		}
+	}
+	return nil, fmt.Errorf("%s does not exist", path.Join(f.path, name))
 }
+
 func (f *file) Qid() (proto9.Qid, error) {
 	return f.qid, nil
 }
+
 func (f *file) Stat() (proto9.Stat, error) {
 	return proto9.Stat{}, errors.New("unimplemented")
 }
+
 func (f *file) NewHandle() (Handle, error) {
+	if f.dirEnt.IsDir() {
+		return &dirHandle{
+			file: f,
+		}, nil
+	}
 	return nil, errors.New("unimplemented")
 }
 
@@ -113,14 +144,43 @@ func (d *dirHandle) GetIounit(maxMessageSize uint32) uint32 {
 }
 
 func (d *dirHandle) Twalk(msg *proto9.Twalk) (File, []proto9.Qid, error) {
-	return nil, []proto9.Qid{}, errors.New("unimplemented")
+	return walk(d.file, msg.Names)
 }
 
 func (d *dirHandle) Topen(msg *proto9.Topen) (proto9.Qid, error) {
-	return proto9.Qid{}, errors.New("unimplemented")
+	return d.file.qid, nil
+}
+
+func osToProto9Stat(ent os.FileInfo) proto9.Stat {
+	mode := proto9.FileMode(0777)
+	if ent.Mode().IsDir() {
+		mode |= proto9.DMDIR
+	}
+	return proto9.Stat{
+		Mode:   mode,
+		Atime:  0,
+		Mtime:  0,
+		Name:   ent.Name(),
+		Qid:    makeQid(ent.Mode().IsDir()),
+		Length: uint64(ent.Size()),
+		UID:    "nobody",
+		GID:    "nobody",
+		MUID:   "nobody",
+	}
 }
 
 func (d *dirHandle) Tread(msg *proto9.Tread, buf []byte) (uint32, error) {
+	if msg.Offset == 0 {
+		dirEnts, err := fs.ReadDir(d.file.srv.store, d.file.dirEnt.Data)
+		if err != nil {
+			return 0, err
+		}
+		d.stats = make([]proto9.Stat, len(dirEnts), len(dirEnts))
+		for i, dirEnt := range dirEnts {
+			d.stats[i] = osToProto9Stat(&dirEnt)
+		}
+	}
+
 	if msg.Offset != d.offset {
 		return 0, ErrBadRead
 	}
@@ -163,7 +223,7 @@ func (d *dirHandle) Tstat(msg *proto9.Tstat) (proto9.Stat, error) {
 }
 
 func (d *dirHandle) Clunk() error {
-	return errors.New("unimplemented")
+	return nil
 }
 
 type fileHandle struct {
@@ -179,7 +239,7 @@ func (f *fileHandle) GetIounit(maxMessageSize uint32) uint32 {
 }
 
 func (f *fileHandle) Twalk(msg *proto9.Twalk) (File, []proto9.Qid, error) {
-	return nil, []proto9.Qid{}, errors.New("unimplemented")
+	return nil, nil, fmt.Errorf("%s is a file", f.file.path)
 }
 
 func (f *fileHandle) Topen(msg *proto9.Topen) (proto9.Qid, error) {
