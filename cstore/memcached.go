@@ -38,6 +38,8 @@ func (m *MemCachedCStore) Get(hash [32]byte) ([]byte, error) {
 	cacheEnt, ok := m.cache[string(hash[:])]
 	if ok {
 		m.lru.MoveToFront(cacheEnt.listEnt)
+		valCopy := make([]byte, len(cacheEnt.val), len(cacheEnt.val))
+		copy(valCopy, cacheEnt.val)
 		return cacheEnt.val, nil
 	}
 	val, err := m.store.Get(hash)
@@ -49,9 +51,11 @@ func (m *MemCachedCStore) Get(hash [32]byte) ([]byte, error) {
 		m.size -= uint64(len(back.val))
 		delete(m.cache, back.hash)
 	}
+	valCopy := make([]byte, len(val), len(val))
+	copy(valCopy, val)
 	newCacheEnt := &memCacheEnt{
 		hash: string(hash[:]),
-		val:  val,
+		val:  valCopy,
 	}
 	listEnt := m.lru.PushFront(newCacheEnt)
 	newCacheEnt.listEnt = listEnt
