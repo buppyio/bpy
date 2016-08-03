@@ -83,9 +83,6 @@ Copy a file or folder and update the specified ref
 ## get
 Download the contents of a bpy ref folder
 
-## get
-Download the contents of a bpy ref folder
-
 ## history
 Fetch hash history of a given ref
 
