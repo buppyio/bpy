@@ -33,7 +33,7 @@ server.
 export BPY_REMOTE="ssh://yourserver/home/youruser/bpydata"
 ```
 
-Finally, store a backup
+Finally, store a backup into the 'default' ref
 
 ```
 echo "important document" > document.txt
