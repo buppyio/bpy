@@ -3,7 +3,6 @@ package get
 import (
 	"acha.ninja/bpy"
 	"acha.ninja/bpy/cmd/bpy/common"
-	"acha.ninja/bpy/fs"
 	"acha.ninja/bpy/fs/fsutil"
 	"acha.ninja/bpy/remote"
 	"flag"
@@ -52,12 +51,7 @@ func Get() {
 		common.Die("error parsing hash: %s\n", err.Error())
 	}
 
-	src, err := fs.Walk(store, root, *pathArg)
-	if err != nil {
-		common.Die("error getting directory: %s\n", err.Error())
-	}
-
-	err = fsutil.CpFsDirToHost(store, src.Data, flag.Args()[0])
+	err = fsutil.CpFsToHost(store, root, *pathArg, flag.Args()[0])
 	if err != nil {
 		common.Die("error copying directory: %s\n", err.Error())
 	}

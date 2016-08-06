@@ -40,7 +40,7 @@ func TestTar(t *testing.T) {
 		t.Fatal(err)
 	}
 	store := testhelp.NewMemStore()
-	dirEnt, err := fsutil.CpHostDirToFs(store, randd)
+	dirEnt, err := fsutil.CpHostToFs(store, randd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestZip(t *testing.T) {
 		t.Fatal(err)
 	}
 	store := testhelp.NewMemStore()
-	dirEnt, err := fsutil.CpHostDirToFs(store, randd)
+	dirEnt, err := fsutil.CpHostToFs(store, randd)
 	if err != nil {
 		t.Fatal(err)
 	}

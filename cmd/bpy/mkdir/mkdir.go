@@ -1,29 +1,23 @@
-package put
+package mkdir
 
 import (
 	"acha.ninja/bpy"
 	"acha.ninja/bpy/cmd/bpy/common"
 	"acha.ninja/bpy/fs"
-	"acha.ninja/bpy/fs/fsutil"
 	"acha.ninja/bpy/remote"
 	"encoding/hex"
 	"flag"
-	"path/filepath"
 )
 
-func Put() {
-	tagArg := flag.String("tag", "default", "tag put data into")
-	destArg := flag.String("dest", "/", "destination path")
+func Mkdir() {
+	tagArg := flag.String("tag", "default", "tag make directory in")
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {
-		common.Die("please specify the local folder to put into dest\n")
+		common.Die("please specify the directory to create\n")
 	}
-	srcPath, err := filepath.Abs(flag.Args()[0])
-	if err != nil {
-		common.Die("error getting src path: %s\n", err.Error())
-	}
-	destPath := *destArg
+
+	destPath := flag.Args()[0]
 
 	k, err := common.GetKey()
 	if err != nil {
@@ -35,7 +29,6 @@ func Put() {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
 	defer c.Close()
-
 	store, err := common.GetCStore(&k, c)
 	if err != nil {
 		common.Die("error getting content store: %s\n", err.Error())
@@ -54,14 +47,14 @@ func Put() {
 		common.Die("error parsing hash: %s\n", err.Error())
 	}
 
-	srcDirEnt, err := fsutil.CpHostToFs(store, srcPath)
+	emptyDirEnt, err := fs.EmptyDir(store, 0755)
 	if err != nil {
 		common.Die("error copying data: %s\n", err.Error())
 	}
 
-	newRoot, err := fs.Insert(store, destHash, destPath, srcDirEnt)
+	newRoot, err := fs.Insert(store, destHash, destPath, emptyDirEnt)
 	if err != nil {
-		common.Die("error inserting src into folder: %s\n", err.Error())
+		common.Die("error inserting empty dir into folder: %s\n", err.Error())
 	}
 
 	err = store.Close()

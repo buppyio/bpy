@@ -65,42 +65,6 @@ func randFileName() (string, error) {
 	return hex.EncodeToString(namebuf[:]), nil
 }
 
-func cacheIndex(packname, cachepath string, index bpack.Index) error {
-	idxpath := filepath.Join(cachepath, packname+".index")
-	_, err := os.Stat(idxpath)
-	if err == nil {
-		return nil
-	}
-	if !os.IsNotExist(err) {
-		return err
-	}
-	tmpname, err := randFileName()
-	if err != nil {
-		return err
-	}
-	tmppath := filepath.Join(cachepath, tmpname)
-	tmpf, err := os.Create(tmppath)
-	if err != nil {
-		return err
-	}
-	err = bpack.WriteIndex(tmpf, index)
-	if err != nil {
-		tmpf.Close()
-		os.Remove(tmppath)
-		return err
-	}
-	err = tmpf.Close()
-	if err != nil {
-		os.Remove(tmppath)
-	}
-	err = os.Rename(tmppath, idxpath)
-	if err != nil {
-		os.Remove(tmppath)
-		return err
-	}
-	return nil
-}
-
 func getAndCacheIndex(store *client.Client, key [32]byte, packname string, packsize uint64, cachepath string) (bpack.Index, error) {
 	idxpath := filepath.Join(cachepath, packname+".index")
 	_, err := os.Stat(idxpath)
@@ -129,9 +93,44 @@ func getAndCacheIndex(store *client.Client, key [32]byte, packname string, packs
 	if err != nil {
 		return nil, err
 	}
-	err = cacheIndex(packname, cachepath, pack.Idx)
+	err = cacheIndex(idxpath, pack.Idx)
 	if err != nil {
 		return nil, err
 	}
 	return pack.Idx, nil
+}
+
+func cacheIndex(idxpath string, index bpack.Index) error {
+	_, err := os.Stat(idxpath)
+	if err == nil {
+		return nil
+	}
+	if !os.IsNotExist(err) {
+		return err
+	}
+	tmpname, err := randFileName()
+	if err != nil {
+		return err
+	}
+	tmppath := tmpname + ".tmp"
+	tmpf, err := os.Create(tmppath)
+	if err != nil {
+		return err
+	}
+	err = bpack.WriteIndex(tmpf, index)
+	if err != nil {
+		tmpf.Close()
+		os.Remove(tmppath)
+		return err
+	}
+	err = tmpf.Close()
+	if err != nil {
+		os.Remove(tmppath)
+	}
+	err = os.Rename(tmppath, idxpath)
+	if err != nil {
+		os.Remove(tmppath)
+		return err
+	}
+	return nil
 }

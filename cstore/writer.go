@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"io"
 	"io/ioutil"
+	"path/filepath"
 	"sync"
 )
 
@@ -76,11 +77,12 @@ func (w *Writer) flushWorkingSet() error {
 		if err != nil {
 			return err
 		}
-		err = cacheIndex(w.name, w.cachepath, idx)
+		err = cacheIndex(filepath.Join(w.cachepath, w.name+".index"), idx)
 		if err != nil {
 			return err
 		}
 		w.pack = nil
+		w.name = ""
 		w.workingSetSz = 0
 		w.workingSet = make(map[string][]byte)
 	}
@@ -114,7 +116,12 @@ func (w *Writer) Put(data []byte) ([32]byte, error) {
 
 	h := sha256.Sum256(data)
 
-	ok, err := w.rdr.Has(h)
+	_, ok := w.workingSet[string(h[:])]
+	if ok {
+		return h, nil
+	}
+
+	ok, err = w.rdr.Has(h)
 	if err != nil {
 		return h, err
 	}
@@ -127,7 +134,8 @@ func (w *Writer) Put(data []byte) ([32]byte, error) {
 		if err != nil {
 			return h, err
 		}
-		f, err := w.store.NewPack("packs/" + name + ".ebpack")
+		name = name + ".ebpack"
+		f, err := w.store.NewPack("packs/" + name)
 		if err != nil {
 			return h, err
 		}
@@ -141,11 +149,6 @@ func (w *Writer) Put(data []byte) ([32]byte, error) {
 			return h, err
 		}
 		w.name = name
-	}
-
-	_, ok = w.workingSet[string(h[:])]
-	if ok {
-		return h, nil
 	}
 
 	w.flatebuf.Reset()
