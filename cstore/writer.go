@@ -113,6 +113,15 @@ func (w *Writer) Put(data []byte) ([32]byte, error) {
 	var err error
 
 	h := sha256.Sum256(data)
+
+	ok, err := w.rdr.Has(h)
+	if err != nil {
+		return h, err
+	}
+	if ok {
+		return h, nil
+	}
+
 	if w.pack == nil {
 		name, err := randFileName()
 		if err != nil {
@@ -131,15 +140,10 @@ func (w *Writer) Put(data []byte) ([32]byte, error) {
 			f.Cancel()
 			return h, err
 		}
+		w.name = name
 	}
-	_, ok := w.workingSet[string(h[:])]
-	if ok {
-		return h, nil
-	}
-	ok, err = w.rdr.Has(h)
-	if err != nil {
-		return h, err
-	}
+
+	_, ok = w.workingSet[string(h[:])]
 	if ok {
 		return h, nil
 	}
