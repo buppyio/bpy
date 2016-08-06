@@ -1,8 +1,5 @@
 Alpha:
 
-- Allow put to 'put' put files in addition to folders
-- make 9p server refresh tag periodically
-
 Bugs:
 
 Improvements:
@@ -19,7 +16,6 @@ Improvements:
 - Add client side chunk caching
 - Write comprehensive man pages
 - Add more user friendly failure messages for ssh failure (maybe use crypto/go ssh client)
-- Add download as zip/tar to browse ui
 - Rename 'Pack' remote api to 'Stream'
 - Make browse ui polished
 - Add signature to tags
@@ -28,3 +24,4 @@ Improvements:
 - Test every message type in proto packing/unpack tests
 - Steal ideas like bloom filters, cstore is actually just an LSM.
 - Only fetch changed indexes instead of reloading entire index when a lookup fails.
+- make 9p server refresh tag periodically
