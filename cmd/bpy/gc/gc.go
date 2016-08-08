@@ -2,6 +2,7 @@ package gc
 
 import (
 	"acha.ninja/bpy/cmd/bpy/common"
+	"acha.ninja/bpy/cstore"
 	"acha.ninja/bpy/gc"
 	"acha.ninja/bpy/remote"
 )
@@ -23,6 +24,7 @@ func GC() {
 	if err != nil {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
+	store = cstore.NewMemCachedCStore(store, 32*1024*1024)
 
 	// Stop any gc that is currently running
 	err = remote.StopGC(c)
