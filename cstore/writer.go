@@ -1,6 +1,7 @@
 package cstore
 
 import (
+	"acha.ninja/bpy"
 	"acha.ninja/bpy/bpack"
 	"acha.ninja/bpy/remote/client"
 	"bufio"
@@ -130,7 +131,7 @@ func (w *Writer) Put(data []byte) ([32]byte, error) {
 	}
 
 	if w.pack == nil {
-		name, err := randFileName()
+		name, err := bpy.RandomFileName()
 		if err != nil {
 			return h, err
 		}

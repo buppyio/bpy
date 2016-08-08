@@ -1,12 +1,10 @@
 package cstore
 
 import (
+	"acha.ninja/bpy"
 	"acha.ninja/bpy/bpack"
 	"acha.ninja/bpy/remote"
 	"acha.ninja/bpy/remote/client"
-	"crypto/rand"
-	"encoding/hex"
-	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -56,15 +54,6 @@ func readAndCacheMetaIndex(store *client.Client, key [32]byte, cachepath string)
 	return midx, nil
 }
 
-func randFileName() (string, error) {
-	namebuf := [32]byte{}
-	_, err := io.ReadFull(rand.Reader, namebuf[:])
-	if err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(namebuf[:]), nil
-}
-
 func getAndCacheIndex(store *client.Client, key [32]byte, packname string, packsize uint64, cachepath string) (bpack.Index, error) {
 	idxpath := filepath.Join(cachepath, packname+".index")
 	_, err := os.Stat(idxpath)
@@ -108,7 +97,7 @@ func cacheIndex(idxpath string, index bpack.Index) error {
 	if !os.IsNotExist(err) {
 		return err
 	}
-	tmpname, err := randFileName()
+	tmpname, err := bpy.RandomFileName()
 	if err != nil {
 		return err
 	}

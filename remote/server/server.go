@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/boltdb/bolt"
 	"io"
-	//"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -20,14 +19,17 @@ var (
 	ErrNoSuchPid          = errors.New("no such pid")
 	ErrNoSuchFid          = errors.New("no such fid")
 	ErrNoSuchTag          = errors.New("no such tag")
+	ErrBadGCID            = errors.New("GCID for remove incorrect (another concurrent gc)?")
+	ErrGCInProgress       = errors.New("gc in progress")
 	ErrTagAlreadyExists   = errors.New("tag already exists")
 	ErrStaleTagValue      = errors.New("tag value stale (concurrent write?)")
 	ErrGeneratingPackName = errors.New("error generating pack name")
 )
 
 const (
-	TagBucketName = "tags"
-	TagDBName     = "tags.db"
+	TagBucketName     = "tags"
+	GCStateBucketName = "gc"
+	TagDBName         = "tags.db"
 )
 
 type ReadWriteCloser interface {
@@ -248,12 +250,19 @@ func (srv *server) handleTTag(t *proto.TTag) proto.Message {
 	}
 	defer db.Close()
 	err = db.Update(func(tx *bolt.Tx) error {
+		state, err := getGCState(tx)
+		if err != nil {
+			return err
+		}
+		if t.Generation != state.Generation {
+			return ErrGCInProgress
+		}
 		b := tx.Bucket([]byte(TagBucketName))
 		valueBytes := b.Get([]byte(t.Name))
 		if valueBytes != nil {
 			return ErrTagAlreadyExists
 		}
-		err := b.Put([]byte(t.Name), []byte(t.Value))
+		err = b.Put([]byte(t.Name), []byte(t.Value))
 		return err
 	})
 	if err != nil {
@@ -271,7 +280,7 @@ func (srv *server) handleTGetTag(t *proto.TGetTag) proto.Message {
 	}
 	defer db.Close()
 	var value string
-	err = db.Update(func(tx *bolt.Tx) error {
+	err = db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(TagBucketName))
 		valueBytes := b.Get([]byte(t.Name))
 		if valueBytes == nil {
@@ -303,6 +312,13 @@ func (srv *server) handleTCasTag(t *proto.TCasTag) proto.Message {
 	}
 	defer db.Close()
 	err = db.Update(func(tx *bolt.Tx) error {
+		state, err := getGCState(tx)
+		if err != nil {
+			return err
+		}
+		if t.Generation != state.Generation {
+			return ErrGCInProgress
+		}
 		b := tx.Bucket([]byte(TagBucketName))
 		valueBytes := b.Get([]byte(t.Name))
 		if valueBytes == nil {
@@ -335,12 +351,19 @@ func (srv *server) handleTRemoveTag(t *proto.TRemoveTag) proto.Message {
 	}
 	defer db.Close()
 	err = db.Update(func(tx *bolt.Tx) error {
+		state, err := getGCState(tx)
+		if err != nil {
+			return err
+		}
+		if t.Generation != state.Generation {
+			return ErrGCInProgress
+		}
 		b := tx.Bucket([]byte(TagBucketName))
 		valueBytes := b.Get([]byte(t.Name))
 		if string(valueBytes) != t.OldValue {
 			return ErrStaleTagValue
 		}
-		err := b.Delete([]byte(t.Name))
+		err = b.Delete([]byte(t.Name))
 		return err
 	})
 	if err != nil {
@@ -351,16 +374,116 @@ func (srv *server) handleTRemoveTag(t *proto.TRemoveTag) proto.Message {
 	}
 }
 
+func (srv *server) handleTRemove(t *proto.TRemove) proto.Message {
+	db, err := openTagDB(srv.tagDBPath)
+	if err != nil {
+		makeError(t.Mid, err)
+	}
+	defer db.Close()
+	err = db.View(func(tx *bolt.Tx) error {
+		state, err := getGCState(tx)
+		if err != nil {
+			return err
+		}
+		if t.GCID != state.ID {
+			return ErrBadGCID
+		}
+		return nil
+	})
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+	matched, err := regexp.MatchString("packs/[a-zA-Z0-9\\.]+", t.Path)
+	if err != nil || !matched {
+		return makeError(t.Mid, ErrBadRequest)
+	}
+	fpath := path.Join(srv.servePath, t.Path)
+	err = os.Remove(fpath)
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+	return &proto.RRemove{
+		Mid: t.Mid,
+	}
+}
+
 func (srv *server) handleTStartGC(t *proto.TStartGC) proto.Message {
-    return makeError(t.Mid, errors.New("unimplemented"))
+	db, err := openTagDB(srv.tagDBPath)
+	if err != nil {
+		makeError(t.Mid, err)
+	}
+	defer db.Close()
+
+	err = db.Update(func(tx *bolt.Tx) error {
+		state, err := getGCState(tx)
+		if err != nil {
+			return err
+		}
+		if state.ID != "" {
+			return ErrGCInProgress
+		}
+		state.ID = t.GCID
+		return setGCState(tx, state)
+	})
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+	return &proto.RStartGC{
+		Mid: t.Mid,
+	}
 }
 
 func (srv *server) handleTStopGC(t *proto.TStopGC) proto.Message {
-    return makeError(t.Mid, errors.New("unimplemented"))
+	db, err := openTagDB(srv.tagDBPath)
+	if err != nil {
+		makeError(t.Mid, err)
+	}
+	defer db.Close()
+
+	err = db.Update(func(tx *bolt.Tx) error {
+		state, err := getGCState(tx)
+		if err != nil {
+			return err
+		}
+		state.Generation += 1
+		state.ID = ""
+		return setGCState(tx, state)
+	})
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+	return &proto.RStopGC{
+		Mid: t.Mid,
+	}
 }
 
 func (srv *server) handleTGetGeneration(t *proto.TGetGeneration) proto.Message {
-    return makeError(t.Mid, errors.New("unimplemented"))
+	db, err := openTagDB(srv.tagDBPath)
+	if err != nil {
+		makeError(t.Mid, err)
+	}
+	defer db.Close()
+
+	var gen uint64
+
+	err = db.View(func(tx *bolt.Tx) error {
+		state, err := getGCState(tx)
+		if err != nil {
+			return err
+		}
+		if state.ID != "" {
+			return ErrGCInProgress
+		}
+		gen = state.Generation
+		return nil
+	})
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+	return &proto.RGetGeneration{
+		Mid:        t.Mid,
+		Generation: gen,
+	}
 }
 
 func handleAttach(conn ReadWriteCloser, root string) (*server, error) {
@@ -448,9 +571,11 @@ func Serve(conn ReadWriteCloser, root string) error {
 			r = srv.handleTCasTag(t)
 		case *proto.TRemoveTag:
 			r = srv.handleTRemoveTag(t)
-	    case *proto.TStartGC:
+		case *proto.TRemove:
+			r = srv.handleTRemove(t)
+		case *proto.TStartGC:
 			r = srv.handleTStartGC(t)
-	    case *proto.TStopGC:
+		case *proto.TStopGC:
 			r = srv.handleTStopGC(t)
 		case *proto.TGetGeneration:
 			r = srv.handleTGetGeneration(t)

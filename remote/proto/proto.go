@@ -69,9 +69,9 @@ type RError struct {
 }
 
 type TTag struct {
-	Mid   uint16
-	Name  string
-	Value string
+	Mid        uint16
+	Name       string
+	Value      string
 	Generation uint64
 }
 
@@ -91,10 +91,10 @@ type RGetTag struct {
 }
 
 type TCasTag struct {
-	Mid      uint16
-	Name     string
-	OldValue string
-	NewValue string
+	Mid        uint16
+	Name       string
+	OldValue   string
+	NewValue   string
 	Generation uint64
 }
 
@@ -104,9 +104,9 @@ type RCasTag struct {
 }
 
 type TRemoveTag struct {
-	Mid      uint16
-	Name     string
-	OldValue string
+	Mid        uint16
+	Name       string
+	OldValue   string
 	Generation uint64
 }
 
@@ -198,6 +198,7 @@ type RCancelPack struct {
 type TRemove struct {
 	Mid  uint16
 	Path string
+	GCID string
 }
 
 type RRemove struct {
@@ -214,23 +215,21 @@ type RStartGC struct {
 }
 
 type TStopGC struct {
-	Mid  uint16
+	Mid uint16
 }
 
 type RStopGC struct {
-    Mid uint16
+	Mid uint16
 }
 
 type TGetGeneration struct {
-    Mid     uint16
+	Mid uint16
 }
 
 type RGetGeneration struct {
-    Mid     uint16
-    Generation uint64
+	Mid        uint16
+	Generation uint64
 }
-
-
 
 func ReadMessage(r io.Reader, buf []byte) (Message, error) {
 	_, err := io.ReadFull(r, buf[:4])
@@ -315,6 +314,10 @@ func UnpackMessage(buf []byte) (Message, error) {
 		m = &TRemoveTag{}
 	case RREMOVETAG:
 		m = &RRemoveTag{}
+	case TREMOVE:
+		m = &TRemove{}
+	case RREMOVE:
+		m = &RRemove{}
 	case TSTARTGC:
 		m = &TStartGC{}
 	case RSTARTGC:
@@ -385,6 +388,10 @@ func GetMessageType(m Message) byte {
 		return TREMOVETAG
 	case *RRemoveTag:
 		return RREMOVETAG
+	case *TRemove:
+		return TREMOVE
+	case *RRemove:
+		return RREMOVE
 	case *TStartGC:
 		return TSTARTGC
 	case *RStartGC:
@@ -452,6 +459,10 @@ func GetMessageId(m Message) uint16 {
 	case *TRemoveTag:
 		return m.Mid
 	case *RRemoveTag:
+		return m.Mid
+	case *TRemove:
+		return m.Mid
+	case *RRemove:
 		return m.Mid
 	case *TStartGC:
 		return m.Mid

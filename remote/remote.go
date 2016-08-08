@@ -2,8 +2,11 @@ package remote
 
 import (
 	"acha.ninja/bpy/remote/client"
+	"crypto/rand"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
+	"io"
 	"io/ioutil"
 	"time"
 )
@@ -75,11 +78,6 @@ func ListTags(c *client.Client) ([]string, error) {
 	return listing, nil
 }
 
-func Tag(c *client.Client, name, value string) error {
-	_, err := c.TTag(name, value)
-	return err
-}
-
 func GetTag(c *client.Client, name string) (string, bool, error) {
 	r, err := c.TGetTag(name)
 	if err != nil {
@@ -88,15 +86,52 @@ func GetTag(c *client.Client, name string) (string, bool, error) {
 	return r.Value, r.Ok, nil
 }
 
-func CasTag(c *client.Client, name, oldValue, newValue string) (bool, error) {
-	r, err := c.TCasTag(name, oldValue, newValue)
+func Tag(c *client.Client, name, value string, generation uint64) error {
+	_, err := c.TTag(name, value, generation)
+	return err
+}
+
+func CasTag(c *client.Client, name, oldValue, newValue string, generation uint64) (bool, error) {
+	r, err := c.TCasTag(name, oldValue, newValue, generation)
 	if err != nil {
 		return false, err
 	}
 	return r.Ok, nil
 }
 
-func RemoveTag(c *client.Client, name, oldValue string) error {
-	_, err := c.TRemoveTag(name, oldValue)
+func RemoveTag(c *client.Client, name, oldValue string, generation uint64) error {
+	_, err := c.TRemoveTag(name, oldValue, generation)
+	return err
+}
+
+func Remove(c *client.Client, path, gcId string) error {
+	_, err := c.TRemove(path, gcId)
+	return err
+}
+
+func GetGeneration(c *client.Client) (uint64, error) {
+	r, err := c.TGetGeneration()
+	if err != nil {
+		return 0, err
+	}
+	return r.Generation, nil
+}
+
+func StartGC(c *client.Client) (string, error) {
+	idBytes := [64]byte{}
+	_, err := io.ReadFull(rand.Reader, idBytes[:])
+	if err != nil {
+		return "", err
+	}
+	id := hex.EncodeToString(idBytes[:])
+	_, err = c.TStartGC(id)
+	if err != nil {
+		return "", err
+	}
+	return id, nil
+}
+
+func StopGC(c *client.Client) error {
+	_, err := c.TStopGC()
 	return err
 }

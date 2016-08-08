@@ -25,3 +25,4 @@ Improvements:
 - Steal ideas like bloom filters, cstore is actually just an LSM.
 - Only fetch changed indexes instead of reloading entire index when a lookup fails.
 - make 9p server refresh tag periodically
+- Rename tagdb and tags.go to just 'db'

@@ -81,3 +81,12 @@ func ParseHash(hashstr string) ([32]byte, error) {
 	}
 	return hash, nil
 }
+
+func RandomFileName() (string, error) {
+	namebuf := [32]byte{}
+	_, err := io.ReadFull(rand.Reader, namebuf[:])
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(namebuf[:]), nil
+}

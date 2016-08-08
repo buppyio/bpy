@@ -41,6 +41,11 @@ func Put() {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
 
+	generation, err := remote.GetGeneration(c)
+	if err != nil {
+		common.Die("error getting current gc generation: %s\n", err.Error())
+	}
+
 	tagHash, ok, err := remote.GetTag(c, *tagArg)
 	if err != nil {
 		common.Die("error fetching tag hash: %s\n", err.Error())
@@ -69,7 +74,7 @@ func Put() {
 		common.Die("error closing remote: %s\n", err.Error())
 	}
 
-	ok, err = remote.CasTag(c, *tagArg, hex.EncodeToString(destHash[:]), hex.EncodeToString(newRoot.Data[:]))
+	ok, err = remote.CasTag(c, *tagArg, hex.EncodeToString(destHash[:]), hex.EncodeToString(newRoot.Data[:]), generation)
 	if err != nil {
 		common.Die("creating tag: %s\n", err.Error())
 	}

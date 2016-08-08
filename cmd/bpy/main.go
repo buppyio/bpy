@@ -4,6 +4,7 @@ import (
 	"acha.ninja/bpy/cmd/bpy/browse"
 	"acha.ninja/bpy/cmd/bpy/cat"
 	"acha.ninja/bpy/cmd/bpy/cp"
+	"acha.ninja/bpy/cmd/bpy/gc"
 	"acha.ninja/bpy/cmd/bpy/get"
 	"acha.ninja/bpy/cmd/bpy/ls"
 	"acha.ninja/bpy/cmd/bpy/mkdir"
@@ -22,7 +23,7 @@ import (
 
 func help() {
 	fmt.Println("Please specify one of the following subcommands:")
-	fmt.Println("browse, cat, cp, get, ls, mkdir, mv, new-key, put, rm, tag, tar, zip, 9p")
+	fmt.Println("browse, cat, cp, gc, get, ls, mkdir, mv, new-key, put, rm, tag, tar, zip, 9p")
 	fmt.Println("")
 	fmt.Println("For more use -h on the sub commands.")
 	fmt.Println("Also check the docs at https://buppy.io/docs")
@@ -39,6 +40,8 @@ func main() {
 			cmd = cat.Cat
 		case "cp":
 			cmd = cp.Cp
+		case "gc":
+			cmd = gc.GC
 		case "get":
 			cmd = get.Get
 		case "ls":

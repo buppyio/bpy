@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"github.com/boltdb/bolt"
 	"io"
 	"time"
@@ -13,6 +14,31 @@ type tagListingFile struct {
 	entries   []string
 }
 
+type gcState struct {
+	Generation uint64
+	ID         string
+}
+
+func getGCState(tx *bolt.Tx) (gcState, error) {
+	stateBucket := tx.Bucket([]byte(GCStateBucketName))
+	stateBytes := stateBucket.Get([]byte("state"))
+	state := gcState{}
+	err := json.Unmarshal(stateBytes, &state)
+	if err != nil {
+		return state, err
+	}
+	return state, err
+}
+
+func setGCState(tx *bolt.Tx, state gcState) error {
+	stateBucket := tx.Bucket([]byte(GCStateBucketName))
+	data, err := json.Marshal(state)
+	if err != nil {
+		return err
+	}
+	return stateBucket.Put([]byte("state"), data)
+}
+
 func openTagDB(dbPath string) (*bolt.DB, error) {
 	db, err := bolt.Open(dbPath, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
@@ -22,6 +48,16 @@ func openTagDB(dbPath string) (*bolt.DB, error) {
 		_, err := tx.CreateBucketIfNotExists([]byte(TagBucketName))
 		if err != nil {
 			return err
+		}
+		gcStateBucket, err := tx.CreateBucketIfNotExists([]byte(GCStateBucketName))
+		if err != nil {
+			return err
+		}
+		if gcStateBucket.Get([]byte("state")) == nil {
+			err = setGCState(tx, gcState{})
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	})

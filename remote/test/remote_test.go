@@ -108,6 +108,10 @@ func TestTags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	generation, err := remote.GetGeneration(c)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	testvals := make(map[string]string)
 	testvals["foo"] = "bar"
@@ -115,7 +119,7 @@ func TestTags(t *testing.T) {
 	testvals["foo2"] = "baz"
 
 	for k, v := range testvals {
-		err = remote.Tag(c, k, v)
+		err = remote.Tag(c, k, v, generation)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -147,11 +151,11 @@ func TestTags(t *testing.T) {
 		}
 	}
 
-	err = remote.RemoveTag(c, "foo", "...")
+	err = remote.RemoveTag(c, "foo", "...", generation)
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	err = remote.RemoveTag(c, "foo", "bar")
+	err = remote.RemoveTag(c, "foo", "bar", generation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,14 +174,14 @@ func TestTags(t *testing.T) {
 		t.Fatal("incorrect number of tags")
 	}
 
-	ok, err = remote.CasTag(c, "foo2", "ba", "")
+	ok, err = remote.CasTag(c, "foo2", "ba", "", generation)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if ok {
 		t.Fatal("expected cas fail")
 	}
-	ok, err = remote.CasTag(c, "foo2", "baz", "casval")
+	ok, err = remote.CasTag(c, "foo2", "baz", "casval", generation)
 	if err != nil {
 		t.Fatal(err)
 	}

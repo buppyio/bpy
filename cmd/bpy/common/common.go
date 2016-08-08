@@ -119,6 +119,10 @@ func GetRemote(k *bpy.Key) (*client.Client, error) {
 			c.Close()
 			return nil, fmt.Errorf("error getting store writer: %s", err.Error())
 		}
+		generation, err := remote.GetGeneration(c)
+		if err != nil {
+			return nil, err
+		}
 		ent, err := fs.EmptyDir(store, 0755)
 		if err != nil {
 			c.Close()
@@ -129,7 +133,7 @@ func GetRemote(k *bpy.Key) (*client.Client, error) {
 			c.Close()
 			return nil, fmt.Errorf("error closing store writer: %s", err.Error())
 		}
-		err = remote.Tag(c, "default", hex.EncodeToString(ent.Data[:]))
+		err = remote.Tag(c, "default", hex.EncodeToString(ent.Data[:]), generation)
 		if err != nil {
 			c.Close()
 			return nil, fmt.Errorf("error initizializing default tag: %s", err.Error())

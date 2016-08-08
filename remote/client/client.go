@@ -229,15 +229,16 @@ func (c *Client) WriteMessage(m proto.Message) error {
 	return proto.WriteMessage(c.conn, m, c.wBuf)
 }
 
-func (c *Client) TTag(name, value string) (*proto.RTag, error) {
+func (c *Client) TTag(name, value string, generation uint64) (*proto.RTag, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
 	}
 	resp, err := c.Call(&proto.TTag{
-		Mid:   mid,
-		Name:  name,
-		Value: value,
+		Mid:        mid,
+		Name:       name,
+		Value:      value,
+		Generation: generation,
 	}, ch, mid)
 	if err != nil {
 		return nil, err
@@ -250,22 +251,45 @@ func (c *Client) TTag(name, value string) (*proto.RTag, error) {
 	}
 }
 
-func (c *Client) TCasTag(name, oldValue, newValue string) (*proto.RCasTag, error) {
+func (c *Client) TCasTag(name, oldValue, newValue string, generation uint64) (*proto.RCasTag, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
 	}
 	resp, err := c.Call(&proto.TCasTag{
-		Mid:      mid,
-		Name:     name,
-		OldValue: oldValue,
-		NewValue: newValue,
+		Mid:        mid,
+		Name:       name,
+		OldValue:   oldValue,
+		NewValue:   newValue,
+		Generation: generation,
 	}, ch, mid)
 	if err != nil {
 		return nil, err
 	}
 	switch resp := resp.(type) {
 	case *proto.RCasTag:
+		return resp, nil
+	default:
+		return nil, ErrBadResponse
+	}
+}
+
+func (c *Client) TRemoveTag(name, oldValue string, generation uint64) (*proto.RRemoveTag, error) {
+	ch, mid, err := c.newCall()
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.Call(&proto.TRemoveTag{
+		Mid:        mid,
+		Name:       name,
+		OldValue:   oldValue,
+		Generation: generation,
+	}, ch, mid)
+	if err != nil {
+		return nil, err
+	}
+	switch resp := resp.(type) {
+	case *proto.RRemoveTag:
 		return resp, nil
 	default:
 		return nil, ErrBadResponse
@@ -292,21 +316,21 @@ func (c *Client) TGetTag(name string) (*proto.RGetTag, error) {
 	}
 }
 
-func (c *Client) TRemoveTag(name, oldValue string) (*proto.RRemoveTag, error) {
+func (c *Client) TRemove(path, gcId string) (*proto.RRemove, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.Call(&proto.TRemoveTag{
-		Mid:      mid,
-		Name:     name,
-		OldValue: oldValue,
+	resp, err := c.Call(&proto.TRemove{
+		Mid:  mid,
+		Path: path,
+		GCID: gcId,
 	}, ch, mid)
 	if err != nil {
 		return nil, err
 	}
 	switch resp := resp.(type) {
-	case *proto.RRemoveTag:
+	case *proto.RRemove:
 		return resp, nil
 	default:
 		return nil, ErrBadResponse
@@ -437,6 +461,64 @@ func (c *Client) TCancelPack(pid uint32) (*proto.RCancelPack, error) {
 	}
 	switch resp := resp.(type) {
 	case *proto.RCancelPack:
+		return resp, nil
+	default:
+		return nil, ErrBadResponse
+	}
+}
+
+func (c *Client) TGetGeneration() (*proto.RGetGeneration, error) {
+	ch, mid, err := c.newCall()
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.Call(&proto.TGetGeneration{
+		Mid: mid,
+	}, ch, mid)
+	if err != nil {
+		return nil, err
+	}
+	switch resp := resp.(type) {
+	case *proto.RGetGeneration:
+		return resp, nil
+	default:
+		return nil, ErrBadResponse
+	}
+}
+
+func (c *Client) TStartGC(id string) (*proto.RStartGC, error) {
+	ch, mid, err := c.newCall()
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.Call(&proto.TStartGC{
+		Mid:  mid,
+		GCID: id,
+	}, ch, mid)
+	if err != nil {
+		return nil, err
+	}
+	switch resp := resp.(type) {
+	case *proto.RStartGC:
+		return resp, nil
+	default:
+		return nil, ErrBadResponse
+	}
+}
+
+func (c *Client) TStopGC() (*proto.RStopGC, error) {
+	ch, mid, err := c.newCall()
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.Call(&proto.TStopGC{
+		Mid: mid,
+	}, ch, mid)
+	if err != nil {
+		return nil, err
+	}
+	switch resp := resp.(type) {
+	case *proto.RStopGC:
 		return resp, nil
 	default:
 		return nil, ErrBadResponse
