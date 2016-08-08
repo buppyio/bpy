@@ -351,6 +351,18 @@ func (srv *server) handleTRemoveTag(t *proto.TRemoveTag) proto.Message {
 	}
 }
 
+func (srv *server) handleTStartGC(t *proto.TStartGC) proto.Message {
+    return makeError(t.Mid, errors.New("unimplemented"))
+}
+
+func (srv *server) handleTStopGC(t *proto.TStopGC) proto.Message {
+    return makeError(t.Mid, errors.New("unimplemented"))
+}
+
+func (srv *server) handleTGetGeneration(t *proto.TGetGeneration) proto.Message {
+    return makeError(t.Mid, errors.New("unimplemented"))
+}
+
 func handleAttach(conn ReadWriteCloser, root string) (*server, error) {
 	maxsz := uint32(1024 * 1024)
 	buf := make([]byte, maxsz, maxsz)
@@ -436,6 +448,12 @@ func Serve(conn ReadWriteCloser, root string) error {
 			r = srv.handleTCasTag(t)
 		case *proto.TRemoveTag:
 			r = srv.handleTRemoveTag(t)
+	    case *proto.TStartGC:
+			r = srv.handleTStartGC(t)
+	    case *proto.TStopGC:
+			r = srv.handleTStopGC(t)
+		case *proto.TGetGeneration:
+			r = srv.handleTGetGeneration(t)
 		default:
 			return ErrBadRequest
 		}

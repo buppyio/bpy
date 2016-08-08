@@ -37,6 +37,12 @@ const (
 	RCASTAG
 	TREMOVETAG
 	RREMOVETAG
+	TSTARTGC
+	RSTARTGC
+	TSTOPGC
+	RSTOPGC
+	TGETGENERATION
+	RGETGENERATION
 )
 
 const (
@@ -66,6 +72,7 @@ type TTag struct {
 	Mid   uint16
 	Name  string
 	Value string
+	Generation uint64
 }
 
 type RTag struct {
@@ -88,6 +95,7 @@ type TCasTag struct {
 	Name     string
 	OldValue string
 	NewValue string
+	Generation uint64
 }
 
 type RCasTag struct {
@@ -99,6 +107,7 @@ type TRemoveTag struct {
 	Mid      uint16
 	Name     string
 	OldValue string
+	Generation uint64
 }
 
 type RRemoveTag struct {
@@ -195,6 +204,34 @@ type RRemove struct {
 	Mid uint16
 }
 
+type TStartGC struct {
+	Mid  uint16
+	GCID string
+}
+
+type RStartGC struct {
+	Mid uint16
+}
+
+type TStopGC struct {
+	Mid  uint16
+}
+
+type RStopGC struct {
+    Mid uint16
+}
+
+type TGetGeneration struct {
+    Mid     uint16
+}
+
+type RGetGeneration struct {
+    Mid     uint16
+    Generation uint64
+}
+
+
+
 func ReadMessage(r io.Reader, buf []byte) (Message, error) {
 	_, err := io.ReadFull(r, buf[:4])
 	if err != nil {
@@ -278,6 +315,18 @@ func UnpackMessage(buf []byte) (Message, error) {
 		m = &TRemoveTag{}
 	case RREMOVETAG:
 		m = &RRemoveTag{}
+	case TSTARTGC:
+		m = &TStartGC{}
+	case RSTARTGC:
+		m = &RStartGC{}
+	case TSTOPGC:
+		m = &TStopGC{}
+	case RSTOPGC:
+		m = &RStopGC{}
+	case TGETGENERATION:
+		m = &TGetGeneration{}
+	case RGETGENERATION:
+		m = &RGetGeneration{}
 	default:
 		return nil, ErrMsgCorrupt
 	}
@@ -336,6 +385,18 @@ func GetMessageType(m Message) byte {
 		return TREMOVETAG
 	case *RRemoveTag:
 		return RREMOVETAG
+	case *TStartGC:
+		return TSTARTGC
+	case *RStartGC:
+		return RSTARTGC
+	case *TStopGC:
+		return TSTOPGC
+	case *RStopGC:
+		return RSTOPGC
+	case *TGetGeneration:
+		return TGETGENERATION
+	case *RGetGeneration:
+		return RGETGENERATION
 	}
 	panic("GetMessageType: internal error")
 }
@@ -391,6 +452,18 @@ func GetMessageId(m Message) uint16 {
 	case *TRemoveTag:
 		return m.Mid
 	case *RRemoveTag:
+		return m.Mid
+	case *TStartGC:
+		return m.Mid
+	case *RStartGC:
+		return m.Mid
+	case *TStopGC:
+		return m.Mid
+	case *RStopGC:
+		return m.Mid
+	case *TGetGeneration:
+		return m.Mid
+	case *RGetGeneration:
 		return m.Mid
 	}
 	panic("GetMessageId: internal error")
