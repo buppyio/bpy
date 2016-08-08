@@ -45,10 +45,6 @@ func markRef(c *client.Client, store bpy.CStore, ref string, visited map[[32]byt
 		return err
 	}
 
-	_, ok = visited[root]
-	if ok {
-		return nil
-	}
 	err = markFsDir(store, root, visited)
 	if err != nil {
 		return err
@@ -65,7 +61,7 @@ func markFsDir(store bpy.CStore, root [32]byte, visited map[[32]byte]struct{}) e
 	if err != nil {
 		return err
 	}
-	for _, dirEnt := range dirEnts {
+	for _, dirEnt := range dirEnts[1:] {
 		if dirEnt.IsDir() {
 			err := markFsDir(store, dirEnt.Data, visited)
 			if err != nil {
@@ -88,6 +84,10 @@ func markHTree(store bpy.CStore, root [32]byte, visited map[[32]byte]struct{}) e
 	data, err := store.Get(root)
 	if err != nil {
 		return err
+	}
+	if data[0] == 0 {
+		visited[root] = struct{}{}
+		return nil
 	}
 
 	for i := 1; i < len(data); i += 40 {
@@ -130,6 +130,28 @@ func sweep(c *client.Client, k *bpy.Key, reachable map[[32]byte]struct{}, gcId s
 			return err
 		}
 		idx := packReader.Idx
+
+		if pack.Size > 120*1024*1024 {
+			canSkip := true
+			for _, idxEnt := range idx {
+				var hash [32]byte
+				copy(hash[:], idxEnt.Key)
+				_, ok := reachable[hash]
+				if !ok {
+					canSkip = false
+					break
+				}
+				_, ok = moved[hash]
+				if ok {
+					canSkip = false
+					break
+				}
+			}
+			if canSkip {
+				continue
+			}
+		}
+
 		for _, idxEnt := range idx {
 			var hash [32]byte
 			copy(hash[:], idxEnt.Key)
@@ -190,9 +212,11 @@ func sweep(c *client.Client, k *bpy.Key, reachable map[[32]byte]struct{}, gcId s
 		}
 		canDelete = append(canDelete, packPath)
 	}
-	_, err = newPack.Close()
-	if err != nil {
-		return err
+	if newPack != nil {
+		_, err = newPack.Close()
+		if err != nil {
+			return err
+		}
 	}
 	for _, toDelete := range canDelete {
 		err := remote.Remove(c, toDelete, gcId)
