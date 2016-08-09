@@ -1,12 +1,12 @@
 package fs
 
 import (
-	"github.com/buppyio/bpy"
-	"github.com/buppyio/bpy/htree"
 	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/buppyio/bpy"
+	"github.com/buppyio/bpy/htree"
 	"io"
 	"io/ioutil"
 	"os"

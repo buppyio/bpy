@@ -1,11 +1,11 @@
 package tag
 
 import (
+	"flag"
+	"fmt"
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/remote"
-	"flag"
-	"fmt"
 	"os"
 )
 

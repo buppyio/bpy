@@ -1,11 +1,11 @@
 package test
 
 import (
+	"bytes"
+	"crypto/rand"
 	"github.com/buppyio/bpy/remote"
 	"github.com/buppyio/bpy/remote/client"
 	"github.com/buppyio/bpy/remote/server"
-	"bytes"
-	"crypto/rand"
 	"io"
 	"io/ioutil"
 	"os"

@@ -1,29 +1,37 @@
 package put
 
 import (
+	"encoding/hex"
+	"flag"
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/fs/fsutil"
 	"github.com/buppyio/bpy/remote"
-	"encoding/hex"
-	"flag"
 	"path/filepath"
 )
 
 func Put() {
 	tagArg := flag.String("tag", "default", "tag put data into")
-	destArg := flag.String("dest", "/", "destination path")
 	flag.Parse()
 
-	if len(flag.Args()) != 1 {
+	if len(flag.Args()) < 1 {
 		common.Die("please specify the local folder to put into dest\n")
 	}
+
+	if len(flag.Args()) > 2 {
+		common.Die("please specify the local folder and the dest folder\n")
+	}
+
 	srcPath, err := filepath.Abs(flag.Args()[0])
 	if err != nil {
 		common.Die("error getting src path: %s\n", err.Error())
 	}
-	destPath := *destArg
+
+	destPath := "/"
+	if len(flag.Args()) == 2 {
+		destPath = flag.Args()[1]
+	}
 
 	k, err := common.GetKey()
 	if err != nil {

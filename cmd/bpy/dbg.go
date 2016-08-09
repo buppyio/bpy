@@ -1,13 +1,13 @@
 package main
 
 import (
-	"github.com/buppyio/bpy"
-	"github.com/buppyio/bpy/cmd/bpy/common"
-	"github.com/buppyio/bpy/htree"
 	"encoding/binary"
 	"encoding/hex"
 	"flag"
 	"fmt"
+	"github.com/buppyio/bpy"
+	"github.com/buppyio/bpy/cmd/bpy/common"
+	"github.com/buppyio/bpy/htree"
 	"io"
 	"os"
 )

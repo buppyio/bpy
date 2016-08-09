@@ -1,9 +1,9 @@
 package server
 
 import (
-	"github.com/buppyio/bpy/remote"
 	"encoding/binary"
 	"errors"
+	"github.com/buppyio/bpy/remote"
 	"io"
 	"io/ioutil"
 	"strings"

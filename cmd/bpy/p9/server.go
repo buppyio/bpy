@@ -1,11 +1,11 @@
 package p9
 
 import (
+	"errors"
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cmd/bpy/p9/proto9"
 	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/remote/client"
-	"errors"
 	"io"
 	"log"
 	"strings"

@@ -1,11 +1,11 @@
 package remote
 
 import (
-	"github.com/buppyio/bpy/remote/client"
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
+	"github.com/buppyio/bpy/remote/client"
 	"io"
 	"io/ioutil"
 	"time"

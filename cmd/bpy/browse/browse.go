@@ -1,15 +1,15 @@
 package browse
 
 import (
+	"errors"
+	"flag"
+	"fmt"
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/cstore"
 	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/remote"
 	"github.com/buppyio/bpy/remote/client"
-	"errors"
-	"flag"
-	"fmt"
 	"github.com/pkg/browser"
 	"log"
 	"net/http"

@@ -1,8 +1,8 @@
 package cstore
 
 import (
-	"github.com/buppyio/bpy"
 	"container/list"
+	"github.com/buppyio/bpy"
 	"sync"
 )
 

@@ -1,13 +1,13 @@
 package common
 
 import (
+	"encoding/hex"
+	"fmt"
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cstore"
 	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/remote"
 	"github.com/buppyio/bpy/remote/client"
-	"encoding/hex"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"

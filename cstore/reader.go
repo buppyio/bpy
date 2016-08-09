@@ -1,12 +1,12 @@
 package cstore
 
 import (
-	"github.com/buppyio/bpy/bpack"
-	"github.com/buppyio/bpy/remote/client"
 	"bytes"
 	"compress/flate"
 	"container/list"
 	"errors"
+	"github.com/buppyio/bpy/bpack"
+	"github.com/buppyio/bpy/remote/client"
 	"io"
 	"path"
 	"sync"

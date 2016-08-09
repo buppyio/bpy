@@ -1,8 +1,8 @@
 package client
 
 import (
-	"github.com/buppyio/bpy/remote/proto"
 	"errors"
+	"github.com/buppyio/bpy/remote/proto"
 	"io"
 )
 

@@ -1,9 +1,9 @@
 package htree
 
 import (
-	"github.com/buppyio/bpy"
 	"encoding/binary"
 	"errors"
+	"github.com/buppyio/bpy"
 	"io"
 )
 

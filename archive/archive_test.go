@@ -1,10 +1,10 @@
 package archive
 
 import (
-	"github.com/buppyio/bpy/fs/fsutil"
-	"github.com/buppyio/bpy/testhelp"
 	"archive/tar"
 	"archive/zip"
+	"github.com/buppyio/bpy/fs/fsutil"
+	"github.com/buppyio/bpy/testhelp"
 	"io"
 	"io/ioutil"
 	"math/rand"

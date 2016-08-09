@@ -1,9 +1,9 @@
 package cstore
 
 import (
+	"fmt"
 	"github.com/buppyio/bpy/remote/client"
 	"github.com/buppyio/bpy/remote/server"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"

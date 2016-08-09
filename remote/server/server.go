@@ -1,10 +1,10 @@
 package server
 
 import (
-	"github.com/buppyio/bpy/remote/proto"
 	"errors"
 	"fmt"
 	"github.com/boltdb/bolt"
+	"github.com/buppyio/bpy/remote/proto"
 	"io"
 	"os"
 	"path"

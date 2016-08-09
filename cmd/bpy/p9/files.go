@@ -1,10 +1,10 @@
 package p9
 
 import (
-	"github.com/buppyio/bpy/cmd/bpy/p9/proto9"
-	"github.com/buppyio/bpy/fs"
 	"errors"
 	"fmt"
+	"github.com/buppyio/bpy/cmd/bpy/p9/proto9"
+	"github.com/buppyio/bpy/fs"
 	"io"
 	"os"
 	"path"

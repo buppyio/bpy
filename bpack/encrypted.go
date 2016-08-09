@@ -1,8 +1,8 @@
 package bpack
 
 import (
-	"github.com/buppyio/bpy/cryptofile"
 	"crypto/aes"
+	"github.com/buppyio/bpy/cryptofile"
 	"io"
 )
 

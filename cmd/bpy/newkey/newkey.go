@@ -1,10 +1,10 @@
 package newkey
 
 import (
-	"github.com/buppyio/bpy"
-	"github.com/buppyio/bpy/cmd/bpy/common"
 	"flag"
 	"fmt"
+	"github.com/buppyio/bpy"
+	"github.com/buppyio/bpy/cmd/bpy/common"
 	"os"
 )
 

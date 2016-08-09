@@ -1,12 +1,12 @@
 package gc
 
 import (
+	"errors"
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/bpack"
 	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/remote"
 	"github.com/buppyio/bpy/remote/client"
-	"errors"
 	"path"
 )
 

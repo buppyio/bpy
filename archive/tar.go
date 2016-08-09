@@ -1,9 +1,9 @@
 package archive
 
 import (
+	"archive/tar"
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/fs"
-	"archive/tar"
 	"io"
 	"path"
 )

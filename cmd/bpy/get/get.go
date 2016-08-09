@@ -1,11 +1,11 @@
 package get
 
 import (
+	"flag"
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/fs/fsutil"
 	"github.com/buppyio/bpy/remote"
-	"flag"
 )
 
 func Get() {

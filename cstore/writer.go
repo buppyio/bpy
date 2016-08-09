@@ -1,13 +1,13 @@
 package cstore
 
 import (
-	"github.com/buppyio/bpy"
-	"github.com/buppyio/bpy/bpack"
-	"github.com/buppyio/bpy/remote/client"
 	"bufio"
 	"bytes"
 	"compress/flate"
 	"crypto/sha256"
+	"github.com/buppyio/bpy"
+	"github.com/buppyio/bpy/bpack"
+	"github.com/buppyio/bpy/remote/client"
 	"io"
 	"io/ioutil"
 	"path/filepath"

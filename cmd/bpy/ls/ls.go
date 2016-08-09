@@ -1,12 +1,12 @@
 package ls
 
 import (
+	"flag"
+	"fmt"
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/remote"
-	"flag"
-	"fmt"
 )
 
 func Ls() {

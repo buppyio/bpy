@@ -1,8 +1,8 @@
 package remote
 
 import (
-	"github.com/buppyio/bpy/remote/server"
 	"flag"
+	"github.com/buppyio/bpy/remote/server"
 	"io"
 	"log"
 	"os"

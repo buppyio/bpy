@@ -1,8 +1,8 @@
 package htree
 
 import (
-	"github.com/buppyio/bpy/testhelp"
 	"bytes"
+	"github.com/buppyio/bpy/testhelp"
 	"io"
 	"io/ioutil"
 	"math/rand"

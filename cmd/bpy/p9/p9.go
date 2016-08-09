@@ -1,12 +1,12 @@
 package p9
 
 import (
+	"flag"
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/cmd/bpy/p9/proto9"
 	"github.com/buppyio/bpy/cstore"
 	"github.com/buppyio/bpy/remote"
-	"flag"
 	"log"
 	"net"
 )

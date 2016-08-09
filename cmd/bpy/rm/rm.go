@@ -1,12 +1,12 @@
 package rm
 
 import (
+	"encoding/hex"
+	"flag"
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/remote"
-	"encoding/hex"
-	"flag"
 )
 
 func Rm() {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/buppyio/bpy/cmd/bpy/browse"
 	"github.com/buppyio/bpy/cmd/bpy/cat"
 	"github.com/buppyio/bpy/cmd/bpy/cp"
@@ -17,7 +18,6 @@ import (
 	"github.com/buppyio/bpy/cmd/bpy/tag"
 	"github.com/buppyio/bpy/cmd/bpy/tar"
 	"github.com/buppyio/bpy/cmd/bpy/zip"
-	"fmt"
 	"os"
 )
 

@@ -1,8 +1,8 @@
 package htree
 
 import (
-	"github.com/buppyio/bpy"
 	"encoding/binary"
+	"github.com/buppyio/bpy"
 )
 
 type Writer struct {
