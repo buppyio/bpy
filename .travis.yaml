@@ -3,3 +3,5 @@ language: go
 go:
   - tip
 
+install: true
+script: go test `go list ./... | grep -v 'github.com/buppyio/bpy/vendor/'`
