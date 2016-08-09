@@ -1,9 +1,9 @@
 package test
 
 import (
-	"acha.ninja/bpy/remote"
-	"acha.ninja/bpy/remote/client"
-	"acha.ninja/bpy/remote/server"
+	"github.com/buppyio/bpy/remote"
+	"github.com/buppyio/bpy/remote/client"
+	"github.com/buppyio/bpy/remote/server"
 	"bytes"
 	"crypto/rand"
 	"io"

@@ -1,9 +1,9 @@
 package fsutil
 
 import (
-	"acha.ninja/bpy"
-	"acha.ninja/bpy/fs"
-	"acha.ninja/bpy/htree"
+	"github.com/buppyio/bpy"
+	"github.com/buppyio/bpy/fs"
+	"github.com/buppyio/bpy/htree"
 	"io"
 	"io/ioutil"
 	"os"

@@ -1,7 +1,7 @@
 package server
 
 import (
-	"acha.ninja/bpy/remote/proto"
+	"github.com/buppyio/bpy/remote/proto"
 	"errors"
 	"fmt"
 	"github.com/boltdb/bolt"

@@ -1,7 +1,7 @@
 package htree
 
 import (
-	"acha.ninja/bpy"
+	"github.com/buppyio/bpy"
 	"encoding/binary"
 	"errors"
 	"io"

@@ -1,10 +1,10 @@
 package gc
 
 import (
-	"acha.ninja/bpy/cmd/bpy/common"
-	"acha.ninja/bpy/cstore"
-	"acha.ninja/bpy/gc"
-	"acha.ninja/bpy/remote"
+	"github.com/buppyio/bpy/cmd/bpy/common"
+	"github.com/buppyio/bpy/cstore"
+	"github.com/buppyio/bpy/gc"
+	"github.com/buppyio/bpy/remote"
 )
 
 func GC() {

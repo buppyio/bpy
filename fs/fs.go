@@ -1,8 +1,8 @@
 package fs
 
 import (
-	"acha.ninja/bpy"
-	"acha.ninja/bpy/htree"
+	"github.com/buppyio/bpy"
+	"github.com/buppyio/bpy/htree"
 	"bytes"
 	"encoding/binary"
 	"errors"

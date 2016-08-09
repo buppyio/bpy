@@ -1,7 +1,7 @@
 package client
 
 import (
-	"acha.ninja/bpy/remote/proto"
+	"github.com/buppyio/bpy/remote/proto"
 	"errors"
 	"io"
 	"sync"

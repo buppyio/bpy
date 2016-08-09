@@ -1,11 +1,11 @@
 package zip
 
 import (
-	"acha.ninja/bpy"
-	"acha.ninja/bpy/archive"
-	"acha.ninja/bpy/cmd/bpy/common"
-	"acha.ninja/bpy/fs"
-	"acha.ninja/bpy/remote"
+	"github.com/buppyio/bpy"
+	"github.com/buppyio/bpy/archive"
+	"github.com/buppyio/bpy/cmd/bpy/common"
+	"github.com/buppyio/bpy/fs"
+	"github.com/buppyio/bpy/remote"
 	"flag"
 	"os"
 )

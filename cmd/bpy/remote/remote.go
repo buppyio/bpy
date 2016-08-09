@@ -1,7 +1,7 @@
 package remote
 
 import (
-	"acha.ninja/bpy/remote/server"
+	"github.com/buppyio/bpy/remote/server"
 	"flag"
 	"io"
 	"log"

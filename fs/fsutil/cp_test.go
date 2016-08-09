@@ -3,7 +3,7 @@
 package fsutil
 
 import (
-	"acha.ninja/bpy/testhelp"
+	"github.com/buppyio/bpy/testhelp"
 	"io/ioutil"
 	"math/rand"
 	"os"

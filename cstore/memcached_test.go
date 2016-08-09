@@ -1,7 +1,7 @@
 package cstore
 
 import (
-	"acha.ninja/bpy/testhelp"
+	"github.com/buppyio/bpy/testhelp"
 	"io"
 	"math/rand"
 	"reflect"

@@ -1,8 +1,8 @@
 package p9
 
 import (
-	"acha.ninja/bpy/cmd/bpy/p9/proto9"
-	"acha.ninja/bpy/fs"
+	"github.com/buppyio/bpy/cmd/bpy/p9/proto9"
+	"github.com/buppyio/bpy/fs"
 	"errors"
 	"fmt"
 	"io"

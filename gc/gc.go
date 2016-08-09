@@ -1,11 +1,11 @@
 package gc
 
 import (
-	"acha.ninja/bpy"
-	"acha.ninja/bpy/bpack"
-	"acha.ninja/bpy/fs"
-	"acha.ninja/bpy/remote"
-	"acha.ninja/bpy/remote/client"
+	"github.com/buppyio/bpy"
+	"github.com/buppyio/bpy/bpack"
+	"github.com/buppyio/bpy/fs"
+	"github.com/buppyio/bpy/remote"
+	"github.com/buppyio/bpy/remote/client"
 	"errors"
 	"path"
 )

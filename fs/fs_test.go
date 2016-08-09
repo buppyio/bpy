@@ -1,8 +1,8 @@
 package fs
 
 import (
-	"acha.ninja/bpy/htree"
-	"acha.ninja/bpy/testhelp"
+	"github.com/buppyio/bpy/htree"
+	"github.com/buppyio/bpy/testhelp"
 	"io"
 	"math/rand"
 	"os"

@@ -1,8 +1,8 @@
 package archive
 
 import (
-	"acha.ninja/bpy/fs/fsutil"
-	"acha.ninja/bpy/testhelp"
+	"github.com/buppyio/bpy/fs/fsutil"
+	"github.com/buppyio/bpy/testhelp"
 	"archive/tar"
 	"archive/zip"
 	"io"

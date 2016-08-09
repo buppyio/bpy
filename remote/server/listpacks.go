@@ -1,7 +1,7 @@
 package server
 
 import (
-	"acha.ninja/bpy/remote"
+	"github.com/buppyio/bpy/remote"
 	"encoding/binary"
 	"errors"
 	"io"

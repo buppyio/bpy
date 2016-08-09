@@ -1,11 +1,11 @@
 package p9
 
 import (
-	"acha.ninja/bpy"
-	"acha.ninja/bpy/cmd/bpy/common"
-	"acha.ninja/bpy/cmd/bpy/p9/proto9"
-	"acha.ninja/bpy/cstore"
-	"acha.ninja/bpy/remote"
+	"github.com/buppyio/bpy"
+	"github.com/buppyio/bpy/cmd/bpy/common"
+	"github.com/buppyio/bpy/cmd/bpy/p9/proto9"
+	"github.com/buppyio/bpy/cstore"
+	"github.com/buppyio/bpy/remote"
 	"flag"
 	"log"
 	"net"

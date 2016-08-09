@@ -1,7 +1,7 @@
 package cstore
 
 import (
-	"acha.ninja/bpy"
+	"github.com/buppyio/bpy"
 	"container/list"
 	"sync"
 )

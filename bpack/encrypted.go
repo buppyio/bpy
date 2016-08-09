@@ -1,7 +1,7 @@
 package bpack
 
 import (
-	"acha.ninja/bpy/cryptofile"
+	"github.com/buppyio/bpy/cryptofile"
 	"crypto/aes"
 	"io"
 )

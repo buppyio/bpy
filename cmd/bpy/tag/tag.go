@@ -1,9 +1,9 @@
 package tag
 
 import (
-	"acha.ninja/bpy"
-	"acha.ninja/bpy/cmd/bpy/common"
-	"acha.ninja/bpy/remote"
+	"github.com/buppyio/bpy"
+	"github.com/buppyio/bpy/cmd/bpy/common"
+	"github.com/buppyio/bpy/remote"
 	"flag"
 	"fmt"
 	"os"

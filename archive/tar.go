@@ -1,8 +1,8 @@
 package archive
 
 import (
-	"acha.ninja/bpy"
-	"acha.ninja/bpy/fs"
+	"github.com/buppyio/bpy"
+	"github.com/buppyio/bpy/fs"
 	"archive/tar"
 	"io"
 	"path"

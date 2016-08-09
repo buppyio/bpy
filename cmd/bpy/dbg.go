@@ -1,9 +1,9 @@
 package main
 
 import (
-	"acha.ninja/bpy"
-	"acha.ninja/bpy/cmd/bpy/common"
-	"acha.ninja/bpy/htree"
+	"github.com/buppyio/bpy"
+	"github.com/buppyio/bpy/cmd/bpy/common"
+	"github.com/buppyio/bpy/htree"
 	"encoding/binary"
 	"encoding/hex"
 	"flag"

@@ -1,8 +1,8 @@
 package newkey
 
 import (
-	"acha.ninja/bpy"
-	"acha.ninja/bpy/cmd/bpy/common"
+	"github.com/buppyio/bpy"
+	"github.com/buppyio/bpy/cmd/bpy/common"
 	"flag"
 	"fmt"
 	"os"

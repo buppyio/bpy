@@ -1,7 +1,7 @@
 package remote
 
 import (
-	"acha.ninja/bpy/remote/client"
+	"github.com/buppyio/bpy/remote/client"
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"

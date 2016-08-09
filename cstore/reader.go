@@ -1,8 +1,8 @@
 package cstore
 
 import (
-	"acha.ninja/bpy/bpack"
-	"acha.ninja/bpy/remote/client"
+	"github.com/buppyio/bpy/bpack"
+	"github.com/buppyio/bpy/remote/client"
 	"bytes"
 	"compress/flate"
 	"container/list"

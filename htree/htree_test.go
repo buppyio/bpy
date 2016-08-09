@@ -1,7 +1,7 @@
 package htree
 
 import (
-	"acha.ninja/bpy/testhelp"
+	"github.com/buppyio/bpy/testhelp"
 	"bytes"
 	"io"
 	"io/ioutil"
