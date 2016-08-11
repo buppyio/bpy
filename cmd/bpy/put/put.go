@@ -82,7 +82,7 @@ func Put() {
 		common.Die("error closing remote: %s\n", err.Error())
 	}
 
-	ok, err = remote.CasTag(c, *tagArg, hex.EncodeToString(destHash[:]), hex.EncodeToString(newRoot.Data[:]), generation)
+	ok, err = remote.CasTag(c, *tagArg, hex.EncodeToString(destHash[:]), hex.EncodeToString(newRoot.Data.Data[:]), generation)
 	if err != nil {
 		common.Die("creating tag: %s\n", err.Error())
 	}

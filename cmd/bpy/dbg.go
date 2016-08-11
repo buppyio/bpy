@@ -95,7 +95,7 @@ func writehtree() {
 	if err != nil {
 		common.Die("error closing connection: %s\n", err.Error())
 	}
-	_, err = fmt.Printf("%s\n", hex.EncodeToString(h[:]))
+	_, err = fmt.Printf("%s\n", hex.EncodeToString(h.Data[:]))
 	if err != nil {
 		common.Die("error printing hash: %s\n", err.Error())
 	}

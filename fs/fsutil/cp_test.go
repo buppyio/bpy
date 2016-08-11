@@ -45,7 +45,7 @@ func TestStoreFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = hashTreeToHostFile(store, dirEnt.Data, restored, dirEnt.EntMode)
+	err = hashTreeToHostFile(store, dirEnt.Data.Data, restored, dirEnt.EntMode)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func TestStoreDir(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = CpFsToHost(store, dirEnt.Data, "/", restored)
+		err = CpFsToHost(store, dirEnt.Data.Data, "/", restored)
 		if err != nil {
 			t.Fatal(err)
 		}

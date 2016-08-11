@@ -33,6 +33,10 @@ func NewReader(store bpy.CStore, root [32]byte) (*Reader, error) {
 	return r, nil
 }
 
+func (r *Reader) GetHeight() int {
+	return r.height
+}
+
 func (r *Reader) Seek(absoff uint64) (uint64, error) {
 	buf, err := r.store.Get(r.root)
 	if err != nil {

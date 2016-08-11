@@ -75,7 +75,7 @@ func (w *Writer) flushLvl(lvl int) error {
 	return nil
 }
 
-func (w *Writer) Close() ([32]byte, error) {
+func (w *Writer) Close() (HTree, error) {
 
 	highest := 0
 	for i := nlevels - 1; ; i-- {
@@ -91,16 +91,26 @@ func (w *Writer) Close() ([32]byte, error) {
 		}
 		err := w.flushLvl(i)
 		if err != nil {
-			return [32]byte{}, err
+			return HTree{}, err
 		}
 	}
 
 	if w.nbytes[highest+1] == 41 {
 		var hash [32]byte
 		copy(hash[:], w.lvls[highest+1][9:41])
-		return hash, nil
+		return HTree{
+			Depth: highest,
+			Data:  hash,
+		}, nil
 	}
 
 	finalbuf := w.lvls[highest+1][0:w.nbytes[highest+1]]
-	return w.store.Put(finalbuf)
+	hash, err := w.store.Put(finalbuf)
+	if err != nil {
+		return HTree{}, err
+	}
+	return HTree{
+		Depth: highest + 1,
+		Data:  hash,
+	}, nil
 }

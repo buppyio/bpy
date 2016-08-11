@@ -12,7 +12,7 @@ import (
 
 func TestDir(t *testing.T) {
 	dir := DirEnts{
-		{EntName: "Bar", EntSize: 4, EntMode: 5, EntModTime: 6, Data: [32]byte{1, 2, 3, 4}},
+		{EntName: "Bar", EntSize: 4, EntMode: 5, EntModTime: 6},
 		{EntName: "Foo", EntSize: 0xffffff, EntMode: 0xffffff, EntModTime: 0xffff},
 	}
 	store := testhelp.NewMemStore()
@@ -20,7 +20,7 @@ func TestDir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rdir, err := ReadDir(store, dirEnt.Data)
+	rdir, err := ReadDir(store, dirEnt.Data.Data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,28 +47,28 @@ func TestWalk(t *testing.T) {
 		}
 		d.Data = dirEnt.Data
 	}
-	ent, err := Walk(store, dirEnt.Data, "/")
+	ent, err := Walk(store, dirEnt.Data.Data, "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(ent.Data, dirEnt.Data) {
+		t.Fatalf("empty walk failed %v != %v", ent.Data, dirEnt.Data)
+	}
+	ent, err = Walk(store, dirEnt.Data.Data, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if ent.Data != dirEnt.Data {
 		t.Fatal("empty walk failed")
 	}
-	ent, err = Walk(store, dirEnt.Data, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if ent.Data != dirEnt.Data {
-		t.Fatal("empty walk failed")
-	}
-	ent, err = Walk(store, dirEnt.Data, "/d/d/d/")
+	ent, err = Walk(store, dirEnt.Data.Data, "/d/d/d/")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !ent.EntMode.IsDir() {
 		t.Fatal("expected dir")
 	}
-	ent, err = Walk(store, dirEnt.Data, "/d/d/d/f")
+	ent, err = Walk(store, dirEnt.Data.Data, "/d/d/d/f")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestSeek(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		f, err := Open(store, dirEnt.Data, "f")
+		f, err := Open(store, dirEnt.Data.Data, "f")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -168,7 +168,7 @@ func TestInsert(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rdir, err := ReadDir(store, empty.Data)
+	rdir, err := ReadDir(store, empty.Data.Data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,22 +177,22 @@ func TestInsert(t *testing.T) {
 	}
 	ent := rdir[0]
 	ent.EntName = "foo"
-	notEmpty1, err := Insert(store, empty.Data, "", ent)
+	notEmpty1, err := Insert(store, empty.Data.Data, "", ent)
 	if err != nil {
 		t.Fatal(err)
 	}
-	rdir, err = ReadDir(store, notEmpty1.Data)
+	rdir, err = ReadDir(store, notEmpty1.Data.Data)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(rdir) != 2 {
 		t.Fatal("expected single folder")
 	}
-	notEmpty2, err := Insert(store, notEmpty1.Data, "/foo/bar", ent)
+	notEmpty2, err := Insert(store, notEmpty1.Data.Data, "/foo/bar", ent)
 	if err != nil {
 		t.Fatal(err)
 	}
-	barEnt, err := Walk(store, notEmpty2.Data, "/foo/bar/")
+	barEnt, err := Walk(store, notEmpty2.Data.Data, "/foo/bar/")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +207,7 @@ func TestRemove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rdir, err := ReadDir(store, empty.Data)
+	rdir, err := ReadDir(store, empty.Data.Data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,11 +216,11 @@ func TestRemove(t *testing.T) {
 	}
 	ent := rdir[0]
 	ent.EntName = "foo"
-	notEmpty1, err := Insert(store, empty.Data, "", ent)
+	notEmpty1, err := Insert(store, empty.Data.Data, "", ent)
 	if err != nil {
 		t.Fatal(err)
 	}
-	withFooRemoved, err := Remove(store, notEmpty1.Data, "foo")
+	withFooRemoved, err := Remove(store, notEmpty1.Data.Data, "foo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -235,11 +235,11 @@ func TestCopy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notEmpty1, err := Copy(store, empty.Data, "/foo", "/")
+	notEmpty1, err := Copy(store, empty.Data.Data, "/foo", "/")
 	if err != nil {
 		t.Fatal(err)
 	}
-	walkEnt, err := Walk(store, notEmpty1.Data, "/foo")
+	walkEnt, err := Walk(store, notEmpty1.Data.Data, "/foo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -254,19 +254,19 @@ func TestMove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notEmpty1, err := Copy(store, empty.Data, "/bar", "/")
+	notEmpty1, err := Copy(store, empty.Data.Data, "/bar", "/")
 	if err != nil {
 		t.Fatal(err)
 	}
-	moveDir, err := Move(store, notEmpty1.Data, "/bang", "/bar")
+	moveDir, err := Move(store, notEmpty1.Data.Data, "/bang", "/bar")
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = Walk(store, moveDir.Data, "/bar")
+	_, err = Walk(store, moveDir.Data.Data, "/bar")
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	walkEnt, err := Walk(store, moveDir.Data, "/bang")
+	walkEnt, err := Walk(store, moveDir.Data.Data, "/bang")
 	if err != nil {
 		t.Fatal(err)
 	}

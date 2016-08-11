@@ -30,7 +30,14 @@ func TestHTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		r, err := NewReader(store, root)
+		rootBytes, err := store.Get(root.Data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if int(rootBytes[0]) != root.Depth {
+			t.Fatal("incorrect depth")
+		}
+		r, err := NewReader(store, root.Data)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -105,7 +112,7 @@ func BenchmarkHTree(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		r, err := NewReader(store, root)
+		r, err := NewReader(store, root.Data)
 		if err != nil {
 			b.Fatal(err)
 		}

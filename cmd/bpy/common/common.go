@@ -133,7 +133,7 @@ func GetRemote(k *bpy.Key) (*client.Client, error) {
 			c.Close()
 			return nil, fmt.Errorf("error closing store writer: %s", err.Error())
 		}
-		err = remote.Tag(c, "default", hex.EncodeToString(ent.Data[:]), generation)
+		err = remote.Tag(c, "default", hex.EncodeToString(ent.Data.Data[:]), generation)
 		if err != nil {
 			c.Close()
 			return nil, fmt.Errorf("error initizializing default tag: %s", err.Error())

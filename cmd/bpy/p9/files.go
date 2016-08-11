@@ -95,7 +95,7 @@ func (f *file) Child(name string) (File, error) {
 		return nil, fmt.Errorf("%s is not a dir", f.path)
 	}
 
-	dirEnts, err := fs.ReadDir(f.srv.memCachedStore, f.dirEnt.Data)
+	dirEnts, err := fs.ReadDir(f.srv.memCachedStore, f.dirEnt.Data.Data)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +175,7 @@ func osToProto9Stat(qid proto9.Qid, ent os.FileInfo) proto9.Stat {
 
 func (d *dirHandle) Tread(msg *proto9.Tread, buf []byte) (uint32, error) {
 	if msg.Offset == 0 {
-		dirEnts, err := fs.ReadDir(d.file.srv.memCachedStore, d.file.dirEnt.Data)
+		dirEnts, err := fs.ReadDir(d.file.srv.memCachedStore, d.file.dirEnt.Data.Data)
 		if err != nil {
 			return 0, err
 		}

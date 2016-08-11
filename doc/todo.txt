@@ -4,6 +4,7 @@ Bugs:
 
 Improvements:
 
+- Add gc tests for - dedup, removing stuff, repacking, concurrency
 - Change fs api from "dest, src" to "src, dest", it is more natural since it works like mv or cp
 - Rename cstore.Writer to just CStore
 - Double check cstore memcache + mindex need to be string maps, and can't use arrays directly.

@@ -66,14 +66,18 @@ func markFsDir(store bpy.CStore, root [32]byte, visited map[[32]byte]struct{}) e
 	}
 	for _, dirEnt := range dirEnts[1:] {
 		if dirEnt.IsDir() {
-			err := markFsDir(store, dirEnt.Data, visited)
+			err := markFsDir(store, dirEnt.Data.Data, visited)
 			if err != nil {
 				return err
 			}
 		}
-		err := markHTree(store, dirEnt.Data, visited)
-		if err != nil {
-			return err
+		if dirEnt.Data.Depth == 0 {
+			visited[dirEnt.Data.Data] = struct{}{}
+		} else {
+			err := markHTree(store, dirEnt.Data.Data, visited)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -84,10 +88,12 @@ func markHTree(store bpy.CStore, root [32]byte, visited map[[32]byte]struct{}) e
 	if ok {
 		return nil
 	}
+
 	data, err := store.Get(root)
 	if err != nil {
 		return err
 	}
+
 	if data[0] == 0 {
 		visited[root] = struct{}{}
 		return nil
@@ -98,11 +104,10 @@ func markHTree(store bpy.CStore, root [32]byte, visited map[[32]byte]struct{}) e
 		copy(hash[:], data[i+8:i+40])
 		if data[0] == 1 {
 			visited[hash] = struct{}{}
-		} else {
-			err := markHTree(store, hash, visited)
-			if err != nil {
-				return err
-			}
+		}
+		err := markHTree(store, hash, visited)
+		if err != nil {
+			return err
 		}
 	}
 	visited[root] = struct{}{}
@@ -148,6 +153,7 @@ func sweep(c *client.Client, k *bpy.Key, reachable map[[32]byte]struct{}, gcId s
 				copy(hash[:], idxEnt.Key)
 				_, ok := reachable[hash]
 				if !ok {
+					log.Printf("cannot skip...")
 					canSkip = false
 					break
 				}

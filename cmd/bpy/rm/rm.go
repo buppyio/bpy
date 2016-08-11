@@ -61,7 +61,7 @@ func Rm() {
 		common.Die("error closing store: %s\n", err.Error())
 	}
 
-	ok, err = remote.CasTag(c, *tagArg, hex.EncodeToString(rootHash[:]), hex.EncodeToString(newRoot.Data[:]), generation)
+	ok, err = remote.CasTag(c, *tagArg, hex.EncodeToString(rootHash[:]), hex.EncodeToString(newRoot.Data.Data[:]), generation)
 	if err != nil {
 		common.Die("creating tag: %s\n", err.Error())
 	}

@@ -9,3 +9,8 @@ func min(a, b int) int {
 	}
 	return a
 }
+
+type HTree struct {
+	Depth int
+	Data  [32]byte
+}

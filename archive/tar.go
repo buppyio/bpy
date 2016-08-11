@@ -24,13 +24,13 @@ func writeTar(store bpy.CStore, curpath string, dirHash [32]byte, out *tar.Write
 	}
 	for _, ent := range ents[1:] {
 		if ent.IsDir() {
-			err = writeTar(store, path.Join(curpath, ent.EntName), ent.Data, out)
+			err = writeTar(store, path.Join(curpath, ent.EntName), ent.Data.Data, out)
 			if err != nil {
 				return err
 			}
 			continue
 		}
-		f, err := fs.Open(store, ents[0].Data, ent.EntName)
+		f, err := fs.Open(store, ents[0].Data.Data, ent.EntName)
 		if err != nil {
 			return err
 		}

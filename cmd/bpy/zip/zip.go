@@ -51,12 +51,12 @@ func Zip() {
 		common.Die("error getting src folder: %s\n", err.Error())
 	}
 	if !dirEnt.IsDir() {
-		common.Die("'%s' is not a directory", *srcArg)
+		common.Die("'%s' is not a directory\n", *srcArg)
 	}
 
-	err = archive.Zip(store, dirEnt.Data, os.Stdout)
+	err = archive.Zip(store, dirEnt.Data.Data, os.Stdout)
 	if err != nil {
-		common.Die("error writing tar:", err)
+		common.Die("error writing zip: %s\n", err.Error())
 	}
 
 	err = store.Close()

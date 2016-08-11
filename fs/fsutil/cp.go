@@ -10,19 +10,19 @@ import (
 	"path/filepath"
 )
 
-func hostFileToHashTree(store bpy.CStore, path string) ([32]byte, error) {
+func hostFileToHashTree(store bpy.CStore, path string) (htree.HTree, error) {
 	fin, err := os.Open(path)
 	if err != nil {
-		return [32]byte{}, err
+		return htree.HTree{}, err
 	}
 	defer fin.Close()
 	fout := htree.NewWriter(store)
 	if err != nil {
-		return [32]byte{}, err
+		return htree.HTree{}, err
 	}
 	_, err = io.Copy(fout, fin)
 	if err != nil {
-		return [32]byte{}, err
+		return htree.HTree{}, err
 	}
 	return fout.Close()
 }
@@ -102,12 +102,12 @@ func cpFsDirToHost(store bpy.CStore, hash [32]byte, dest string) error {
 		subp := filepath.Join(dest, e.EntName)
 		switch {
 		case e.EntMode.IsDir():
-			err = cpFsDirToHost(store, e.Data, subp)
+			err = cpFsDirToHost(store, e.Data.Data, subp)
 			if err != nil {
 				return err
 			}
 		case e.EntMode.IsRegular():
-			err = hashTreeToHostFile(store, e.Data, subp, e.EntMode)
+			err = hashTreeToHostFile(store, e.Data.Data, subp, e.EntMode)
 			if err != nil {
 				return err
 			}
@@ -142,7 +142,7 @@ func CpFsToHost(store bpy.CStore, root [32]byte, src, dst string) error {
 		return err
 	}
 	if ent.IsDir() {
-		return cpFsDirToHost(store, ent.Data, dst)
+		return cpFsDirToHost(store, ent.Data.Data, dst)
 	}
-	return hashTreeToHostFile(store, ent.Data, dst, ent.EntMode)
+	return hashTreeToHostFile(store, ent.Data.Data, dst, ent.EntMode)
 }

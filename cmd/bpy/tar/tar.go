@@ -51,12 +51,12 @@ func Tar() {
 		common.Die("error getting src folder: %s\n", err.Error())
 	}
 	if !dirEnt.IsDir() {
-		common.Die("'%s' is not a directory", *srcArg)
+		common.Die("'%s' is not a directory\n", *srcArg)
 	}
 
-	err = archive.Tar(store, dirEnt.Data, os.Stdout)
+	err = archive.Tar(store, dirEnt.Data.Data, os.Stdout)
 	if err != nil {
-		common.Die("error writing tar:", err)
+		common.Die("error writing tar: %s\n", err)
 	}
 
 	err = store.Close()
