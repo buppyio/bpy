@@ -1,13 +1,16 @@
 package gc
 
 import (
+	"bufio"
 	"errors"
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/bpack"
 	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/remote"
 	"github.com/buppyio/bpy/remote/client"
+	"log"
 	"path"
+	"sort"
 )
 
 func GC(c *client.Client, store bpy.CStore, k *bpy.Key) error {
@@ -106,6 +109,12 @@ func markHTree(store bpy.CStore, root [32]byte, visited map[[32]byte]struct{}) e
 	return nil
 }
 
+type offsetSortedIdx []bpack.IndexEnt
+
+func (idx offsetSortedIdx) Len() int           { return len(idx) }
+func (idx offsetSortedIdx) Swap(i, j int)      { idx[i], idx[j] = idx[j], idx[i] }
+func (idx offsetSortedIdx) Less(i, j int) bool { return idx[i].Offset < idx[j].Offset }
+
 func sweep(c *client.Client, k *bpy.Key, reachable map[[32]byte]struct{}, gcId string) error {
 	packs, err := remote.ListPacks(c)
 	if err != nil {
@@ -129,7 +138,8 @@ func sweep(c *client.Client, k *bpy.Key, reachable map[[32]byte]struct{}, gcId s
 		if err != nil {
 			return err
 		}
-		idx := packReader.Idx
+		idx := offsetSortedIdx(packReader.Idx)
+		sort.Sort(idx)
 
 		if pack.Size > 120*1024*1024 {
 			canSkip := true
@@ -152,59 +162,79 @@ func sweep(c *client.Client, k *bpy.Key, reachable map[[32]byte]struct{}, gcId s
 			}
 		}
 
-		for _, idxEnt := range idx {
-			var hash [32]byte
-			copy(hash[:], idxEnt.Key)
-			_, isReachable := reachable[hash]
-			if !isReachable {
-				continue
-			}
-
-			_, ok := moved[hash]
-			if ok {
-				continue
-			}
-
-			if newPackSize+uint64(idxEnt.Size) > 128*1024*1024 {
-				_, err := newPack.Close()
-				if err != nil {
-					return err
+		for i := 0; i < len(idx); i++ {
+			run := []bpack.IndexEnt{}
+			for i < len(idx) {
+				var hash [32]byte
+				copy(hash[:], idx[i].Key)
+				_, isReachable := reachable[hash]
+				if !isReachable {
+					break
 				}
-				newPack = nil
-				newPackSize = 0
-				for _, toDelete := range canDelete {
-					err := remote.Remove(c, toDelete, gcId)
+				_, ok := moved[hash]
+				if ok {
+					break
+				}
+				run = append(run, idx[i])
+				i++
+			}
+			if len(run) == 0 {
+				continue
+			}
+
+			runBase := run[0].Offset
+			runSize := uint32(run[len(run)-1].Offset) + run[len(run)-1].Size - uint32(run[0].Offset)
+			runData, err := packReader.GetAt(runBase, runSize)
+			if err != nil {
+				return err
+			}
+			log.Printf("runBase=%v,runSize=%v", runBase, runSize)
+			for _, idxEnt := range run {
+				var hash [32]byte
+				copy(hash[:], idxEnt.Key)
+				if newPackSize+uint64(idxEnt.Size) > 128*1024*1024 {
+					_, err := newPack.Close()
+					if err != nil {
+						return err
+					}
+					newPack = nil
+					newPackSize = 0
+					for _, toDelete := range canDelete {
+						err := remote.Remove(c, toDelete, gcId)
+						if err != nil {
+							return err
+						}
+					}
+					canDelete = []string{}
+				}
+				if newPack == nil {
+					name, err := bpy.RandomFileName()
+					if err != nil {
+						return err
+					}
+					f, err := c.NewPack(path.Join("packs", name) + ".ebpack")
+					if err != nil {
+						return err
+					}
+					buffered := &bpy.BufferedWriteCloser{
+						W: f,
+						B: bufio.NewWriterSize(f, 65536),
+					}
+					newPack, err = bpack.NewEncryptedWriter(buffered, k.CipherKey)
 					if err != nil {
 						return err
 					}
 				}
-				canDelete = []string{}
-			}
-			if newPack == nil {
-				name, err := bpy.RandomFileName()
+				val := runData[0:idxEnt.Size]
+				runData = runData[idxEnt.Size:]
+				err = newPack.Add(idxEnt.Key, val)
 				if err != nil {
 					return err
 				}
-				f, err := c.NewPack(path.Join("packs", name) + ".ebpack")
-				if err != nil {
-					return err
-				}
-				newPack, err = bpack.NewEncryptedWriter(f, k.CipherKey)
-				if err != nil {
-					return err
-				}
+				// Only approximate, but good enough.
+				newPackSize += uint64(len(idxEnt.Key)) + uint64(len(val))
+				moved[hash] = struct{}{}
 			}
-			val, err := packReader.Get(idxEnt.Key)
-			if err != nil {
-				return err
-			}
-			err = newPack.Add(idxEnt.Key, val)
-			if err != nil {
-				return err
-			}
-			// Only approximate, but good enough.
-			newPackSize += uint64(len(idxEnt.Key)) + uint64(len(val))
-			moved[hash] = struct{}{}
 		}
 		err = packReader.Close()
 		if err != nil {

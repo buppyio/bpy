@@ -8,28 +8,10 @@ import (
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/bpack"
 	"github.com/buppyio/bpy/remote/client"
-	"io"
 	"io/ioutil"
 	"path/filepath"
 	"sync"
 )
-
-type bufferedWriteCloser struct {
-	wc io.WriteCloser
-	bw *bufio.Writer
-}
-
-func (bwc *bufferedWriteCloser) Write(buf []byte) (int, error) {
-	return bwc.bw.Write(buf)
-}
-
-func (bwc *bufferedWriteCloser) Close() error {
-	err := bwc.bw.Flush()
-	if err != nil {
-		return err
-	}
-	return bwc.wc.Close()
-}
 
 type Writer struct {
 	lock         sync.Mutex
@@ -140,9 +122,9 @@ func (w *Writer) Put(data []byte) ([32]byte, error) {
 		if err != nil {
 			return h, err
 		}
-		bwc := &bufferedWriteCloser{
-			wc: f,
-			bw: bufio.NewWriterSize(f, 65536),
+		bwc := &bpy.BufferedWriteCloser{
+			W: f,
+			B: bufio.NewWriterSize(f, 65536),
 		}
 		w.pack, err = bpack.NewEncryptedWriter(bwc, w.key)
 		if err != nil {

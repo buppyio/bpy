@@ -1,6 +1,7 @@
 package bpy
 
 import (
+	"bufio"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -89,4 +90,21 @@ func RandomFileName() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(namebuf[:]), nil
+}
+
+type BufferedWriteCloser struct {
+	W io.WriteCloser
+	B *bufio.Writer
+}
+
+func (bwc *BufferedWriteCloser) Write(buf []byte) (int, error) {
+	return bwc.W.Write(buf)
+}
+
+func (bwc *BufferedWriteCloser) Close() error {
+	err := bwc.B.Flush()
+	if err != nil {
+		return err
+	}
+	return bwc.W.Close()
 }
