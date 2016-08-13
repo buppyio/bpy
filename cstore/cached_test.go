@@ -1,17 +1,43 @@
 package cstore
 
 import (
+	"github.com/buppyio/bpy/cstore/cache"
 	"github.com/buppyio/bpy/testhelp"
 	"io"
+	"io/ioutil"
 	"math/rand"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 )
 
 func TestMemCachedStore(t *testing.T) {
 	reference := testhelp.NewMemStore()
-	maxCacheSize := uint64(100)
-	cached := NewMemCachedCStore(testhelp.NewMemStore(), maxCacheSize)
+
+	tempDir, err := ioutil.TempDir("", "cachtest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	cacheDBPath := filepath.Join(tempDir, "cache.db")
+	server, err := cache.NewServer(cacheDBPath, 0777, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	con1, con2 := MakeConnection()
+	defer con1.Close()
+	defer con2.Close()
+
+	go server.ServeConn(con1)
+	client, err := cache.NewClient(con2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cached := NewCachedCStore(testhelp.NewMemStore(), client)
 	r := rand.New(rand.NewSource(3453))
 
 	hashes := [][32]byte{}
@@ -34,9 +60,8 @@ func TestMemCachedStore(t *testing.T) {
 		}
 		hashes = append(hashes, h1)
 	}
-	for i := 0; i < 100000; i++ {
+	for i := 0; i < 10000; i++ {
 		hash := hashes[r.Int()%len(hashes)]
-
 		v1, err := reference.Get(hash)
 		if err != nil {
 			t.Fatal(err)
@@ -49,13 +74,8 @@ func TestMemCachedStore(t *testing.T) {
 			t.Fatal("values differ")
 		}
 	}
-	err := reference.Flush()
+	err = cached.Close()
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = cached.Flush()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 }
