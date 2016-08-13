@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestMemCachedStore(t *testing.T) {
@@ -38,7 +39,7 @@ func TestMemCachedStore(t *testing.T) {
 	}
 
 	cached := NewCachedCStore(testhelp.NewMemStore(), client)
-	r := rand.New(rand.NewSource(3453))
+	r := rand.New(rand.NewSource(time.Now().Unix()))
 
 	hashes := [][32]byte{}
 	for i := 0; i < 100; i++ {
@@ -60,7 +61,7 @@ func TestMemCachedStore(t *testing.T) {
 		}
 		hashes = append(hashes, h1)
 	}
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < 1000; i++ {
 		hash := hashes[r.Int()%len(hashes)]
 		v1, err := reference.Get(hash)
 		if err != nil {

@@ -1,25 +1,82 @@
 package cache
 
 import (
-	"container/list"
 	"errors"
 	"github.com/boltdb/bolt"
 	"os"
 	"sync"
 )
 
+type lruListEnt struct {
+	Next, Prev *lruListEnt
+	Hash       [32]byte
+	Size       uint64
+}
+
+type lruList struct {
+	root lruListEnt
+	Len  int64
+}
+
+func (l *lruList) Init() {
+	l.root.Next = &l.root
+	l.root.Prev = &l.root
+	l.Len = 0
+}
+
+func (l *lruList) Front() *lruListEnt {
+	if l.Len == 0 {
+		return nil
+	}
+	return l.root.Next
+}
+
+func (l *lruList) Back() *lruListEnt {
+	if l.Len == 0 {
+		return nil
+	}
+	return l.root.Prev
+}
+
+func (l *lruList) PushFront(hash [32]byte, size uint64) *lruListEnt {
+	toAdd := &lruListEnt{
+		Hash: hash,
+		Size: size,
+	}
+	n := l.root.Next
+	l.root.Next = toAdd
+	toAdd.Prev = &l.root
+	toAdd.Next = n
+	n.Prev = toAdd
+	l.Len++
+	return toAdd
+}
+
+func (l *lruList) Remove(toRemove *lruListEnt) {
+	toRemove.Next.Prev = toRemove.Prev
+	toRemove.Prev.Next = toRemove.Next
+	toRemove.Next = nil
+	toRemove.Prev = nil
+	l.Len--
+}
+
+func (l *lruList) MoveToFront(toMove *lruListEnt) {
+	l.Remove(toMove)
+	n := l.root.Next
+	l.root.Next = toMove
+	toMove.Prev = &l.root
+	toMove.Next = n
+	n.Prev = toMove
+	l.Len++
+}
+
 type Cache struct {
 	lock    sync.Mutex
 	db      *bolt.DB
 	size    uint64
 	maxSize uint64
-	lruMap  map[[32]byte]*list.Element
-	lruList *list.List
-}
-
-type cacheEnt struct {
-	hash [32]byte
-	size uint64
+	lruMap  map[[32]byte]*lruListEnt
+	lruList lruList
 }
 
 func NewCache(dbpath string, mode os.FileMode, maxSize uint64) (*Cache, error) {
@@ -30,11 +87,11 @@ func NewCache(dbpath string, mode os.FileMode, maxSize uint64) (*Cache, error) {
 
 	cache := &Cache{
 		db:      db,
-		lruMap:  make(map[[32]byte]*list.Element),
-		lruList: list.New(),
+		lruMap:  make(map[[32]byte]*lruListEnt),
 		size:    0,
 		maxSize: maxSize,
 	}
+	cache.lruList.Init()
 
 	err = db.Update(func(tx *bolt.Tx) error {
 
@@ -46,7 +103,7 @@ func NewCache(dbpath string, mode os.FileMode, maxSize uint64) (*Cache, error) {
 		err = b.ForEach(func(k, v []byte) error {
 			var key [32]byte
 			copy(key[:], k)
-			e := cache.lruList.PushFront(len(v))
+			e := cache.lruList.PushFront(key, uint64(len(v)))
 			cache.lruMap[key] = e
 			cache.size += uint64(len(v))
 			return nil
@@ -104,18 +161,17 @@ func (c *Cache) Put(hash [32]byte, val []byte) error {
 	err := c.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("cache"))
 		for c.size+uint64(len(val)) > c.maxSize {
-			if c.lruList.Len() == 0 {
+			if c.lruList.Len == 0 {
 				return errors.New("value too large for cache")
 			}
 			elem := c.lruList.Back()
-			cacheEnt := elem.Value.(cacheEnt)
-			err := b.Delete(cacheEnt.hash[:])
+			err := b.Delete(elem.Hash[:])
 			if err != nil {
 				return err
 			}
 			c.lruList.Remove(elem)
-			c.size -= cacheEnt.size
-			delete(c.lruMap, cacheEnt.hash)
+			c.size -= elem.Size
+			delete(c.lruMap, elem.Hash)
 		}
 
 		err := b.Put(hash[:], val)
@@ -123,7 +179,7 @@ func (c *Cache) Put(hash [32]byte, val []byte) error {
 			return err
 		}
 		c.size += uint64(len(val))
-		elem := c.lruList.PushFront(cacheEnt{hash: hash, size: uint64(len(val))})
+		elem := c.lruList.PushFront(hash, uint64(len(val)))
 		c.lruMap[hash] = elem
 		return nil
 	})
