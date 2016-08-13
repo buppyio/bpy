@@ -59,7 +59,6 @@ type Server struct {
 	fids           map[proto9.Fid]Handle
 	client         *client.Client
 	store          bpy.CStore
-	memCachedStore bpy.CStore
 	root           [32]byte
 }
 

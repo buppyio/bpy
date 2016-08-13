@@ -5,7 +5,6 @@ import (
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/cmd/bpy/p9/proto9"
-	"github.com/buppyio/bpy/cstore"
 	"github.com/buppyio/bpy/remote"
 	"log"
 	"net"
@@ -51,7 +50,6 @@ func handleConnection(con net.Conn, tag string) {
 		fids:           make(map[proto9.Fid]Handle),
 		client:         c,
 		store:          store,
-		memCachedStore: cstore.NewMemCachedCStore(store, 16*1024*1024),
 		root:           root,
 	}
 	srv.Serve()

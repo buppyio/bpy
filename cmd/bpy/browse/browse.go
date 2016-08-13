@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cmd/bpy/common"
-	"github.com/buppyio/bpy/cstore"
 	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/remote"
 	"github.com/buppyio/bpy/remote/client"
@@ -163,7 +162,7 @@ func Browse() {
 	}()
 	log.Fatal(http.ListenAndServe(*addrArg, http.FileServer(&httpFs{
 		c:     c,
-		store: cstore.NewMemCachedCStore(store, 64*1024*1024),
+		store: store,
 		tag:   *tagArg,
 	})))
 }

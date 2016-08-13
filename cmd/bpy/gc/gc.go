@@ -2,7 +2,6 @@ package gc
 
 import (
 	"github.com/buppyio/bpy/cmd/bpy/common"
-	"github.com/buppyio/bpy/cstore"
 	"github.com/buppyio/bpy/gc"
 	"github.com/buppyio/bpy/remote"
 )
@@ -24,7 +23,6 @@ func GC() {
 	if err != nil {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
-	store = cstore.NewMemCachedCStore(store, 32*1024*1024)
 
 	// Stop any gc that is currently running
 	err = remote.StopGC(c)

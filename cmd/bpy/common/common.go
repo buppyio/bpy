@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cstore"
+	"github.com/buppyio/bpy/cstore/cache"
 	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/remote"
 	"github.com/buppyio/bpy/remote/client"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"os/user"
@@ -17,7 +19,7 @@ import (
 )
 
 const (
-	CachePermissions = 0755
+	IdxCachePermissions = 0755
 )
 
 type slave struct {
@@ -75,12 +77,16 @@ func GetBuppyDir() (string, error) {
 	return filepath.Join(u.HomeDir, ".bpy"), nil
 }
 
-func GetCacheDir() (string, error) {
+func GetIndexCacheDir() (string, error) {
 	d, err := GetBuppyDir()
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(d, "cache"), nil
+}
+
+func GetCacheDaemonAddress() (string, error) {
+	return os.Getenv("BPY_CACHE"), nil
 }
 
 func GetKey() (bpy.Key, error) {
@@ -143,16 +149,39 @@ func GetRemote(k *bpy.Key) (*client.Client, error) {
 }
 
 func GetCStore(k *bpy.Key, remote *client.Client) (bpy.CStore, error) {
-	cache, err := GetCacheDir()
+	var store bpy.CStore
+
+	idxCache, err := GetIndexCacheDir()
 	if err != nil {
 		return nil, err
 	}
-	curCache := filepath.Join(cache, hex.EncodeToString(k.Id[:]))
-	err = os.MkdirAll(curCache, CachePermissions)
+	curIdxCache := filepath.Join(idxCache, hex.EncodeToString(k.Id[:]))
+	err = os.MkdirAll(curIdxCache, IdxCachePermissions)
 	if err != nil {
 		return nil, err
 	}
-	return cstore.NewWriter(remote, k.CipherKey, filepath.Join(cache, hex.EncodeToString(k.Id[:])))
+	store, err = cstore.NewWriter(remote, k.CipherKey, curIdxCache)
+	if err != nil {
+		return nil, err
+	}
+	cacheDaemonAddr, err := GetCacheDaemonAddress()
+	if err != nil {
+		return nil, err
+	}
+	if cacheDaemonAddr != "" {
+		conn, err := net.Dial("tcp", cacheDaemonAddr)
+		if err != nil {
+			return nil, err
+		}
+
+		cacheClient, err := cache.NewClient(conn)
+		if err != nil {
+			return nil, err
+		}
+
+		store = cstore.NewCachedCStore(store, cacheClient)
+	}
+	return store, nil
 }
 
 func Die(msg string, args ...interface{}) {
