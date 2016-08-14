@@ -27,3 +27,4 @@ Improvements:
 - Only fetch changed indexes instead of reloading entire index when a lookup fails.
 - make 9p server refresh tag periodically
 - Rename tagdb and tags.go to just 'db'
+- Rename DirEnt.Data to DirEnt.HTree

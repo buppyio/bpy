@@ -13,21 +13,47 @@ import (
 	"sort"
 )
 
+type gcState struct {
+	gcId    string
+	k       *bpy.Key
+	c       *client.Client
+	store   bpy.CStore
+	visited map[[32]byte]struct{}
+
+	// Sweeping state
+	newPackSize uint64
+	newPack     *bpack.Writer
+	moved       map[[32]byte]struct{}
+	canDelete   []string
+}
+
 func GC(c *client.Client, store bpy.CStore, k *bpy.Key) error {
 	gcId, err := remote.StartGC(c)
 	if err != nil {
 		return err
 	}
+
 	// Doing this twice shouldn't hurt if theres a premature error.
 	defer remote.StopGC(c)
 
-	reachable := make(map[[32]byte]struct{})
-	err = markRef(c, store, "default", reachable)
+	gc := &gcState{
+		gcId:        gcId,
+		k:           k,
+		c:           c,
+		store:       store,
+		visited:     make(map[[32]byte]struct{}),
+		moved:       make(map[[32]byte]struct{}),
+		newPack:     nil,
+		newPackSize: 0,
+		canDelete:   []string{},
+	}
+
+	err = gc.markRef("default")
 	if err != nil {
 		return err
 	}
 
-	err = sweep(c, k, reachable, gcId)
+	err = gc.sweep()
 	if err != nil {
 		return err
 	}
@@ -35,8 +61,9 @@ func GC(c *client.Client, store bpy.CStore, k *bpy.Key) error {
 	return remote.StopGC(c)
 }
 
-func markRef(c *client.Client, store bpy.CStore, ref string, visited map[[32]byte]struct{}) error {
-	tag, ok, err := remote.GetTag(c, ref)
+func (gc *gcState) markRef(ref string) error {
+	log.Printf("mark ref\n")
+	tag, ok, err := remote.GetTag(gc.c, ref)
 	if err != nil {
 		return err
 	}
@@ -48,33 +75,34 @@ func markRef(c *client.Client, store bpy.CStore, ref string, visited map[[32]byt
 		return err
 	}
 
-	err = markFsDir(store, root, visited)
+	err = gc.markFsDir(root)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func markFsDir(store bpy.CStore, root [32]byte, visited map[[32]byte]struct{}) error {
-	err := markHTree(store, root, visited)
+func (gc *gcState) markFsDir(root [32]byte) error {
+	log.Printf("mark fs dir\n")
+	err := gc.markHTree(root)
 	if err != nil {
 		return err
 	}
-	dirEnts, err := fs.ReadDir(store, root)
+	dirEnts, err := fs.ReadDir(gc.store, root)
 	if err != nil {
 		return err
 	}
 	for _, dirEnt := range dirEnts[1:] {
 		if dirEnt.IsDir() {
-			err := markFsDir(store, dirEnt.Data.Data, visited)
+			err := gc.markFsDir(dirEnt.Data.Data)
 			if err != nil {
 				return err
 			}
 		}
 		if dirEnt.Data.Depth == 0 {
-			visited[dirEnt.Data.Data] = struct{}{}
+			gc.visited[dirEnt.Data.Data] = struct{}{}
 		} else {
-			err := markHTree(store, dirEnt.Data.Data, visited)
+			err := gc.markHTree(dirEnt.Data.Data)
 			if err != nil {
 				return err
 			}
@@ -83,19 +111,20 @@ func markFsDir(store bpy.CStore, root [32]byte, visited map[[32]byte]struct{}) e
 	return nil
 }
 
-func markHTree(store bpy.CStore, root [32]byte, visited map[[32]byte]struct{}) error {
-	_, ok := visited[root]
+func (gc *gcState) markHTree(root [32]byte) error {
+	log.Printf("mark htree\n")
+	_, ok := gc.visited[root]
 	if ok {
 		return nil
 	}
 
-	data, err := store.Get(root)
+	data, err := gc.store.Get(root)
 	if err != nil {
 		return err
 	}
 
 	if data[0] == 0 {
-		visited[root] = struct{}{}
+		gc.visited[root] = struct{}{}
 		return nil
 	}
 
@@ -103,14 +132,93 @@ func markHTree(store bpy.CStore, root [32]byte, visited map[[32]byte]struct{}) e
 		var hash [32]byte
 		copy(hash[:], data[i+8:i+40])
 		if data[0] == 1 {
-			visited[hash] = struct{}{}
+			gc.visited[hash] = struct{}{}
 		}
-		err := markHTree(store, hash, visited)
+		err := gc.markHTree(hash)
 		if err != nil {
 			return err
 		}
 	}
-	visited[root] = struct{}{}
+	gc.visited[root] = struct{}{}
+	return nil
+}
+
+func (gc *gcState) putValue(hash [32]byte, val []byte) error {
+	_, moved := gc.moved[hash]
+	if moved {
+		return nil
+	}
+
+	if gc.newPackSize+uint64(len(val))+uint64(len(hash)) > 128*1024*1024 {
+		err := gc.closeCurrentWriterAndDeleteOldPacks()
+		if err != nil {
+			return err
+		}
+	}
+
+	if gc.newPack == nil {
+		name, err := bpy.RandomFileName()
+		if err != nil {
+			return err
+		}
+		f, err := gc.c.NewPack(path.Join("packs", name) + ".ebpack")
+		if err != nil {
+			return err
+		}
+		buffered := &bpy.BufferedWriteCloser{
+			W: f,
+			B: bufio.NewWriterSize(f, 65536),
+		}
+		gc.newPack, err = bpack.NewEncryptedWriter(buffered, gc.k.CipherKey)
+		if err != nil {
+			return err
+		}
+	}
+
+	err := gc.newPack.Add(string(hash[:]), val)
+	if err != nil {
+		return err
+	}
+	// Only approximate, but good enough.
+	gc.newPackSize += uint64(len(hash)) + uint64(len(val))
+	gc.moved[hash] = struct{}{}
+	return nil
+}
+
+func (gc *gcState) closeCurrentWriterAndDeleteOldPacks() error {
+	if gc.newPack != nil {
+		_, err := gc.newPack.Close()
+		if err != nil {
+			return err
+		}
+	}
+	gc.newPack = nil
+	gc.newPackSize = 0
+	for _, toDelete := range gc.canDelete {
+		err := remote.Remove(gc.c, toDelete, gc.gcId)
+		if err != nil {
+			return err
+		}
+	}
+	gc.canDelete = []string{}
+	return nil
+}
+
+func (gc *gcState) sweep() error {
+	packs, err := remote.ListPacks(gc.c)
+	if err != nil {
+		return err
+	}
+	for _, pack := range packs {
+		err = gc.sweepPack(pack)
+		if err != nil {
+			return err
+		}
+	}
+	err = gc.closeCurrentWriterAndDeleteOldPacks()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -120,145 +228,89 @@ func (idx offsetSortedIdx) Len() int           { return len(idx) }
 func (idx offsetSortedIdx) Swap(i, j int)      { idx[i], idx[j] = idx[j], idx[i] }
 func (idx offsetSortedIdx) Less(i, j int) bool { return idx[i].Offset < idx[j].Offset }
 
-func sweep(c *client.Client, k *bpy.Key, reachable map[[32]byte]struct{}, gcId string) error {
-	packs, err := remote.ListPacks(c)
+func (gc *gcState) sweepPack(pack remote.PackListing) error {
+	packPath := path.Join("packs/", pack.Name)
+	log.Printf("sweeping %s", packPath)
+	f, err := gc.c.Open(packPath)
 	if err != nil {
 		return err
 	}
-	moved := make(map[[32]byte]struct{})
-	var newPack *bpack.Writer
-	newPackSize := uint64(0)
-	canDelete := []string{}
-	for _, pack := range packs {
-		packPath := path.Join("packs/", pack.Name)
-		f, err := c.Open(packPath)
+	packReader, err := bpack.NewEncryptedReader(f, gc.k.CipherKey, int64(pack.Size))
+	if err != nil {
+		return err
+	}
+	defer packReader.Close()
+	// XXX fetch from local cache if we have it.
+	err = packReader.ReadIndex()
+	if err != nil {
+		return err
+	}
+
+	idx := offsetSortedIdx(packReader.Idx)
+	sort.Sort(idx)
+
+	if pack.Size > 120*1024*1024 {
+		canSkip := true
+		for _, idxEnt := range idx {
+			var hash [32]byte
+			copy(hash[:], idxEnt.Key)
+			_, ok := gc.visited[hash]
+			if !ok {
+				canSkip = false
+				break
+			}
+			_, ok = gc.moved[hash]
+			if ok {
+				canSkip = false
+				break
+			}
+		}
+		// We can totally skip this pack if its full, reachable and has no duplicates.
+		if canSkip {
+			return nil
+		}
+	}
+
+	for i := 0; i < len(idx); i++ {
+		// Find the longest consecutive 'run' of values we must fetch
+		run := []bpack.IndexEnt{}
+		runSize := uint32(0)
+		for i < len(idx) {
+			var hash [32]byte
+			copy(hash[:], idx[i].Key)
+			_, isReachable := gc.visited[hash]
+			if !isReachable {
+				break
+			}
+			_, ok := gc.moved[hash]
+			if ok {
+				break
+			}
+			run = append(run, idx[i])
+			runSize += idx[i].Size
+			i++
+		}
+		if len(run) == 0 {
+			continue
+		}
+		runBase := run[0].Offset
+		log.Printf("moving run of values: base=%v, size=%v", runBase, runSize)
+		runData, err := packReader.GetAt(runBase, runSize)
 		if err != nil {
 			return err
 		}
-		packReader, err := bpack.NewEncryptedReader(f, k.CipherKey, int64(pack.Size))
-		if err != nil {
-			return err
-		}
-		err = packReader.ReadIndex()
-		if err != nil {
-			return err
-		}
-		idx := offsetSortedIdx(packReader.Idx)
-		sort.Sort(idx)
 
-		if pack.Size > 120*1024*1024 {
-			canSkip := true
-			for _, idxEnt := range idx {
-				var hash [32]byte
-				copy(hash[:], idxEnt.Key)
-				_, ok := reachable[hash]
-				if !ok {
-					log.Printf("cannot skip...")
-					canSkip = false
-					break
-				}
-				_, ok = moved[hash]
-				if ok {
-					canSkip = false
-					break
-				}
-			}
-			if canSkip {
-				continue
-			}
-		}
-
-		for i := 0; i < len(idx); i++ {
-			run := []bpack.IndexEnt{}
-			for i < len(idx) {
-				var hash [32]byte
-				copy(hash[:], idx[i].Key)
-				_, isReachable := reachable[hash]
-				if !isReachable {
-					break
-				}
-				_, ok := moved[hash]
-				if ok {
-					break
-				}
-				run = append(run, idx[i])
-				i++
-			}
-			if len(run) == 0 {
-				continue
-			}
-
-			runBase := run[0].Offset
-			runSize := uint32(run[len(run)-1].Offset) + run[len(run)-1].Size - uint32(run[0].Offset)
-			runData, err := packReader.GetAt(runBase, runSize)
+		for _, idxEnt := range run {
+			var hash [32]byte
+			copy(hash[:], idxEnt.Key)
+			val := runData[0:idxEnt.Size]
+			runData = runData[idxEnt.Size:]
+			err = gc.putValue(hash, val)
 			if err != nil {
 				return err
 			}
-			log.Printf("runBase=%v,runSize=%v", runBase, runSize)
-			for _, idxEnt := range run {
-				var hash [32]byte
-				copy(hash[:], idxEnt.Key)
-				if newPackSize+uint64(idxEnt.Size) > 128*1024*1024 {
-					_, err := newPack.Close()
-					if err != nil {
-						return err
-					}
-					newPack = nil
-					newPackSize = 0
-					for _, toDelete := range canDelete {
-						err := remote.Remove(c, toDelete, gcId)
-						if err != nil {
-							return err
-						}
-					}
-					canDelete = []string{}
-				}
-				if newPack == nil {
-					name, err := bpy.RandomFileName()
-					if err != nil {
-						return err
-					}
-					f, err := c.NewPack(path.Join("packs", name) + ".ebpack")
-					if err != nil {
-						return err
-					}
-					buffered := &bpy.BufferedWriteCloser{
-						W: f,
-						B: bufio.NewWriterSize(f, 65536),
-					}
-					newPack, err = bpack.NewEncryptedWriter(buffered, k.CipherKey)
-					if err != nil {
-						return err
-					}
-				}
-				val := runData[0:idxEnt.Size]
-				runData = runData[idxEnt.Size:]
-				err = newPack.Add(idxEnt.Key, val)
-				if err != nil {
-					return err
-				}
-				// Only approximate, but good enough.
-				newPackSize += uint64(len(idxEnt.Key)) + uint64(len(val))
-				moved[hash] = struct{}{}
-			}
-		}
-		err = packReader.Close()
-		if err != nil {
-			return err
-		}
-		canDelete = append(canDelete, packPath)
-	}
-	if newPack != nil {
-		_, err = newPack.Close()
-		if err != nil {
-			return err
 		}
 	}
-	for _, toDelete := range canDelete {
-		err := remote.Remove(c, toDelete, gcId)
-		if err != nil {
-			return err
-		}
-	}
+	gc.canDelete = append(gc.canDelete, packPath)
 	return nil
 }
