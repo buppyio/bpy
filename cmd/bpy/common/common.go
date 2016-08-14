@@ -89,6 +89,29 @@ func GetCacheDaemonAddress() (string, error) {
 	return os.Getenv("BPY_CACHE"), nil
 }
 
+func GetCacheClient() (*cache.Client, bool, error) {
+	addr, err := GetCacheDaemonAddress()
+	if err != nil {
+		return nil, false, err
+	}
+
+	if addr == "" {
+		return nil, false, nil
+	}
+
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		return nil, false, err
+	}
+
+	cacheClient, err := cache.NewClient(conn)
+	if err != nil {
+		return nil, false, err
+	}
+
+	return cacheClient, true, nil
+}
+
 func GetKey() (bpy.Key, error) {
 	d, err := GetBuppyDir()
 	if err != nil {
@@ -164,21 +187,13 @@ func GetCStore(k *bpy.Key, remote *client.Client) (bpy.CStore, error) {
 	if err != nil {
 		return nil, err
 	}
-	cacheDaemonAddr, err := GetCacheDaemonAddress()
+
+	cacheClient, ok, err := GetCacheClient()
 	if err != nil {
 		return nil, err
 	}
-	if cacheDaemonAddr != "" {
-		conn, err := net.Dial("tcp", cacheDaemonAddr)
-		if err != nil {
-			return nil, err
-		}
 
-		cacheClient, err := cache.NewClient(conn)
-		if err != nil {
-			return nil, err
-		}
-
+	if ok {
 		store = cstore.NewCachedCStore(store, cacheClient)
 	}
 	return store, nil
