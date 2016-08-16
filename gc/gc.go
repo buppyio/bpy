@@ -48,13 +48,13 @@ func GC(c *client.Client, store bpy.CStore, k *bpy.Key) error {
 		canDelete:   []string{},
 	}
 
-	tags, err := remote.ListTags(c)
+	refs, err := remote.ListRefs(c)
 	if err != nil {
 		return err
 	}
 
-	for _, tag := range tags {
-		err = gc.markRef(tag)
+	for _, ref := range refs {
+		err = gc.markRef(ref)
 		if err != nil {
 			return err
 		}
@@ -70,14 +70,14 @@ func GC(c *client.Client, store bpy.CStore, k *bpy.Key) error {
 
 func (gc *gcState) markRef(ref string) error {
 	log.Printf("mark ref\n")
-	tag, ok, err := remote.GetTag(gc.c, ref)
+	ref, ok, err := remote.GetRef(gc.c, ref)
 	if err != nil {
 		return err
 	}
 	if !ok {
-		return errors.New("tag does not exist")
+		return errors.New("ref does not exist")
 	}
-	root, err := bpy.ParseHash(tag)
+	root, err := bpy.ParseHash(ref)
 	if err != nil {
 		return err
 	}
@@ -101,15 +101,15 @@ func (gc *gcState) markFsDir(root [32]byte) error {
 	}
 	for _, dirEnt := range dirEnts[1:] {
 		if dirEnt.IsDir() {
-			err := gc.markFsDir(dirEnt.Data.Data)
+			err := gc.markFsDir(dirEnt.HTree.Data)
 			if err != nil {
 				return err
 			}
 		}
-		if dirEnt.Data.Depth == 0 {
-			gc.visited[dirEnt.Data.Data] = struct{}{}
+		if dirEnt.HTree.Depth == 0 {
+			gc.visited[dirEnt.HTree.Data] = struct{}{}
 		} else {
-			err := gc.markHTree(dirEnt.Data.Data)
+			err := gc.markHTree(dirEnt.HTree.Data)
 			if err != nil {
 				return err
 			}

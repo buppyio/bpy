@@ -24,13 +24,13 @@ func writeZip(store bpy.CStore, curpath string, dirHash [32]byte, out *zip.Write
 	}
 	for _, ent := range ents[1:] {
 		if ent.IsDir() {
-			err = writeZip(store, path.Join(curpath, ent.EntName), ent.Data.Data, out)
+			err = writeZip(store, path.Join(curpath, ent.EntName), ent.HTree.Data, out)
 			if err != nil {
 				return err
 			}
 			continue
 		}
-		f, err := fs.Open(store, ents[0].Data.Data, ent.EntName)
+		f, err := fs.Open(store, ents[0].HTree.Data, ent.EntName)
 		if err != nil {
 			return err
 		}

@@ -15,7 +15,7 @@ var (
 	ErrTooSmallForEntry   = errors.New("buffer too small for stat entry")
 	ErrBadReadOffset      = errors.New("bad read offset")
 	ErrCorruptPackListing = errors.New("corrupt pack listing")
-	ErrCorruptTagListing  = errors.New("corrupt tag listing")
+	ErrCorruptRefListing  = errors.New("corrupt ref listing")
 )
 
 type PackListing struct {
@@ -53,8 +53,8 @@ func ListPacks(c *client.Client) ([]PackListing, error) {
 	return listing, nil
 }
 
-func ListTags(c *client.Client) ([]string, error) {
-	f, err := c.Open("tags")
+func ListRefs(c *client.Client) ([]string, error) {
+	f, err := c.Open("refs")
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func ListTags(c *client.Client) ([]string, error) {
 		}
 		namesz := int(binary.BigEndian.Uint16(data[0:2]))
 		if len(data) < namesz+2 {
-			return nil, ErrCorruptTagListing
+			return nil, ErrCorruptRefListing
 		}
 		listing = append(listing, string(data[2:2+namesz]))
 		data = data[2+namesz:]
@@ -78,29 +78,29 @@ func ListTags(c *client.Client) ([]string, error) {
 	return listing, nil
 }
 
-func GetTag(c *client.Client, name string) (string, bool, error) {
-	r, err := c.TGetTag(name)
+func GetRef(c *client.Client, name string) (string, bool, error) {
+	r, err := c.TGetRef(name)
 	if err != nil {
 		return "", false, err
 	}
 	return r.Value, r.Ok, nil
 }
 
-func Tag(c *client.Client, name, value string, generation uint64) error {
-	_, err := c.TTag(name, value, generation)
+func NewRef(c *client.Client, name, value string, generation uint64) error {
+	_, err := c.TRef(name, value, generation)
 	return err
 }
 
-func CasTag(c *client.Client, name, oldValue, newValue string, generation uint64) (bool, error) {
-	r, err := c.TCasTag(name, oldValue, newValue, generation)
+func CasRef(c *client.Client, name, oldValue, newValue string, generation uint64) (bool, error) {
+	r, err := c.TCasRef(name, oldValue, newValue, generation)
 	if err != nil {
 		return false, err
 	}
 	return r.Ok, nil
 }
 
-func RemoveTag(c *client.Client, name, oldValue string, generation uint64) error {
-	_, err := c.TRemoveTag(name, oldValue, generation)
+func RemoveRef(c *client.Client, name, oldValue string, generation uint64) error {
+	_, err := c.TRemoveRef(name, oldValue, generation)
 	return err
 }
 

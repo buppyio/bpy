@@ -14,9 +14,9 @@ import (
 	"github.com/buppyio/bpy/cmd/bpy/newkey"
 	"github.com/buppyio/bpy/cmd/bpy/p9"
 	"github.com/buppyio/bpy/cmd/bpy/put"
+	"github.com/buppyio/bpy/cmd/bpy/ref"
 	"github.com/buppyio/bpy/cmd/bpy/remote"
 	"github.com/buppyio/bpy/cmd/bpy/rm"
-	"github.com/buppyio/bpy/cmd/bpy/tag"
 	"github.com/buppyio/bpy/cmd/bpy/tar"
 	"github.com/buppyio/bpy/cmd/bpy/zip"
 	"os"
@@ -24,7 +24,7 @@ import (
 
 func help() {
 	fmt.Println("Please specify one of the following subcommands:")
-	fmt.Println("browse, cat, cache-daemon, cp, gc, get, ls, mkdir, mv, new-key, put, rm, tag, tar, zip, 9p")
+	fmt.Println("browse, cat, cache-daemon, cp, gc, get, ls, mkdir, mv, new-key, put, rm, ref, tar, zip, 9p")
 	fmt.Println("")
 	fmt.Println("For more use -h on the sub commands.")
 	fmt.Println("Also check the docs at https://buppy.io/docs")
@@ -59,8 +59,8 @@ func main() {
 			cmd = remote.Remote
 		case "rm":
 			cmd = rm.Rm
-		case "tag":
-			cmd = tag.Tag
+		case "ref":
+			cmd = ref.Ref
 		case "tar":
 			cmd = tar.Tar
 		case "dbg":

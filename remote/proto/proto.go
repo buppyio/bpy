@@ -68,29 +68,29 @@ type RError struct {
 	Message string
 }
 
-type TTag struct {
+type TRef struct {
 	Mid        uint16
 	Name       string
 	Value      string
 	Generation uint64
 }
 
-type RTag struct {
+type RRef struct {
 	Mid uint16
 }
 
-type TGetTag struct {
+type TGetRef struct {
 	Mid  uint16
 	Name string
 }
 
-type RGetTag struct {
+type RGetRef struct {
 	Mid   uint16
 	Ok    bool
 	Value string
 }
 
-type TCasTag struct {
+type TCasRef struct {
 	Mid        uint16
 	Name       string
 	OldValue   string
@@ -98,19 +98,19 @@ type TCasTag struct {
 	Generation uint64
 }
 
-type RCasTag struct {
+type RCasRef struct {
 	Mid uint16
 	Ok  bool
 }
 
-type TRemoveTag struct {
+type TRemoveRef struct {
 	Mid        uint16
 	Name       string
 	OldValue   string
 	Generation uint64
 }
 
-type RRemoveTag struct {
+type RRemoveRef struct {
 	Mid uint16
 }
 
@@ -299,21 +299,21 @@ func UnpackMessage(buf []byte) (Message, error) {
 	case RCANCELPACK:
 		m = &RCancelPack{}
 	case TTAG:
-		m = &TTag{}
+		m = &TRef{}
 	case RTAG:
-		m = &RTag{}
+		m = &RRef{}
 	case TGETTAG:
-		m = &TGetTag{}
+		m = &TGetRef{}
 	case RGETTAG:
-		m = &RGetTag{}
+		m = &RGetRef{}
 	case TCASTAG:
-		m = &TCasTag{}
+		m = &TCasRef{}
 	case RCASTAG:
-		m = &RCasTag{}
+		m = &RCasRef{}
 	case TREMOVETAG:
-		m = &TRemoveTag{}
+		m = &TRemoveRef{}
 	case RREMOVETAG:
-		m = &RRemoveTag{}
+		m = &RRemoveRef{}
 	case TREMOVE:
 		m = &TRemove{}
 	case RREMOVE:
@@ -372,21 +372,21 @@ func GetMessageType(m Message) byte {
 		return TCANCELPACK
 	case *RCancelPack:
 		return RCANCELPACK
-	case *TTag:
+	case *TRef:
 		return TTAG
-	case *RTag:
+	case *RRef:
 		return RTAG
-	case *TGetTag:
+	case *TGetRef:
 		return TGETTAG
-	case *RGetTag:
+	case *RGetRef:
 		return RGETTAG
-	case *TCasTag:
+	case *TCasRef:
 		return TCASTAG
-	case *RCasTag:
+	case *RCasRef:
 		return RCASTAG
-	case *TRemoveTag:
+	case *TRemoveRef:
 		return TREMOVETAG
-	case *RRemoveTag:
+	case *RRemoveRef:
 		return RREMOVETAG
 	case *TRemove:
 		return TREMOVE
@@ -444,21 +444,21 @@ func GetMessageId(m Message) uint16 {
 		return m.Mid
 	case *RCancelPack:
 		return m.Mid
-	case *TTag:
+	case *TRef:
 		return m.Mid
-	case *RTag:
+	case *RRef:
 		return m.Mid
-	case *TGetTag:
+	case *TGetRef:
 		return m.Mid
-	case *RGetTag:
+	case *RGetRef:
 		return m.Mid
-	case *TCasTag:
+	case *TCasRef:
 		return m.Mid
-	case *RCasTag:
+	case *RCasRef:
 		return m.Mid
-	case *TRemoveTag:
+	case *TRemoveRef:
 		return m.Mid
-	case *RRemoveTag:
+	case *RRemoveRef:
 		return m.Mid
 	case *TRemove:
 		return m.Mid

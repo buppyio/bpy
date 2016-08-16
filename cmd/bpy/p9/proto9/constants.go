@@ -41,7 +41,7 @@ const (
 )
 
 const (
-	NOTAG Tag = 0xFFFF
+	NOTAG Ref = 0xFFFF
 	NOFID Fid = 0xFFFFFFFF
 )
 
@@ -92,7 +92,7 @@ var MaskedStat Stat = Stat{
 }
 
 type MessageType byte
-type Tag uint16
+type Ref uint16
 type Fid uint32
 type FileMode uint32
 type OpenMode byte

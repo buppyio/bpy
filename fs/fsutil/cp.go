@@ -68,7 +68,7 @@ func cpHostDirToFs(store bpy.CStore, path string) (fs.DirEnt, error) {
 			}
 			dir = append(dir, fs.DirEnt{
 				EntName: e.Name(),
-				Data:    hash,
+				HTree:   hash,
 				EntSize: e.Size(),
 				EntMode: e.Mode(),
 			})
@@ -80,7 +80,7 @@ func cpHostDirToFs(store bpy.CStore, path string) (fs.DirEnt, error) {
 			dir = append(dir, fs.DirEnt{
 				EntName: e.Name(),
 				EntMode: e.Mode(),
-				Data:    newEnt.Data,
+				HTree:   newEnt.HTree,
 			})
 		}
 	}
@@ -102,12 +102,12 @@ func cpFsDirToHost(store bpy.CStore, hash [32]byte, dest string) error {
 		subp := filepath.Join(dest, e.EntName)
 		switch {
 		case e.EntMode.IsDir():
-			err = cpFsDirToHost(store, e.Data.Data, subp)
+			err = cpFsDirToHost(store, e.HTree.Data, subp)
 			if err != nil {
 				return err
 			}
 		case e.EntMode.IsRegular():
-			err = hashTreeToHostFile(store, e.Data.Data, subp, e.EntMode)
+			err = hashTreeToHostFile(store, e.HTree.Data, subp, e.EntMode)
 			if err != nil {
 				return err
 			}
@@ -132,7 +132,7 @@ func CpHostToFs(store bpy.CStore, src string) (fs.DirEnt, error) {
 		EntName: st.Name(),
 		EntSize: st.Size(),
 		EntMode: st.Mode(),
-		Data:    hash,
+		HTree:   hash,
 	}, nil
 }
 
@@ -142,7 +142,7 @@ func CpFsToHost(store bpy.CStore, root [32]byte, src, dst string) error {
 		return err
 	}
 	if ent.IsDir() {
-		return cpFsDirToHost(store, ent.Data.Data, dst)
+		return cpFsDirToHost(store, ent.HTree.Data, dst)
 	}
-	return hashTreeToHostFile(store, ent.Data.Data, dst, ent.EntMode)
+	return hashTreeToHostFile(store, ent.HTree.Data, dst, ent.EntMode)
 }

@@ -19,19 +19,19 @@ import (
 type httpFs struct {
 	c     *client.Client
 	store bpy.CStore
-	tag   string
+	ref   string
 }
 
 func (httpFs *httpFs) Open(path string) (http.File, error) {
 	log.Printf("open: %s", path)
-	tag, ok, err := remote.GetTag(httpFs.c, httpFs.tag)
+	ref, ok, err := remote.GetRef(httpFs.c, httpFs.ref)
 	if err != nil {
 		return nil, err
 	}
 	if !ok {
-		return nil, fmt.Errorf("tag '%s' does not exist", httpFs.tag)
+		return nil, fmt.Errorf("ref '%s' does not exist", httpFs.ref)
 	}
-	root, err := bpy.ParseHash(tag)
+	root, err := bpy.ParseHash(ref)
 	if err != nil {
 		return nil, err
 	}
@@ -130,12 +130,12 @@ func (d *httpDir) Readdir(count int) ([]os.FileInfo, error) {
 }
 
 func Browse() {
-	tagArg := flag.String("tag", "default", "tag of directory to list")
+	refArg := flag.String("ref", "default", "ref of directory to list")
 	addrArg := flag.String("addr", "127.0.0.1:8080", "address to listen on ")
 	flag.Parse()
 
-	if *tagArg == "" {
-		common.Die("please specify a tag to browse\n")
+	if *refArg == "" {
+		common.Die("please specify a ref to browse\n")
 	}
 
 	k, err := common.GetKey()
@@ -163,6 +163,6 @@ func Browse() {
 	log.Fatal(http.ListenAndServe(*addrArg, http.FileServer(&httpFs{
 		c:     c,
 		store: store,
-		tag:   *tagArg,
+		ref:   *refArg,
 	})))
 }
