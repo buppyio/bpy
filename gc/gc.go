@@ -48,9 +48,16 @@ func GC(c *client.Client, store bpy.CStore, k *bpy.Key) error {
 		canDelete:   []string{},
 	}
 
-	err = gc.markRef("default")
+	tags, err := remote.ListTags(c)
 	if err != nil {
 		return err
+	}
+
+	for _, tag := range tags {
+		err = gc.markRef(tag)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = gc.sweep()
