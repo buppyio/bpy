@@ -215,7 +215,7 @@ func truncstrlen(s string) int {
 }
 
 type Tversion struct {
-	Ref         Ref
+	Tag         Tag
 	MessageSize uint32
 	Version     string
 }
@@ -229,7 +229,7 @@ func (msg *Tversion) WireLen() int {
 }
 
 func (msg *Tversion) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.MessageSize))
 	strlen := uint16(len(msg.Version))
 	binary.LittleEndian.PutUint16(b[6:8], strlen)
@@ -241,7 +241,7 @@ func (msg *Tversion) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	msg.MessageSize = binary.LittleEndian.Uint32(b[2:6])
 	strlen := int(binary.LittleEndian.Uint16(b[6:8]))
 	sz += strlen
@@ -253,7 +253,7 @@ func (msg *Tversion) UnpackBody(b []byte) error {
 }
 
 type Rversion struct {
-	Ref         Ref
+	Tag         Tag
 	MessageSize uint32
 	Version     string
 }
@@ -267,7 +267,7 @@ func (msg *Rversion) WireLen() int {
 }
 
 func (msg *Rversion) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.MessageSize))
 	strlen := uint16(len(msg.Version))
 	binary.LittleEndian.PutUint16(b[6:8], strlen)
@@ -279,7 +279,7 @@ func (msg *Rversion) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	msg.MessageSize = binary.LittleEndian.Uint32(b[2:6])
 	strlen := int(binary.LittleEndian.Uint16(b[6:8]))
 	sz += strlen
@@ -291,7 +291,7 @@ func (msg *Rversion) UnpackBody(b []byte) error {
 }
 
 type Tauth struct {
-	Ref   Ref
+	Tag   Tag
 	Afid  Fid
 	Uname string
 	Aname string
@@ -306,7 +306,7 @@ func (msg *Tauth) WireLen() int {
 }
 
 func (msg *Tauth) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.Afid))
 	unamelen := uint16(len(msg.Uname))
 	binary.LittleEndian.PutUint16(b[6:8], unamelen)
@@ -321,7 +321,7 @@ func (msg *Tauth) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	msg.Afid = Fid(binary.LittleEndian.Uint32(b[2:6]))
 	unamelen := int(binary.LittleEndian.Uint16(b[6:8]))
 	sz += unamelen
@@ -339,7 +339,7 @@ func (msg *Tauth) UnpackBody(b []byte) error {
 }
 
 type Rauth struct {
-	Ref  Ref
+	Tag  Tag
 	Aqid Qid
 }
 
@@ -352,7 +352,7 @@ func (msg *Rauth) WireLen() int {
 }
 
 func (msg *Rauth) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 	PackQid(b[2:], msg.Aqid)
 }
 
@@ -361,13 +361,13 @@ func (msg *Rauth) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	UnpackQid(b[2:QidSize], &msg.Aqid)
 	return nil
 }
 
 type Tattach struct {
-	Ref   Ref
+	Tag   Tag
 	Fid   Fid
 	Afid  Fid
 	Uname string
@@ -383,7 +383,7 @@ func (msg *Tattach) WireLen() int {
 }
 
 func (msg *Tattach) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.Fid))
 	binary.LittleEndian.PutUint32(b[6:10], uint32(msg.Afid))
 	unamelen := uint16(len(msg.Uname))
@@ -399,7 +399,7 @@ func (msg *Tattach) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	msg.Fid = Fid(binary.LittleEndian.Uint32(b[2:6]))
 	msg.Afid = Fid(binary.LittleEndian.Uint32(b[6:10]))
 	unamelen := int(binary.LittleEndian.Uint16(b[10:12]))
@@ -418,7 +418,7 @@ func (msg *Tattach) UnpackBody(b []byte) error {
 }
 
 type Rattach struct {
-	Ref Ref
+	Tag Tag
 	Qid Qid
 }
 
@@ -431,7 +431,7 @@ func (msg *Rattach) WireLen() int {
 }
 
 func (msg *Rattach) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 	PackQid(b[2:], msg.Qid)
 }
 
@@ -440,13 +440,13 @@ func (msg *Rattach) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	UnpackQid(b[2:QidSize], &msg.Qid)
 	return nil
 }
 
 type Rerror struct {
-	Ref Ref
+	Tag Tag
 	Err string
 }
 
@@ -459,7 +459,7 @@ func (msg *Rerror) WireLen() int {
 }
 
 func (msg *Rerror) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 	errlen := uint16(len(msg.Err))
 	binary.LittleEndian.PutUint16(b[2:4], errlen)
 	copy(b[4:], []byte(msg.Err)[:errlen])
@@ -470,7 +470,7 @@ func (msg *Rerror) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	errlen := int(binary.LittleEndian.Uint16(b[2:4]))
 	sz += errlen
 	if len(b) < sz {
@@ -481,8 +481,8 @@ func (msg *Rerror) UnpackBody(b []byte) error {
 }
 
 type Tflush struct {
-	Ref    Ref
-	OldRef Ref
+	Tag    Tag
+	OldTag Tag
 }
 
 func (msg *Tflush) MsgType() MessageType {
@@ -494,8 +494,8 @@ func (msg *Tflush) WireLen() int {
 }
 
 func (msg *Tflush) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
-	binary.LittleEndian.PutUint16(b[2:4], uint16(msg.OldRef))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
+	binary.LittleEndian.PutUint16(b[2:4], uint16(msg.OldTag))
 }
 
 func (msg *Tflush) UnpackBody(b []byte) error {
@@ -503,13 +503,13 @@ func (msg *Tflush) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
-	msg.OldRef = Ref(binary.LittleEndian.Uint16(b[2:4]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
+	msg.OldTag = Tag(binary.LittleEndian.Uint16(b[2:4]))
 	return nil
 }
 
 type Rflush struct {
-	Ref Ref
+	Tag Tag
 }
 
 func (msg *Rflush) MsgType() MessageType {
@@ -521,7 +521,7 @@ func (msg *Rflush) WireLen() int {
 }
 
 func (msg *Rflush) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 }
 
 func (msg *Rflush) UnpackBody(b []byte) error {
@@ -529,12 +529,12 @@ func (msg *Rflush) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	return nil
 }
 
 type Tread struct {
-	Ref    Ref
+	Tag    Tag
 	Fid    Fid
 	Offset uint64
 	Count  uint32
@@ -549,7 +549,7 @@ func (msg *Tread) WireLen() int {
 }
 
 func (msg *Tread) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.Fid))
 	binary.LittleEndian.PutUint64(b[6:14], msg.Offset)
 	binary.LittleEndian.PutUint32(b[14:18], msg.Count)
@@ -560,7 +560,7 @@ func (msg *Tread) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	msg.Fid = Fid(binary.LittleEndian.Uint32(b[2:6]))
 	msg.Offset = binary.LittleEndian.Uint64(b[6:14])
 	msg.Count = binary.LittleEndian.Uint32(b[14:18])
@@ -568,7 +568,7 @@ func (msg *Tread) UnpackBody(b []byte) error {
 }
 
 type Rread struct {
-	Ref  Ref
+	Tag  Tag
 	Data []byte
 }
 
@@ -581,7 +581,7 @@ func (msg *Rread) WireLen() int {
 }
 
 func (msg *Rread) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 	binary.LittleEndian.PutUint32(b[2:6], uint32(len(msg.Data)))
 	copy(b[6:], msg.Data)
 }
@@ -591,7 +591,7 @@ func (msg *Rread) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	datalen := binary.LittleEndian.Uint32(b[2:6])
 	sz += int(datalen)
 	if len(b) < sz {
@@ -603,7 +603,7 @@ func (msg *Rread) UnpackBody(b []byte) error {
 }
 
 type Twrite struct {
-	Ref    Ref
+	Tag    Tag
 	Fid    Fid
 	Offset uint64
 	Data   []byte
@@ -618,7 +618,7 @@ func (msg *Twrite) WireLen() int {
 }
 
 func (msg *Twrite) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.Fid))
 	binary.LittleEndian.PutUint64(b[6:14], uint64(msg.Offset))
 	binary.LittleEndian.PutUint32(b[14:18], uint32(len(msg.Data)))
@@ -630,7 +630,7 @@ func (msg *Twrite) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	msg.Fid = Fid(binary.LittleEndian.Uint32(b[2:6]))
 	msg.Offset = binary.LittleEndian.Uint64(b[6:14])
 	datalen := binary.LittleEndian.Uint32(b[14:18])
@@ -644,7 +644,7 @@ func (msg *Twrite) UnpackBody(b []byte) error {
 }
 
 type Rwrite struct {
-	Ref   Ref
+	Tag   Tag
 	Count uint32
 }
 
@@ -657,7 +657,7 @@ func (msg *Rwrite) WireLen() int {
 }
 
 func (msg *Rwrite) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 	binary.LittleEndian.PutUint32(b[2:6], msg.Count)
 }
 
@@ -666,13 +666,13 @@ func (msg *Rwrite) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	msg.Count = binary.LittleEndian.Uint32(b[2:6])
 	return nil
 }
 
 type Tclunk struct {
-	Ref Ref
+	Tag Tag
 	Fid Fid
 }
 
@@ -685,7 +685,7 @@ func (msg *Tclunk) WireLen() int {
 }
 
 func (msg *Tclunk) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.Fid))
 }
 
@@ -694,13 +694,13 @@ func (msg *Tclunk) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	msg.Fid = Fid(binary.LittleEndian.Uint32(b[2:6]))
 	return nil
 }
 
 type Rclunk struct {
-	Ref Ref
+	Tag Tag
 }
 
 func (msg *Rclunk) MsgType() MessageType {
@@ -712,7 +712,7 @@ func (msg *Rclunk) WireLen() int {
 }
 
 func (msg *Rclunk) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 }
 
 func (msg *Rclunk) UnpackBody(b []byte) error {
@@ -720,12 +720,12 @@ func (msg *Rclunk) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	return nil
 }
 
 type Tremove struct {
-	Ref Ref
+	Tag Tag
 	Fid Fid
 }
 
@@ -738,7 +738,7 @@ func (msg *Tremove) WireLen() int {
 }
 
 func (msg *Tremove) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.Fid))
 }
 
@@ -747,13 +747,13 @@ func (msg *Tremove) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	msg.Fid = Fid(binary.LittleEndian.Uint32(b[2:6]))
 	return nil
 }
 
 type Rremove struct {
-	Ref Ref
+	Tag Tag
 }
 
 func (msg *Rremove) MsgType() MessageType {
@@ -765,7 +765,7 @@ func (msg *Rremove) WireLen() int {
 }
 
 func (msg *Rremove) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 }
 
 func (msg *Rremove) UnpackBody(b []byte) error {
@@ -773,12 +773,12 @@ func (msg *Rremove) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	return nil
 }
 
 type Topen struct {
-	Ref  Ref
+	Tag  Tag
 	Fid  Fid
 	Mode OpenMode
 }
@@ -792,7 +792,7 @@ func (msg *Topen) WireLen() int {
 }
 
 func (msg *Topen) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.Fid))
 	b[6] = byte(msg.Mode)
 }
@@ -802,14 +802,14 @@ func (msg *Topen) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	msg.Fid = Fid(binary.LittleEndian.Uint32(b[2:6]))
 	msg.Mode = OpenMode(b[6])
 	return nil
 }
 
 type Ropen struct {
-	Ref    Ref
+	Tag    Tag
 	Qid    Qid
 	Iounit uint32
 }
@@ -823,7 +823,7 @@ func (msg *Ropen) WireLen() int {
 }
 
 func (msg *Ropen) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 	PackQid(b[2:15], msg.Qid)
 	binary.LittleEndian.PutUint32(b[15:19], msg.Iounit)
 }
@@ -833,14 +833,14 @@ func (msg *Ropen) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	UnpackQid(b[2:15], &msg.Qid)
 	msg.Iounit = binary.LittleEndian.Uint32(b[15:19])
 	return nil
 }
 
 type Tcreate struct {
-	Ref  Ref
+	Tag  Tag
 	Fid  Fid
 	Name string
 	Perm FileMode
@@ -856,7 +856,7 @@ func (msg *Tcreate) WireLen() int {
 }
 
 func (msg *Tcreate) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.Fid))
 	namelen := uint16(len(msg.Name))
 	binary.LittleEndian.PutUint16(b[6:8], namelen)
@@ -870,7 +870,7 @@ func (msg *Tcreate) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	msg.Fid = Fid(binary.LittleEndian.Uint32(b[2:6]))
 	namelen := binary.LittleEndian.Uint16(b[6:8])
 	sz += int(namelen)
@@ -884,7 +884,7 @@ func (msg *Tcreate) UnpackBody(b []byte) error {
 }
 
 type Rcreate struct {
-	Ref    Ref
+	Tag    Tag
 	Qid    Qid
 	Iounit uint32
 }
@@ -898,7 +898,7 @@ func (msg *Rcreate) WireLen() int {
 }
 
 func (msg *Rcreate) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 	PackQid(b[2:15], msg.Qid)
 	binary.LittleEndian.PutUint32(b[15:19], msg.Iounit)
 }
@@ -908,14 +908,14 @@ func (msg *Rcreate) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	UnpackQid(b[2:15], &msg.Qid)
 	msg.Iounit = binary.LittleEndian.Uint32(b[15:19])
 	return nil
 }
 
 type Tstat struct {
-	Ref Ref
+	Tag Tag
 	Fid Fid
 }
 
@@ -928,7 +928,7 @@ func (msg *Tstat) WireLen() int {
 }
 
 func (msg *Tstat) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.Fid))
 }
 
@@ -937,13 +937,13 @@ func (msg *Tstat) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	msg.Fid = Fid(binary.LittleEndian.Uint32(b[2:6]))
 	return nil
 }
 
 type Rstat struct {
-	Ref  Ref
+	Tag  Tag
 	Stat Stat
 }
 
@@ -956,7 +956,7 @@ func (msg *Rstat) WireLen() int {
 }
 
 func (msg *Rstat) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 	binary.LittleEndian.PutUint16(b[2:4], uint16(StatLen(&msg.Stat)))
 	PackStat(b[4:], &msg.Stat)
 }
@@ -966,13 +966,13 @@ func (msg *Rstat) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	_, err := UnpackStat(b[4:], &msg.Stat)
 	return err
 }
 
 type Twstat struct {
-	Ref  Ref
+	Tag  Tag
 	Fid  Fid
 	Stat Stat
 }
@@ -986,7 +986,7 @@ func (msg *Twstat) WireLen() int {
 }
 
 func (msg *Twstat) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.Fid))
 	binary.LittleEndian.PutUint16(b[6:8], uint16(StatLen(&msg.Stat)))
 	PackStat(b[8:], &msg.Stat)
@@ -997,14 +997,14 @@ func (msg *Twstat) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	msg.Fid = Fid(binary.LittleEndian.Uint32(b[2:6]))
 	_, err := UnpackStat(b[8:], &msg.Stat)
 	return err
 }
 
 type Rwstat struct {
-	Ref Ref
+	Tag Tag
 }
 
 func (msg *Rwstat) MsgType() MessageType {
@@ -1016,7 +1016,7 @@ func (msg *Rwstat) WireLen() int {
 }
 
 func (msg *Rwstat) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 }
 
 func (msg *Rwstat) UnpackBody(b []byte) error {
@@ -1024,12 +1024,12 @@ func (msg *Rwstat) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	return nil
 }
 
 type Twalk struct {
-	Ref    Ref
+	Tag    Tag
 	Fid    Fid
 	NewFid Fid
 	Names  []string
@@ -1048,7 +1048,7 @@ func (msg *Twalk) WireLen() int {
 }
 
 func (msg *Twalk) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 	binary.LittleEndian.PutUint32(b[2:6], uint32(msg.Fid))
 	binary.LittleEndian.PutUint32(b[6:10], uint32(msg.NewFid))
 	binary.LittleEndian.PutUint16(b[10:12], uint16(len(msg.Names)))
@@ -1066,7 +1066,7 @@ func (msg *Twalk) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	msg.Fid = Fid(binary.LittleEndian.Uint32(b[2:6]))
 	msg.NewFid = Fid(binary.LittleEndian.Uint32(b[6:10]))
 	n := int(binary.LittleEndian.Uint16(b[10:12]))
@@ -1085,7 +1085,7 @@ func (msg *Twalk) UnpackBody(b []byte) error {
 }
 
 type Rwalk struct {
-	Ref  Ref
+	Tag  Tag
 	Qids []Qid
 }
 
@@ -1098,7 +1098,7 @@ func (msg *Rwalk) WireLen() int {
 }
 
 func (msg *Rwalk) PackBody(b []byte) {
-	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Ref))
+	binary.LittleEndian.PutUint16(b[0:2], uint16(msg.Tag))
 	binary.LittleEndian.PutUint16(b[2:4], uint16(len(msg.Qids)))
 	offset := 0
 	for i := range msg.Qids {
@@ -1112,7 +1112,7 @@ func (msg *Rwalk) UnpackBody(b []byte) error {
 	if len(b) < sz {
 		return ErrMsgCorrupt
 	}
-	msg.Ref = Ref(binary.LittleEndian.Uint16(b[0:2]))
+	msg.Tag = Tag(binary.LittleEndian.Uint16(b[0:2]))
 	n := int(binary.LittleEndian.Uint16(b[2:4]))
 	if len(b) < n*QidSize {
 		return ErrMsgCorrupt
@@ -1160,9 +1160,9 @@ func WriteMsg(w io.Writer, buf []byte, msg Msg) error {
 	return nil
 }
 
-func MakeError(t Ref, err error) Msg {
+func MakeError(t Tag, err error) Msg {
 	return &Rerror{
-		Ref: t,
+		Tag: t,
 		Err: err.Error(),
 	}
 }

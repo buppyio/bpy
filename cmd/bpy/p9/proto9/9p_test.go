@@ -14,7 +14,7 @@ type MsgTestCase struct {
 var msgtests = []MsgTestCase{
 	{
 		msg: &Tversion{
-			Ref:         45,
+			Tag:         45,
 			MessageSize: 9384,
 			Version:     "9P2000",
 		},
@@ -22,7 +22,7 @@ var msgtests = []MsgTestCase{
 	},
 	{
 		msg: &Tversion{
-			Ref:         65535,
+			Tag:         65535,
 			MessageSize: 8192,
 			Version:     "9P2000",
 		},
@@ -30,7 +30,7 @@ var msgtests = []MsgTestCase{
 	},
 	{
 		msg: &Rversion{
-			Ref:         45,
+			Tag:         45,
 			MessageSize: 9384,
 			Version:     "9P2000",
 		},
@@ -39,7 +39,7 @@ var msgtests = []MsgTestCase{
 
 	{
 		msg: &Tauth{
-			Ref:   45,
+			Tag:   45,
 			Afid:  1234,
 			Uname: "someone",
 			Aname: "something",
@@ -48,28 +48,28 @@ var msgtests = []MsgTestCase{
 	},
 	{
 		msg: &Rauth{
-			Ref:  45,
+			Tag:  45,
 			Aqid: Qid{Type: 0, Version: 0, Path: 0},
 		},
 		data: []byte{0x14, 0x0, 0x0, 0x0, 0x67, 0x2d, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0},
 	},
 	{
 		msg: &Rauth{
-			Ref:  0x0101,
+			Tag:  0x0101,
 			Aqid: Qid{Type: 0xff, Version: 0xffffffff, Path: 0xffffffffffffffff},
 		},
 		data: []byte{0x14, 0x0, 0x0, 0x0, 0x67, 0x01, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
 	},
 	{
 		msg: &Rerror{
-			Ref: 45,
+			Tag: 45,
 			Err: "something something something",
 		},
 		data: []byte{0x26, 0x0, 0x0, 0x0, 0x6b, 0x2d, 0x0, 0x1d, 0x0, 0x73, 0x6f, 0x6d, 0x65, 0x74, 0x68, 0x69, 0x6e, 0x67, 0x20, 0x73, 0x6f, 0x6d, 0x65, 0x74, 0x68, 0x69, 0x6e, 0x67, 0x20, 0x73, 0x6f, 0x6d, 0x65, 0x74, 0x68, 0x69, 0x6e, 0x67},
 	},
 	{
 		msg: &Tattach{
-			Ref:   45,
+			Tag:   45,
 			Fid:   35243,
 			Afid:  90872354,
 			Uname: "",
@@ -79,7 +79,7 @@ var msgtests = []MsgTestCase{
 	},
 	{
 		msg: &Tattach{
-			Ref:   45,
+			Tag:   45,
 			Fid:   35243,
 			Afid:  NOFID,
 			Uname: "ac",
@@ -89,28 +89,28 @@ var msgtests = []MsgTestCase{
 	},
 	{
 		msg: &Rattach{
-			Ref: 45,
+			Tag: 45,
 			Qid: Qid{Type: 0, Version: 0, Path: 0},
 		},
 		data: []byte{0x14, 0x0, 0x0, 0x0, 0x69, 0x2d, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0},
 	},
 	{
 		msg: &Tflush{
-			Ref:    45,
-			OldRef: 23453,
+			Tag:    45,
+			OldTag: 23453,
 		},
 		data: []byte{0x9, 0x0, 0x0, 0x0, 0x6c, 0x2d, 0x0, 0x9d, 0x5b},
 	},
 	{
 		msg: &Rflush{
-			Ref: 45,
+			Tag: 45,
 		},
 		data: []byte{0x7, 0x0, 0x0, 0x0, 0x6d, 0x2d, 0x0},
 	},
 
 	{
 		msg: &Twalk{
-			Ref:    45,
+			Tag:    45,
 			Fid:    1234,
 			NewFid: 3452345,
 			Names: []string{
@@ -124,7 +124,7 @@ var msgtests = []MsgTestCase{
 	},
 	{
 		msg: &Rwalk{
-			Ref: 45,
+			Tag: 45,
 			Qids: []Qid{
 				Qid{Type: 0, Version: 0, Path: 0},
 			},
@@ -133,7 +133,7 @@ var msgtests = []MsgTestCase{
 	},
 	{
 		msg: &Topen{
-			Ref:  45,
+			Tag:  45,
 			Fid:  21343,
 			Mode: 4,
 		},
@@ -142,7 +142,7 @@ var msgtests = []MsgTestCase{
 
 	{
 		msg: &Ropen{
-			Ref:    45,
+			Tag:    45,
 			Qid:    Qid{Type: 0, Version: 0, Path: 0},
 			Iounit: 1234123,
 		},
@@ -151,7 +151,7 @@ var msgtests = []MsgTestCase{
 
 	{
 		msg: &Tcreate{
-			Ref:  45,
+			Tag:  45,
 			Fid:  12343,
 			Name: "wakakaaka",
 			Perm: DMDIR,
@@ -161,7 +161,7 @@ var msgtests = []MsgTestCase{
 	},
 	{
 		msg: &Rcreate{
-			Ref:    45,
+			Tag:    45,
 			Qid:    Qid{Type: 0, Version: 0, Path: 0},
 			Iounit: 1234123,
 		},
@@ -169,7 +169,7 @@ var msgtests = []MsgTestCase{
 	},
 	{
 		msg: &Tread{
-			Ref:    45,
+			Tag:    45,
 			Fid:    5343,
 			Offset: 359842382234,
 			Count:  23423,
@@ -179,7 +179,7 @@ var msgtests = []MsgTestCase{
 
 	{
 		msg: &Rread{
-			Ref:  45,
+			Tag:  45,
 			Data: []byte("ooooh nooo it's full of data"),
 		},
 		data: []byte{0x27, 0x0, 0x0, 0x0, 0x75, 0x2d, 0x0, 0x1c, 0x0, 0x0, 0x0, 0x6f, 0x6f, 0x6f, 0x6f, 0x68, 0x20, 0x6e, 0x6f, 0x6f, 0x6f, 0x20, 0x69, 0x74, 0x27, 0x73, 0x20, 0x66, 0x75, 0x6c, 0x6c, 0x20, 0x6f, 0x66, 0x20, 0x64, 0x61, 0x74, 0x61},
@@ -187,7 +187,7 @@ var msgtests = []MsgTestCase{
 
 	{
 		msg: &Twrite{
-			Ref:    45,
+			Tag:    45,
 			Fid:    254334,
 			Offset: 21304978234,
 			Data:   []byte("something to write"),
@@ -196,48 +196,48 @@ var msgtests = []MsgTestCase{
 	},
 	{
 		msg: &Rwrite{
-			Ref:   45,
+			Tag:   45,
 			Count: 12,
 		},
 		data: []byte{0xb, 0x0, 0x0, 0x0, 0x77, 0x2d, 0x0, 0xc, 0x0, 0x0, 0x0},
 	},
 	{
 		msg: &Tclunk{
-			Ref: 45,
+			Tag: 45,
 			Fid: 23123,
 		},
 		data: []byte{0xb, 0x0, 0x0, 0x0, 0x78, 0x2d, 0x0, 0x53, 0x5a, 0x0, 0x0},
 	},
 	{
 		msg: &Rclunk{
-			Ref: 45,
+			Tag: 45,
 		},
 		data: []byte{0x7, 0x0, 0x0, 0x0, 0x79, 0x2d, 0x0},
 	},
 	{
 		msg: &Tremove{
-			Ref: 45,
+			Tag: 45,
 			Fid: 1234,
 		},
 		data: []byte{0xb, 0x0, 0x0, 0x0, 0x7a, 0x2d, 0x0, 0xd2, 0x4, 0x0, 0x0},
 	},
 	{
 		msg: &Rremove{
-			Ref: 45,
+			Tag: 45,
 		},
 		data: []byte{0x7, 0x0, 0x0, 0x0, 0x7b, 0x2d, 0x0},
 	},
 
 	{
 		msg: &Tstat{
-			Ref: 45,
+			Tag: 45,
 			Fid: 12341234,
 		},
 		data: []byte{0xb, 0x0, 0x0, 0x0, 0x7c, 0x2d, 0x0, 0xf2, 0x4f, 0xbc, 0x0},
 	},
 	{
 		msg: &Rstat{
-			Ref: 45,
+			Tag: 45,
 			Stat: Stat{
 				Type:   0,
 				Dev:    0,
@@ -256,7 +256,7 @@ var msgtests = []MsgTestCase{
 	},
 	{
 		msg: &Rstat{
-			Ref: 45,
+			Tag: 45,
 			Stat: Stat{
 				Type:   0xffff,
 				Dev:    0xffffffff,
@@ -276,7 +276,7 @@ var msgtests = []MsgTestCase{
 
 	{
 		msg: &Twstat{
-			Ref: 45,
+			Tag: 45,
 			Fid: 12342134,
 			Stat: Stat{
 				Type:   0,
@@ -297,7 +297,7 @@ var msgtests = []MsgTestCase{
 
 	{
 		msg: &Rwstat{
-			Ref: 45,
+			Tag: 45,
 		},
 		data: []byte{0x7, 0x0, 0x0, 0x0, 0x7f, 0x2d, 0x0},
 	},

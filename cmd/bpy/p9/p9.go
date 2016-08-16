@@ -29,16 +29,16 @@ func handleConnection(con net.Conn, ref string) {
 		return
 	}
 
-	refHash, ok, err := remote.GetRef(c, ref)
+	tagHash, ok, err := remote.GetRef(c, ref)
 	if err != nil {
-		log.Fatalf("error fetching ref hash: %s\n", err.Error())
+		log.Fatalf("error fetching tag hash: %s\n", err.Error())
 	}
 
 	if !ok {
 		log.Fatalf("ref '%s' does not exist\n", ref)
 	}
 
-	root, err := bpy.ParseHash(refHash)
+	root, err := bpy.ParseHash(tagHash)
 	if err != nil {
 		common.Die("error parsing hash: %s\n", err.Error())
 	}
@@ -58,12 +58,12 @@ func handleConnection(con net.Conn, ref string) {
 }
 
 func P9() {
-	refArg := flag.String("ref", "default", "ref of directory to list")
+	refArg := flag.String("ref", "default", "ref to list")
 	addrArg := flag.String("addr", "127.0.0.1:9001", "address to listen on ")
 	flag.Parse()
 
 	if *refArg == "" {
-		log.Fatalf("please specify a ref to browse\n")
+		log.Fatalf("please specify a tag to browse\n")
 	}
 
 	log.Printf("listening on: %s", *addrArg)
