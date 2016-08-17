@@ -1,5 +1,14 @@
 Alpha:
 
+- Make browse ui polished
+- Rename tagdb and tags.go to just 'db'
+- Delete old ebpack/tmp files on attach if they are older than some age
+- Give refs infinite history to allow error recovery
+- Add signature to tags
+- Add counter to tags which remote only allows to increment
+- Test every message type in proto packing/unpack tests
+- Write comprehensive man pages
+
 Bugs:
 
 Improvements:
@@ -8,23 +17,12 @@ Improvements:
 - Change fs api from "dest, src" to "src, dest", it is more natural since it works like mv or cp
 - Rename cstore.Writer to just CStore
 - Double check cstore memcache + mindex need to be string maps, and can't use arrays directly.
-- Delete old ebpack/tmp files on attach if they are older than some age
-- Give refs infinite history to allow error recovery
-- Rename tags to refs or roots, make tags more like git tags
-- Add command to merge small pack files
 - Add command to migrate tags between key files
 - Add tests for cstore that excercises packfile rotation
-- Add client side chunk caching
-- Write comprehensive man pages
 - Add more user friendly failure messages for ssh failure (maybe use crypto/go ssh client)
 - Rename 'Pack' remote api to 'Stream'
-- Make browse ui polished
-- Add signature to tags
-- Add counter to tags which remote only allows to increment
 - Implement hash split in htree
-- Test every message type in proto packing/unpack tests
 - Steal ideas like bloom filters, cstore is actually just an LSM.
 - Only fetch changed indexes instead of reloading entire index when a lookup fails.
 - make 9p server refresh tag periodically
-- Rename tagdb and tags.go to just 'db'
-- Rename DirEnt.Data to DirEnt.HTree
+

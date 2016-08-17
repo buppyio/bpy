@@ -229,12 +229,12 @@ func (c *Client) WriteMessage(m proto.Message) error {
 	return proto.WriteMessage(c.conn, m, c.wBuf)
 }
 
-func (c *Client) TTag(name, value string, generation uint64) (*proto.RTag, error) {
+func (c *Client) TRef(name, value string, generation uint64) (*proto.RRef, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.Call(&proto.TTag{
+	resp, err := c.Call(&proto.TRef{
 		Mid:        mid,
 		Name:       name,
 		Value:      value,
@@ -244,19 +244,19 @@ func (c *Client) TTag(name, value string, generation uint64) (*proto.RTag, error
 		return nil, err
 	}
 	switch resp := resp.(type) {
-	case *proto.RTag:
+	case *proto.RRef:
 		return resp, nil
 	default:
 		return nil, ErrBadResponse
 	}
 }
 
-func (c *Client) TCasTag(name, oldValue, newValue string, generation uint64) (*proto.RCasTag, error) {
+func (c *Client) TCasRef(name, oldValue, newValue string, generation uint64) (*proto.RCasRef, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.Call(&proto.TCasTag{
+	resp, err := c.Call(&proto.TCasRef{
 		Mid:        mid,
 		Name:       name,
 		OldValue:   oldValue,
@@ -267,19 +267,19 @@ func (c *Client) TCasTag(name, oldValue, newValue string, generation uint64) (*p
 		return nil, err
 	}
 	switch resp := resp.(type) {
-	case *proto.RCasTag:
+	case *proto.RCasRef:
 		return resp, nil
 	default:
 		return nil, ErrBadResponse
 	}
 }
 
-func (c *Client) TRemoveTag(name, oldValue string, generation uint64) (*proto.RRemoveTag, error) {
+func (c *Client) TRemoveRef(name, oldValue string, generation uint64) (*proto.RRemoveRef, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.Call(&proto.TRemoveTag{
+	resp, err := c.Call(&proto.TRemoveRef{
 		Mid:        mid,
 		Name:       name,
 		OldValue:   oldValue,
@@ -289,19 +289,19 @@ func (c *Client) TRemoveTag(name, oldValue string, generation uint64) (*proto.RR
 		return nil, err
 	}
 	switch resp := resp.(type) {
-	case *proto.RRemoveTag:
+	case *proto.RRemoveRef:
 		return resp, nil
 	default:
 		return nil, ErrBadResponse
 	}
 }
 
-func (c *Client) TGetTag(name string) (*proto.RGetTag, error) {
+func (c *Client) TGetRef(name string) (*proto.RGetRef, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.Call(&proto.TGetTag{
+	resp, err := c.Call(&proto.TGetRef{
 		Mid:  mid,
 		Name: name,
 	}, ch, mid)
@@ -309,7 +309,7 @@ func (c *Client) TGetTag(name string) (*proto.RGetTag, error) {
 		return nil, err
 	}
 	switch resp := resp.(type) {
-	case *proto.RGetTag:
+	case *proto.RGetRef:
 		return resp, nil
 	default:
 		return nil, ErrBadResponse

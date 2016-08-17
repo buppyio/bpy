@@ -10,7 +10,7 @@ import (
 )
 
 func Mkdir() {
-	tagArg := flag.String("tag", "default", "tag make directory in")
+	refArg := flag.String("ref", "default", "ref make directory in")
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {
@@ -39,15 +39,15 @@ func Mkdir() {
 		common.Die("error getting current gc generation: %s\n", err.Error())
 	}
 
-	tagHash, ok, err := remote.GetTag(c, *tagArg)
+	refHash, ok, err := remote.GetRef(c, *refArg)
 	if err != nil {
-		common.Die("error fetching tag hash: %s\n", err.Error())
+		common.Die("error fetching ref hash: %s\n", err.Error())
 	}
 	if !ok {
-		common.Die("tag '%s' does not exist\n", *tagArg)
+		common.Die("ref '%s' does not exist\n", *refArg)
 	}
 
-	destHash, err := bpy.ParseHash(tagHash)
+	destHash, err := bpy.ParseHash(refHash)
 	if err != nil {
 		common.Die("error parsing hash: %s\n", err.Error())
 	}
@@ -67,14 +67,14 @@ func Mkdir() {
 		common.Die("error closing remote: %s\n", err.Error())
 	}
 
-	ok, err = remote.CasTag(c, *tagArg, hex.EncodeToString(destHash[:]), hex.EncodeToString(newRoot.Data.Data[:]), generation)
+	ok, err = remote.CasRef(c, *refArg, hex.EncodeToString(destHash[:]), hex.EncodeToString(newRoot.HTree.Data[:]), generation)
 	if err != nil {
-		common.Die("creating tag: %s\n", err.Error())
+		common.Die("creating ref: %s\n", err.Error())
 	}
 
 	if !ok {
 		// XXX: loop here
-		common.Die("tag concurrently modified, try again\n")
+		common.Die("ref concurrently modified, try again\n")
 	}
 
 }

@@ -96,7 +96,7 @@ func TestRemote(t *testing.T) {
 	}
 }
 
-func TestTags(t *testing.T) {
+func TestRefs(t *testing.T) {
 	testPath, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatal(err)
@@ -119,69 +119,69 @@ func TestTags(t *testing.T) {
 	testvals["foo2"] = "baz"
 
 	for k, v := range testvals {
-		err = remote.Tag(c, k, v, generation)
+		err = remote.NewRef(c, k, v, generation)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	tags, err := remote.ListTags(c)
+	refs, err := remote.ListRefs(c)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(tags) != 3 {
-		t.Fatal("incorrect number of tags")
+	if len(refs) != 3 {
+		t.Fatal("incorrect number of refs")
 	}
 
-	if tags[0] != "foo" || tags[1] != "foo1" || tags[2] != "foo2" {
-		t.Fatal("incorrect tag listing")
+	if refs[0] != "foo" || refs[1] != "foo1" || refs[2] != "foo2" {
+		t.Fatal("incorrect ref listing")
 	}
 
 	for k, v := range testvals {
-		val, ok, err := remote.GetTag(c, k)
+		val, ok, err := remote.GetRef(c, k)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if !ok {
-			t.Fatal("expected tag")
+			t.Fatal("expected ref")
 		}
 		if val != v {
 			t.Fatalf("value got('%s') != expected('%v')", v, val)
 		}
 	}
 
-	err = remote.RemoveTag(c, "foo", "...", generation)
+	err = remote.RemoveRef(c, "foo", "...", generation)
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	err = remote.RemoveTag(c, "foo", "bar", generation)
+	err = remote.RemoveRef(c, "foo", "bar", generation)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, ok, err := remote.GetTag(c, "foo")
+	_, ok, err := remote.GetRef(c, "foo")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if ok {
-		t.Fatal("expected no tag")
+		t.Fatal("expected no ref")
 	}
-	tags, err = remote.ListTags(c)
+	refs, err = remote.ListRefs(c)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tags) != 2 {
-		t.Fatal("incorrect number of tags")
+	if len(refs) != 2 {
+		t.Fatal("incorrect number of refs")
 	}
 
-	ok, err = remote.CasTag(c, "foo2", "ba", "", generation)
+	ok, err = remote.CasRef(c, "foo2", "ba", "", generation)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if ok {
 		t.Fatal("expected cas fail")
 	}
-	ok, err = remote.CasTag(c, "foo2", "baz", "casval", generation)
+	ok, err = remote.CasRef(c, "foo2", "baz", "casval", generation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,7 +189,7 @@ func TestTags(t *testing.T) {
 		t.Fatal("expected cas success")
 	}
 
-	val, ok, err := remote.GetTag(c, "foo2")
+	val, ok, err := remote.GetRef(c, "foo2")
 	if err != nil {
 		t.Fatal(err)
 	}

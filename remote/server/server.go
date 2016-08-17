@@ -18,18 +18,18 @@ var (
 	ErrFidInUse           = errors.New("fid in use")
 	ErrNoSuchPid          = errors.New("no such pid")
 	ErrNoSuchFid          = errors.New("no such fid")
-	ErrNoSuchTag          = errors.New("no such tag")
+	ErrNoSuchRef          = errors.New("no such ref")
 	ErrBadGCID            = errors.New("GCID for remove incorrect (another concurrent gc)?")
 	ErrGCInProgress       = errors.New("gc in progress")
-	ErrTagAlreadyExists   = errors.New("tag already exists")
-	ErrStaleTagValue      = errors.New("tag value stale (concurrent write?)")
+	ErrRefAlreadyExists   = errors.New("ref already exists")
+	ErrStaleRefValue      = errors.New("ref value stale (concurrent write?)")
 	ErrGeneratingPackName = errors.New("error generating pack name")
 )
 
 const (
-	TagBucketName     = "tags"
+	RefBucketName     = "refs"
 	GCStateBucketName = "gc"
-	TagDBName         = "tags.db"
+	RefDBName         = "refs.db"
 )
 
 type ReadWriteCloser interface {
@@ -53,7 +53,7 @@ type uploadState struct {
 
 type server struct {
 	servePath string
-	tagDBPath string
+	refDBPath string
 	buf       []byte
 	fids      map[uint32]file
 	pids      map[uint32]*uploadState
@@ -93,9 +93,9 @@ func (srv *server) handleTOpen(t *proto.TOpen) proto.Message {
 		}
 	}
 
-	if t.Name == "tags" {
-		srv.fids[t.Fid] = &tagListingFile{
-			tagDBPath: srv.tagDBPath,
+	if t.Name == "refs" {
+		srv.fids[t.Fid] = &refListingFile{
+			refDBPath: srv.refDBPath,
 		}
 		return &proto.ROpen{
 			Mid: t.Mid,
@@ -243,8 +243,8 @@ func (srv *server) handleTCancelPack(t *proto.TCancelPack) proto.Message {
 	}
 }
 
-func (srv *server) handleTTag(t *proto.TTag) proto.Message {
-	db, err := openTagDB(srv.tagDBPath)
+func (srv *server) handleTRef(t *proto.TRef) proto.Message {
+	db, err := openRefDB(srv.refDBPath)
 	if err != nil {
 		makeError(t.Mid, err)
 	}
@@ -257,10 +257,10 @@ func (srv *server) handleTTag(t *proto.TTag) proto.Message {
 		if t.Generation != state.Generation {
 			return ErrGCInProgress
 		}
-		b := tx.Bucket([]byte(TagBucketName))
+		b := tx.Bucket([]byte(RefBucketName))
 		valueBytes := b.Get([]byte(t.Name))
 		if valueBytes != nil {
-			return ErrTagAlreadyExists
+			return ErrRefAlreadyExists
 		}
 		err = b.Put([]byte(t.Name), []byte(t.Value))
 		return err
@@ -268,29 +268,29 @@ func (srv *server) handleTTag(t *proto.TTag) proto.Message {
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
-	return &proto.RTag{
+	return &proto.RRef{
 		Mid: t.Mid,
 	}
 }
 
-func (srv *server) handleTGetTag(t *proto.TGetTag) proto.Message {
-	db, err := openTagDB(srv.tagDBPath)
+func (srv *server) handleTGetRef(t *proto.TGetRef) proto.Message {
+	db, err := openRefDB(srv.refDBPath)
 	if err != nil {
 		makeError(t.Mid, err)
 	}
 	defer db.Close()
 	var value string
 	err = db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(TagBucketName))
+		b := tx.Bucket([]byte(RefBucketName))
 		valueBytes := b.Get([]byte(t.Name))
 		if valueBytes == nil {
-			return ErrNoSuchTag
+			return ErrNoSuchRef
 		}
 		value = string(valueBytes)
 		return nil
 	})
-	if err == ErrNoSuchTag {
-		return &proto.RGetTag{
+	if err == ErrNoSuchRef {
+		return &proto.RGetRef{
 			Mid: t.Mid,
 			Ok:  false,
 		}
@@ -298,15 +298,15 @@ func (srv *server) handleTGetTag(t *proto.TGetTag) proto.Message {
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
-	return &proto.RGetTag{
+	return &proto.RGetRef{
 		Mid:   t.Mid,
 		Value: value,
 		Ok:    true,
 	}
 }
 
-func (srv *server) handleTCasTag(t *proto.TCasTag) proto.Message {
-	db, err := openTagDB(srv.tagDBPath)
+func (srv *server) handleTCasRef(t *proto.TCasRef) proto.Message {
+	db, err := openRefDB(srv.refDBPath)
 	if err != nil {
 		makeError(t.Mid, err)
 	}
@@ -319,18 +319,18 @@ func (srv *server) handleTCasTag(t *proto.TCasTag) proto.Message {
 		if t.Generation != state.Generation {
 			return ErrGCInProgress
 		}
-		b := tx.Bucket([]byte(TagBucketName))
+		b := tx.Bucket([]byte(RefBucketName))
 		valueBytes := b.Get([]byte(t.Name))
 		if valueBytes == nil {
-			return ErrNoSuchTag
+			return ErrNoSuchRef
 		}
 		if string(valueBytes) != t.OldValue {
-			return ErrStaleTagValue
+			return ErrStaleRefValue
 		}
 		return b.Put([]byte(t.Name), []byte(t.NewValue))
 	})
-	if err == ErrStaleTagValue {
-		return &proto.RCasTag{
+	if err == ErrStaleRefValue {
+		return &proto.RCasRef{
 			Mid: t.Mid,
 			Ok:  false,
 		}
@@ -338,14 +338,14 @@ func (srv *server) handleTCasTag(t *proto.TCasTag) proto.Message {
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
-	return &proto.RCasTag{
+	return &proto.RCasRef{
 		Mid: t.Mid,
 		Ok:  true,
 	}
 }
 
-func (srv *server) handleTRemoveTag(t *proto.TRemoveTag) proto.Message {
-	db, err := openTagDB(srv.tagDBPath)
+func (srv *server) handleTRemoveRef(t *proto.TRemoveRef) proto.Message {
+	db, err := openRefDB(srv.refDBPath)
 	if err != nil {
 		makeError(t.Mid, err)
 	}
@@ -358,10 +358,10 @@ func (srv *server) handleTRemoveTag(t *proto.TRemoveTag) proto.Message {
 		if t.Generation != state.Generation {
 			return ErrGCInProgress
 		}
-		b := tx.Bucket([]byte(TagBucketName))
+		b := tx.Bucket([]byte(RefBucketName))
 		valueBytes := b.Get([]byte(t.Name))
 		if string(valueBytes) != t.OldValue {
-			return ErrStaleTagValue
+			return ErrStaleRefValue
 		}
 		err = b.Delete([]byte(t.Name))
 		return err
@@ -369,13 +369,13 @@ func (srv *server) handleTRemoveTag(t *proto.TRemoveTag) proto.Message {
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
-	return &proto.RRemoveTag{
+	return &proto.RRemoveRef{
 		Mid: t.Mid,
 	}
 }
 
 func (srv *server) handleTRemove(t *proto.TRemove) proto.Message {
-	db, err := openTagDB(srv.tagDBPath)
+	db, err := openRefDB(srv.refDBPath)
 	if err != nil {
 		makeError(t.Mid, err)
 	}
@@ -408,7 +408,7 @@ func (srv *server) handleTRemove(t *proto.TRemove) proto.Message {
 }
 
 func (srv *server) handleTStartGC(t *proto.TStartGC) proto.Message {
-	db, err := openTagDB(srv.tagDBPath)
+	db, err := openRefDB(srv.refDBPath)
 	if err != nil {
 		makeError(t.Mid, err)
 	}
@@ -434,7 +434,7 @@ func (srv *server) handleTStartGC(t *proto.TStartGC) proto.Message {
 }
 
 func (srv *server) handleTStopGC(t *proto.TStopGC) proto.Message {
-	db, err := openTagDB(srv.tagDBPath)
+	db, err := openRefDB(srv.refDBPath)
 	if err != nil {
 		makeError(t.Mid, err)
 	}
@@ -458,7 +458,7 @@ func (srv *server) handleTStopGC(t *proto.TStopGC) proto.Message {
 }
 
 func (srv *server) handleTGetGeneration(t *proto.TGetGeneration) proto.Message {
-	db, err := openTagDB(srv.tagDBPath)
+	db, err := openRefDB(srv.refDBPath)
 	if err != nil {
 		makeError(t.Mid, err)
 	}
@@ -523,7 +523,7 @@ func handleAttach(conn ReadWriteCloser, root string) (*server, error) {
 		}
 		return &server{
 			servePath: servePath,
-			tagDBPath: filepath.Join(servePath, TagDBName),
+			refDBPath: filepath.Join(servePath, RefDBName),
 			buf:       buf,
 			fids:      make(map[uint32]file),
 			pids:      make(map[uint32]*uploadState),
@@ -563,14 +563,14 @@ func Serve(conn ReadWriteCloser, root string) error {
 			r = srv.handleTReadAt(t)
 		case *proto.TClose:
 			r = srv.handleTClose(t)
-		case *proto.TTag:
-			r = srv.handleTTag(t)
-		case *proto.TGetTag:
-			r = srv.handleTGetTag(t)
-		case *proto.TCasTag:
-			r = srv.handleTCasTag(t)
-		case *proto.TRemoveTag:
-			r = srv.handleTRemoveTag(t)
+		case *proto.TRef:
+			r = srv.handleTRef(t)
+		case *proto.TGetRef:
+			r = srv.handleTGetRef(t)
+		case *proto.TCasRef:
+			r = srv.handleTCasRef(t)
+		case *proto.TRemoveRef:
+			r = srv.handleTRemoveRef(t)
 		case *proto.TRemove:
 			r = srv.handleTRemove(t)
 		case *proto.TStartGC:

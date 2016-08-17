@@ -8,9 +8,9 @@ import (
 	"time"
 )
 
-type tagListingFile struct {
+type refListingFile struct {
 	offset    uint64
-	tagDBPath string
+	refDBPath string
 	entries   []string
 }
 
@@ -39,13 +39,13 @@ func setGCState(tx *bolt.Tx, state gcState) error {
 	return stateBucket.Put([]byte("state"), data)
 }
 
-func openTagDB(dbPath string) (*bolt.DB, error) {
+func openRefDB(dbPath string) (*bolt.DB, error) {
 	db, err := bolt.Open(dbPath, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
 		return nil, err
 	}
 	err = db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte(TagBucketName))
+		_, err := tx.CreateBucketIfNotExists([]byte(RefBucketName))
 		if err != nil {
 			return err
 		}
@@ -68,15 +68,15 @@ func openTagDB(dbPath string) (*bolt.DB, error) {
 	return db, nil
 }
 
-func listTags(dbPath string) ([]string, error) {
+func listRefs(dbPath string) ([]string, error) {
 	listing := make([]string, 0, 32)
-	db, err := openTagDB(dbPath)
+	db, err := openRefDB(dbPath)
 	if err != nil {
 		return nil, err
 	}
 	defer db.Close()
 	err = db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("tags"))
+		b := tx.Bucket([]byte("refs"))
 		c := b.Cursor()
 		for k, _ := c.First(); k != nil; k, _ = c.Next() {
 			listing = append(listing, string(k))
@@ -89,9 +89,9 @@ func listTags(dbPath string) ([]string, error) {
 	return listing, nil
 }
 
-func (tl *tagListingFile) ReadAtOffset(buf []byte, offset uint64) (int, error) {
+func (tl *refListingFile) ReadAtOffset(buf []byte, offset uint64) (int, error) {
 	if offset == 0 {
-		listing, err := listTags(tl.tagDBPath)
+		listing, err := listRefs(tl.refDBPath)
 		if err != nil {
 			return 0, err
 		}
@@ -124,6 +124,6 @@ func (tl *tagListingFile) ReadAtOffset(buf []byte, offset uint64) (int, error) {
 	return nwritten, nil
 }
 
-func (pl *tagListingFile) Close() error {
+func (pl *refListingFile) Close() error {
 	return nil
 }

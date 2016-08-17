@@ -44,7 +44,7 @@ func TestTar(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = Tar(store, dirEnt.Data.Data, outtar)
+	err = Tar(store, dirEnt.HTree.Data, outtar)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +133,7 @@ func TestZip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = Zip(store, dirEnt.Data.Data, outzip)
+	err = Zip(store, dirEnt.HTree.Data, outzip)
 	if err != nil {
 		t.Fatal(err)
 	}

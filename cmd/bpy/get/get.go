@@ -10,7 +10,7 @@ import (
 
 func Get() {
 	var root [32]byte
-	tagArg := flag.String("tag", "default", "tag of directory to list")
+	refArg := flag.String("ref", "default", "ref of directory to list")
 	pathArg := flag.String("path", "", "directory to get")
 	flag.Parse()
 
@@ -38,15 +38,15 @@ func Get() {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
 
-	tagHash, ok, err := remote.GetTag(c, *tagArg)
+	refHash, ok, err := remote.GetRef(c, *refArg)
 	if err != nil {
-		common.Die("error fetching tag hash: %s\n", err.Error())
+		common.Die("error fetching ref hash: %s\n", err.Error())
 	}
 	if !ok {
-		common.Die("tag '%s' does not exist", *tagArg)
+		common.Die("ref '%s' does not exist", *refArg)
 	}
 
-	root, err = bpy.ParseHash(tagHash)
+	root, err = bpy.ParseHash(refHash)
 	if err != nil {
 		common.Die("error parsing hash: %s\n", err.Error())
 	}

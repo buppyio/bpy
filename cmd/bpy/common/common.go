@@ -136,7 +136,7 @@ func GetRemote(k *bpy.Key) (*client.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, ok, err := remote.GetTag(c, "default")
+	_, ok, err := remote.GetRef(c, "default")
 	if !ok {
 		k, err := GetKey()
 		if err != nil {
@@ -162,10 +162,10 @@ func GetRemote(k *bpy.Key) (*client.Client, error) {
 			c.Close()
 			return nil, fmt.Errorf("error closing store writer: %s", err.Error())
 		}
-		err = remote.Tag(c, "default", hex.EncodeToString(ent.Data.Data[:]), generation)
+		err = remote.NewRef(c, "default", hex.EncodeToString(ent.HTree.Data[:]), generation)
 		if err != nil {
 			c.Close()
-			return nil, fmt.Errorf("error initizializing default tag: %s", err.Error())
+			return nil, fmt.Errorf("error initizializing default ref: %s", err.Error())
 		}
 	}
 	return c, nil

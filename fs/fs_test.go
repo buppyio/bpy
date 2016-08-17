@@ -20,7 +20,7 @@ func TestDir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rdir, err := ReadDir(store, dirEnt.Data.Data)
+	rdir, err := ReadDir(store, dirEnt.HTree.Data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,36 +39,36 @@ func TestWalk(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	d := DirEnt{EntName: "d", EntSize: 0, EntMode: os.ModeDir, Data: dirEnt.Data}
+	d := DirEnt{EntName: "d", EntSize: 0, EntMode: os.ModeDir, HTree: dirEnt.HTree}
 	for i := 0; i < 3; i++ {
 		dirEnt, err = WriteDir(store, DirEnts{d}, 0777)
 		if err != nil {
 			t.Fatal(err)
 		}
-		d.Data = dirEnt.Data
+		d.HTree = dirEnt.HTree
 	}
-	ent, err := Walk(store, dirEnt.Data.Data, "/")
+	ent, err := Walk(store, dirEnt.HTree.Data, "/")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(ent.Data, dirEnt.Data) {
-		t.Fatalf("empty walk failed %v != %v", ent.Data, dirEnt.Data)
+	if !reflect.DeepEqual(ent.HTree, dirEnt.HTree) {
+		t.Fatalf("empty walk failed %v != %v", ent.HTree, dirEnt.HTree)
 	}
-	ent, err = Walk(store, dirEnt.Data.Data, "")
+	ent, err = Walk(store, dirEnt.HTree.Data, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ent.Data != dirEnt.Data {
+	if ent.HTree != dirEnt.HTree {
 		t.Fatal("empty walk failed")
 	}
-	ent, err = Walk(store, dirEnt.Data.Data, "/d/d/d/")
+	ent, err = Walk(store, dirEnt.HTree.Data, "/d/d/d/")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !ent.EntMode.IsDir() {
 		t.Fatal("expected dir")
 	}
-	ent, err = Walk(store, dirEnt.Data.Data, "/d/d/d/f")
+	ent, err = Walk(store, dirEnt.HTree.Data, "/d/d/d/f")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,13 +99,13 @@ func TestSeek(t *testing.T) {
 				EntName: "f",
 				EntMode: 0777,
 				EntSize: int64(len(data)),
-				Data:    thash,
+				HTree:   thash,
 			}}, 0777)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		f, err := Open(store, dirEnt.Data.Data, "f")
+		f, err := Open(store, dirEnt.HTree.Data, "f")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -168,7 +168,7 @@ func TestInsert(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rdir, err := ReadDir(store, empty.Data.Data)
+	rdir, err := ReadDir(store, empty.HTree.Data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,26 +177,26 @@ func TestInsert(t *testing.T) {
 	}
 	ent := rdir[0]
 	ent.EntName = "foo"
-	notEmpty1, err := Insert(store, empty.Data.Data, "", ent)
+	notEmpty1, err := Insert(store, empty.HTree.Data, "", ent)
 	if err != nil {
 		t.Fatal(err)
 	}
-	rdir, err = ReadDir(store, notEmpty1.Data.Data)
+	rdir, err = ReadDir(store, notEmpty1.HTree.Data)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(rdir) != 2 {
 		t.Fatal("expected single folder")
 	}
-	notEmpty2, err := Insert(store, notEmpty1.Data.Data, "/foo/bar", ent)
+	notEmpty2, err := Insert(store, notEmpty1.HTree.Data, "/foo/bar", ent)
 	if err != nil {
 		t.Fatal(err)
 	}
-	barEnt, err := Walk(store, notEmpty2.Data.Data, "/foo/bar/")
+	barEnt, err := Walk(store, notEmpty2.HTree.Data, "/foo/bar/")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(ent.Data, barEnt.Data) {
+	if !reflect.DeepEqual(ent.HTree, barEnt.HTree) {
 		t.Fatal("expected empty file", ent, barEnt)
 	}
 }
@@ -207,7 +207,7 @@ func TestRemove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rdir, err := ReadDir(store, empty.Data.Data)
+	rdir, err := ReadDir(store, empty.HTree.Data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,11 +216,11 @@ func TestRemove(t *testing.T) {
 	}
 	ent := rdir[0]
 	ent.EntName = "foo"
-	notEmpty1, err := Insert(store, empty.Data.Data, "", ent)
+	notEmpty1, err := Insert(store, empty.HTree.Data, "", ent)
 	if err != nil {
 		t.Fatal(err)
 	}
-	withFooRemoved, err := Remove(store, notEmpty1.Data.Data, "foo")
+	withFooRemoved, err := Remove(store, notEmpty1.HTree.Data, "foo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -235,15 +235,15 @@ func TestCopy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notEmpty1, err := Copy(store, empty.Data.Data, "/foo", "/")
+	notEmpty1, err := Copy(store, empty.HTree.Data, "/foo", "/")
 	if err != nil {
 		t.Fatal(err)
 	}
-	walkEnt, err := Walk(store, notEmpty1.Data.Data, "/foo")
+	walkEnt, err := Walk(store, notEmpty1.HTree.Data, "/foo")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(empty.Data, walkEnt.Data) {
+	if !reflect.DeepEqual(empty.HTree, walkEnt.HTree) {
 		t.Fatal("expected empty folder")
 	}
 }
@@ -254,23 +254,23 @@ func TestMove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notEmpty1, err := Copy(store, empty.Data.Data, "/bar", "/")
+	notEmpty1, err := Copy(store, empty.HTree.Data, "/bar", "/")
 	if err != nil {
 		t.Fatal(err)
 	}
-	moveDir, err := Move(store, notEmpty1.Data.Data, "/bang", "/bar")
+	moveDir, err := Move(store, notEmpty1.HTree.Data, "/bang", "/bar")
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = Walk(store, moveDir.Data.Data, "/bar")
+	_, err = Walk(store, moveDir.HTree.Data, "/bar")
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	walkEnt, err := Walk(store, moveDir.Data.Data, "/bang")
+	walkEnt, err := Walk(store, moveDir.HTree.Data, "/bang")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(empty.Data, walkEnt.Data) {
+	if !reflect.DeepEqual(empty.HTree, walkEnt.HTree) {
 		t.Fatal("expected empty folder")
 	}
 }

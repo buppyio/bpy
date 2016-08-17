@@ -10,7 +10,7 @@ import (
 	"net"
 )
 
-func handleConnection(con net.Conn, tag string) {
+func handleConnection(con net.Conn, ref string) {
 	defer con.Close()
 	k, err := common.GetKey()
 	if err != nil {
@@ -29,13 +29,13 @@ func handleConnection(con net.Conn, tag string) {
 		return
 	}
 
-	tagHash, ok, err := remote.GetTag(c, tag)
+	tagHash, ok, err := remote.GetRef(c, ref)
 	if err != nil {
 		log.Fatalf("error fetching tag hash: %s\n", err.Error())
 	}
 
 	if !ok {
-		log.Fatalf("tag '%s' does not exist\n", tag)
+		log.Fatalf("ref '%s' does not exist\n", ref)
 	}
 
 	root, err := bpy.ParseHash(tagHash)
@@ -58,11 +58,11 @@ func handleConnection(con net.Conn, tag string) {
 }
 
 func P9() {
-	tagArg := flag.String("tag", "default", "tag of directory to list")
+	refArg := flag.String("ref", "default", "ref to list")
 	addrArg := flag.String("addr", "127.0.0.1:9001", "address to listen on ")
 	flag.Parse()
 
-	if *tagArg == "" {
+	if *refArg == "" {
 		log.Fatalf("please specify a tag to browse\n")
 	}
 
@@ -76,6 +76,6 @@ func P9() {
 		if err != nil {
 			log.Fatalf("error accepting connection: %s", err.Error())
 		}
-		go handleConnection(con, *tagArg)
+		go handleConnection(con, *refArg)
 	}
 }

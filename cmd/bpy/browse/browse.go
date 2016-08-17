@@ -13,25 +13,89 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
+
+var head = []byte(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta http-equiv="Content-Language" content="en" />
+<title>bpy - file browser</title>
+<style>
+body {
+	font-family: monospace;
+	color: #000;
+	background-color: #fff;
+}
+
+table thead td {
+	font-weight: bold;
+}
+
+table td {
+	padding: 0 0.4em;
+}
+
+#content table td {
+	white-space: nowrap;
+	vertical-align: top;
+}
+
+#files tr:hover td {
+	background-color: #eee;
+}
+
+</style>
+</head>
+<body>
+`)
+
+var tail = []byte(`</body>
+</html>
+`)
+
+type rootHandler struct {
+	c     *client.Client
+	store bpy.CStore
+}
+
+func (h *rootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Write(head)
+	w.Write(tail)
+}
+
+type refHandler struct {
+	c     *client.Client
+	store bpy.CStore
+}
+
+func (h *refHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Write(head)
+	w.Write(tail)
+}
 
 type httpFs struct {
 	c     *client.Client
 	store bpy.CStore
-	tag   string
 }
 
-func (httpFs *httpFs) Open(path string) (http.File, error) {
-	log.Printf("open: %s", path)
-	tag, ok, err := remote.GetTag(httpFs.c, httpFs.tag)
+func (httpFs *httpFs) Open(fullPath string) (http.File, error) {
+	log.Printf("open: %s", fullPath)
+	idx := strings.Index(fullPath, "/")
+	if idx == -1 {
+		return nil, fmt.Errorf("invalid path %s", fullPath)
+	}
+	refName, path := fullPath[:idx], fullPath[idx:]
+	ref, ok, err := remote.GetRef(httpFs.c, refName)
 	if err != nil {
 		return nil, err
 	}
 	if !ok {
-		return nil, fmt.Errorf("tag '%s' does not exist", httpFs.tag)
+		return nil, fmt.Errorf("ref '%s' does not exist", refName)
 	}
-	root, err := bpy.ParseHash(tag)
+	root, err := bpy.ParseHash(ref)
 	if err != nil {
 		return nil, err
 	}
@@ -130,13 +194,8 @@ func (d *httpDir) Readdir(count int) ([]os.FileInfo, error) {
 }
 
 func Browse() {
-	tagArg := flag.String("tag", "default", "tag of directory to list")
 	addrArg := flag.String("addr", "127.0.0.1:8080", "address to listen on ")
 	flag.Parse()
-
-	if *tagArg == "" {
-		common.Die("please specify a tag to browse\n")
-	}
 
 	k, err := common.GetKey()
 	if err != nil {
@@ -154,15 +213,27 @@ func Browse() {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
 
+	http.Handle("/", &rootHandler{
+		c: c,
+	})
+
+	http.Handle("/refs/", &refHandler{
+		c:     c,
+		store: store,
+	})
+
+	http.Handle("/raw/", http.StripPrefix("/raw/", http.FileServer(&httpFs{
+		c:     c,
+		store: store,
+	})))
+
 	url := "http://" + *addrArg
 	log.Printf("serving on %s\n", url)
+
 	go func() {
 		time.Sleep(100 * time.Millisecond)
 		browser.OpenURL(url)
 	}()
-	log.Fatal(http.ListenAndServe(*addrArg, http.FileServer(&httpFs{
-		c:     c,
-		store: store,
-		tag:   *tagArg,
-	})))
+
+	log.Fatal(http.ListenAndServe(*addrArg, nil))
 }
