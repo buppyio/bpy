@@ -153,8 +153,9 @@ func Walk(store bpy.CStore, hash [32]byte, fpath string) (DirEnt, error) {
 	}
 	ents, err := ReadDir(store, hash)
 	if err != nil {
-		result = ents[0]
+		return DirEnt{}, err
 	}
+	result = ents[0]
 	for i := 0; i < end; i++ {
 		entname := pathelems[i]
 		if entname == "" {

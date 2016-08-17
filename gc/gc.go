@@ -2,9 +2,11 @@ package gc
 
 import (
 	"bufio"
+	"encoding/hex"
 	"errors"
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/bpack"
+	"github.com/buppyio/bpy/cstore/cache"
 	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/remote"
 	"github.com/buppyio/bpy/remote/client"
@@ -18,6 +20,7 @@ type gcState struct {
 	k       *bpy.Key
 	c       *client.Client
 	store   bpy.CStore
+	cache   *cache.Client
 	visited map[[32]byte]struct{}
 
 	// Sweeping state
@@ -27,7 +30,7 @@ type gcState struct {
 	canDelete   []string
 }
 
-func GC(c *client.Client, store bpy.CStore, k *bpy.Key) error {
+func GC(c *client.Client, store bpy.CStore, cacheClient *cache.Client, k *bpy.Key) error {
 	gcId, err := remote.StartGC(c)
 	if err != nil {
 		return err
@@ -37,6 +40,7 @@ func GC(c *client.Client, store bpy.CStore, k *bpy.Key) error {
 	defer remote.StopGC(c)
 
 	gc := &gcState{
+		cache:       cacheClient,
 		gcId:        gcId,
 		k:           k,
 		c:           c,
@@ -249,34 +253,57 @@ func (gc *gcState) sweepPack(pack remote.PackListing) error {
 	idx := offsetSortedIdx(packReader.Idx)
 	sort.Sort(idx)
 
-	if pack.Size > 120*1024*1024 {
+	if pack.Size > 100*1024*1024 {
 		canSkip := true
 		for _, idxEnt := range idx {
 			var hash [32]byte
 			copy(hash[:], idxEnt.Key)
 			_, ok := gc.visited[hash]
 			if !ok {
+				log.Printf("can't skip 1, %s", hex.EncodeToString(hash[:]))
 				canSkip = false
 				break
 			}
 			_, ok = gc.moved[hash]
 			if ok {
+				log.Printf("can't skip 2")
 				canSkip = false
 				break
 			}
 		}
+
 		// We can totally skip this pack if its full, reachable and has no duplicates.
 		if canSkip {
+			for _, idxEnt := range idx {
+				var hash [32]byte
+				copy(hash[:], idxEnt.Key)
+				gc.moved[hash] = struct{}{}
+			}
 			return nil
 		}
 	}
 
 	for i := 0; i < len(idx); i++ {
+		var hash [32]byte
+		copy(hash[:], idx[i].Key)
+		if gc.cache != nil {
+			val, ok, err := gc.cache.GetRaw(hash)
+			if err != nil {
+				return err
+			}
+			if ok {
+				err = gc.putValue(hash, val)
+				if err != nil {
+					return err
+				}
+				continue
+			}
+		}
+
 		// Find the longest consecutive 'run' of values we must fetch
 		run := []bpack.IndexEnt{}
 		runSize := uint32(0)
 		for i < len(idx) {
-			var hash [32]byte
 			copy(hash[:], idx[i].Key)
 			_, isReachable := gc.visited[hash]
 			if !isReachable {
@@ -308,6 +335,12 @@ func (gc *gcState) sweepPack(pack remote.PackListing) error {
 			err = gc.putValue(hash, val)
 			if err != nil {
 				return err
+			}
+			if gc.cache != nil {
+				err = gc.cache.PutRaw(hash, val)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
