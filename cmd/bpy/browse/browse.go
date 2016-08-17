@@ -10,9 +10,11 @@ import (
 	"github.com/buppyio/bpy/remote"
 	"github.com/buppyio/bpy/remote/client"
 	"github.com/pkg/browser"
+	"html"
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 	"time"
 )
@@ -62,7 +64,23 @@ type rootHandler struct {
 }
 
 func (h *rootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	refs, err := remote.ListRefs(h.c)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "error x: %s", err.Error())
+		return
+	}
 	w.Write(head)
+	w.Write([]byte("<div id=\"content\">\n"))
+	w.Write([]byte("<table id=\"files\">\n"))
+	w.Write([]byte("<thead><tr><td>Name</td></tr></thead>\n"))
+	for _, ref := range refs {
+		name := html.EscapeString(ref)
+		link := html.EscapeString(path.Join("/ref/", name))
+		fmt.Fprintf(w, "<tr><td><a href=\"%s\"'>%s</a></td></tr>", link, name)
+	}
+	w.Write([]byte("</table>\n"))
+	w.Write([]byte("</div>\n"))
 	w.Write(tail)
 }
 
@@ -72,7 +90,78 @@ type refHandler struct {
 }
 
 func (h *refHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fullPath := r.URL.Path[5:]
+	refName, walkPath := fullPath, "/"
+	idx := strings.Index(fullPath, "/")
+	if idx != -1 {
+		refName, walkPath = fullPath[:idx], fullPath[idx:]
+	}
+
+	ref, ok, err := remote.GetRef(h.c, refName)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "error: %s", err.Error())
+		return
+	}
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprintf(w, "ref '%s' does not exist", refName)
+		return
+	}
+
+	root, err := bpy.ParseHash(ref)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "error: %s", err.Error())
+		return
+	}
+
+	ent, err := fs.Walk(h.store, root, walkPath)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "error: %s", err.Error())
+		return
+	}
+
+	dirEnts, err := fs.ReadDir(h.store, ent.HTree.Data)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "error: %s", err.Error())
+		return
+	}
+
 	w.Write(head)
+	w.Write([]byte("<div id=\"content\">\n"))
+	w.Write([]byte("<table id=\"files\">\n"))
+	w.Write([]byte("<thead><tr><td>Mode</td><td>Name</td><td>Size</td></tr></thead>\n"))
+
+	writeEnt := func(dirEnt fs.DirEnt) {
+		mode := html.EscapeString(dirEnt.Mode().String())
+		name := html.EscapeString(dirEnt.Name())
+		size := html.EscapeString(fmt.Sprintf("%d", dirEnt.Size()))
+		link := ""
+		if dirEnt.IsDir() {
+			size = "-"
+			link = path.Join(path.Join("/ref/", fullPath), name)
+		} else {
+			link = path.Join(path.Join("/raw/", fullPath), name)
+		}
+		link = html.EscapeString(link)
+		fmt.Fprintf(w, "<tr><td>%s</td><td><a href=\"%s\"'>%s</a></td><td>%s</td></tr>", mode, link, name, size)
+	}
+
+	for _, dirEnt := range dirEnts {
+		if dirEnt.IsDir() {
+			writeEnt(dirEnt)
+		}
+	}
+	for _, dirEnt := range dirEnts {
+		if dirEnt.Mode().IsRegular() {
+			writeEnt(dirEnt)
+		}
+	}
+	w.Write([]byte("</table>\n"))
+	w.Write([]byte("</div>\n"))
 	w.Write(tail)
 }
 
@@ -82,12 +171,13 @@ type httpFs struct {
 }
 
 func (httpFs *httpFs) Open(fullPath string) (http.File, error) {
+	fullPath = fullPath[5:]
 	log.Printf("open: %s", fullPath)
+	refName, path := fullPath, "/"
 	idx := strings.Index(fullPath, "/")
-	if idx == -1 {
-		return nil, fmt.Errorf("invalid path %s", fullPath)
+	if idx != -1 {
+		refName, path = fullPath[:idx], fullPath[idx:]
 	}
-	refName, path := fullPath[:idx], fullPath[idx:]
 	ref, ok, err := remote.GetRef(httpFs.c, refName)
 	if err != nil {
 		return nil, err
@@ -95,10 +185,12 @@ func (httpFs *httpFs) Open(fullPath string) (http.File, error) {
 	if !ok {
 		return nil, fmt.Errorf("ref '%s' does not exist", refName)
 	}
+
 	root, err := bpy.ParseHash(ref)
 	if err != nil {
 		return nil, err
 	}
+
 	ent, err := fs.Walk(httpFs.store, root, path)
 	if err != nil {
 		return nil, err
@@ -109,6 +201,7 @@ func (httpFs *httpFs) Open(fullPath string) (http.File, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		return &httpFile{
 			httpFs: httpFs,
 			ent:    ent,
@@ -217,15 +310,15 @@ func Browse() {
 		c: c,
 	})
 
-	http.Handle("/refs/", &refHandler{
+	http.Handle("/ref/", &refHandler{
 		c:     c,
 		store: store,
 	})
 
-	http.Handle("/raw/", http.StripPrefix("/raw/", http.FileServer(&httpFs{
+	http.Handle("/raw/", http.FileServer(&httpFs{
 		c:     c,
 		store: store,
-	})))
+	}))
 
 	url := "http://" + *addrArg
 	log.Printf("serving on %s\n", url)
