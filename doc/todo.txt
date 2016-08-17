@@ -1,12 +1,16 @@
 Alpha:
 
-- Make browse ui polished
+- Make browse ui more polished
+ - Center file browse
+ - Add some sort of divider for file listing table eader
+ - Add a way to download directories as zip/tar.gz
+ - Make homepage list more information about refs
+ - Add a logo somewhere
 - Rename tagdb and tags.go to just 'db'
 - Delete old ebpack/tmp files on attach if they are older than some age
-- Give refs infinite history to allow error recovery
+- Give refs infinite history between gc to allow error recovery
 - Add signature to tags
 - Add counter to tags which remote only allows to increment
-- Test every message type in proto packing/unpack tests
 - Write comprehensive man pages
 
 Bugs:
@@ -25,4 +29,5 @@ Improvements:
 - Steal ideas like bloom filters, cstore is actually just an LSM.
 - Only fetch changed indexes instead of reloading entire index when a lookup fails.
 - make 9p server refresh tag periodically
+- Test every message type in proto packing/unpack tests
 
