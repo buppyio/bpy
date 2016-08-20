@@ -72,21 +72,17 @@ func GC(c *client.Client, store bpy.CStore, cacheClient *cache.Client, k *bpy.Ke
 	return remote.StopGC(c)
 }
 
-func (gc *gcState) markRef(ref string) error {
+func (gc *gcState) markRef(name string) error {
 	log.Printf("mark ref\n")
-	ref, ok, err := remote.GetRef(gc.c, ref)
+	ref, ok, err := remote.GetRef(gc.c, gc.k, name)
 	if err != nil {
 		return err
 	}
 	if !ok {
 		return errors.New("ref does not exist")
 	}
-	root, err := bpy.ParseHash(ref)
-	if err != nil {
-		return err
-	}
 
-	err = gc.markFsDir(root)
+	err = gc.markFsDir(ref.Root)
 	if err != nil {
 		return err
 	}

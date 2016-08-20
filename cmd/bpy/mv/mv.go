@@ -1,11 +1,10 @@
 package mv
 
 import (
-	"encoding/hex"
 	"flag"
-	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/fs"
+	"github.com/buppyio/bpy/refs"
 	"github.com/buppyio/bpy/remote"
 )
 
@@ -39,7 +38,7 @@ func Mv() {
 		common.Die("error getting current gc generation: %s\n", err.Error())
 	}
 
-	refVal, ok, err := remote.GetRef(c, *refArg)
+	ref, ok, err := remote.GetRef(c, &k, *refArg)
 	if err != nil {
 		common.Die("error fetching ref hash: %s\n", err.Error())
 	}
@@ -47,12 +46,7 @@ func Mv() {
 		common.Die("ref '%s' does not exist\n", *refArg)
 	}
 
-	rootHash, err := bpy.ParseHash(refVal)
-	if err != nil {
-		common.Die("error parsing hash: %s\n", err.Error())
-	}
-
-	newRoot, err := fs.Move(store, rootHash, destPath, srcPath)
+	newRoot, err := fs.Move(store, ref.Root, destPath, srcPath)
 	if err != nil {
 		common.Die("error moving folder: %s\n", err.Error())
 	}
@@ -62,7 +56,10 @@ func Mv() {
 		common.Die("error closing remote: %s\n", err.Error())
 	}
 
-	ok, err = remote.CasRef(c, *refArg, refVal, hex.EncodeToString(newRoot.HTree.Data[:]), generation)
+	newRef := refs.Ref{
+		Root: newRoot.HTree.Data,
+	}
+	ok, err = remote.CasRef(c, &k, *refArg, ref, newRef, generation)
 	if err != nil {
 		common.Die("creating ref: %s\n", err.Error())
 	}

@@ -60,6 +60,7 @@ var tail = []byte(`</body>
 
 type rootHandler struct {
 	c     *client.Client
+	k     *bpy.Key
 	store bpy.CStore
 }
 
@@ -86,6 +87,7 @@ func (h *rootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 type refHandler struct {
 	c     *client.Client
+	k     *bpy.Key
 	store bpy.CStore
 }
 
@@ -97,7 +99,7 @@ func (h *refHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		refName, walkPath = fullPath[:idx], fullPath[idx:]
 	}
 
-	ref, ok, err := remote.GetRef(h.c, refName)
+	ref, ok, err := remote.GetRef(h.c, h.k, refName)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "error: %s", err.Error())
@@ -109,14 +111,7 @@ func (h *refHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	root, err := bpy.ParseHash(ref)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "error: %s", err.Error())
-		return
-	}
-
-	ent, err := fs.Walk(h.store, root, walkPath)
+	ent, err := fs.Walk(h.store, ref.Root, walkPath)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "error: %s", err.Error())
@@ -167,6 +162,7 @@ func (h *refHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 type httpFs struct {
 	c     *client.Client
+	k     *bpy.Key
 	store bpy.CStore
 }
 
@@ -178,7 +174,7 @@ func (httpFs *httpFs) Open(fullPath string) (http.File, error) {
 	if idx != -1 {
 		refName, path = fullPath[:idx], fullPath[idx:]
 	}
-	ref, ok, err := remote.GetRef(httpFs.c, refName)
+	ref, ok, err := remote.GetRef(httpFs.c, httpFs.k, refName)
 	if err != nil {
 		return nil, err
 	}
@@ -186,18 +182,13 @@ func (httpFs *httpFs) Open(fullPath string) (http.File, error) {
 		return nil, fmt.Errorf("ref '%s' does not exist", refName)
 	}
 
-	root, err := bpy.ParseHash(ref)
-	if err != nil {
-		return nil, err
-	}
-
-	ent, err := fs.Walk(httpFs.store, root, path)
+	ent, err := fs.Walk(httpFs.store, ref.Root, path)
 	if err != nil {
 		return nil, err
 	}
 
 	if ent.EntMode.IsRegular() {
-		rdr, err := fs.Open(httpFs.store, root, path)
+		rdr, err := fs.Open(httpFs.store, ref.Root, path)
 		if err != nil {
 			return nil, err
 		}
@@ -212,7 +203,7 @@ func (httpFs *httpFs) Open(fullPath string) (http.File, error) {
 	if ent.EntMode.IsDir() {
 		return &httpDir{
 			httpFs: httpFs,
-			root:   root,
+			root:   ref.Root,
 			path:   path,
 			ent:    ent,
 		}, nil
@@ -308,15 +299,18 @@ func Browse() {
 
 	http.Handle("/", &rootHandler{
 		c: c,
+		k: &k,
 	})
 
 	http.Handle("/ref/", &refHandler{
 		c:     c,
+		k:     &k,
 		store: store,
 	})
 
 	http.Handle("/raw/", http.FileServer(&httpFs{
 		c:     c,
+		k:     &k,
 		store: store,
 	}))
 

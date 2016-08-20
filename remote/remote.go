@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
+	"github.com/buppyio/bpy"
+	"github.com/buppyio/bpy/refs"
 	"github.com/buppyio/bpy/remote/client"
 	"io"
 	"io/ioutil"
@@ -78,20 +80,36 @@ func ListRefs(c *client.Client) ([]string, error) {
 	return listing, nil
 }
 
-func GetRef(c *client.Client, name string) (string, bool, error) {
+func GetRef(c *client.Client, k *bpy.Key, name string) (refs.Ref, bool, error) {
 	r, err := c.TGetRef(name)
 	if err != nil {
-		return "", false, err
+		return refs.Ref{}, false, err
 	}
-	return r.Value, r.Ok, nil
+	if !r.Ok {
+		return refs.Ref{}, false, nil
+	}
+	ref, err := refs.ParseRef(k, r.Value)
+	return ref, true, err
 }
 
-func NewRef(c *client.Client, name, value string, generation uint64) error {
-	_, err := c.TRef(name, value, generation)
+func NewRef(c *client.Client, k *bpy.Key, name string, ref refs.Ref, generation uint64) error {
+	value, err := refs.SerializeAndSign(k, ref)
+	if err != nil {
+		return err
+	}
+	_, err = c.TRef(name, value, generation)
 	return err
 }
 
-func CasRef(c *client.Client, name, oldValue, newValue string, generation uint64) (bool, error) {
+func CasRef(c *client.Client, k *bpy.Key, name string, oldRef, newRef refs.Ref, generation uint64) (bool, error) {
+	oldValue, err := refs.SerializeAndSign(k, oldRef)
+	if err != nil {
+		return false, err
+	}
+	newValue, err := refs.SerializeAndSign(k, newRef)
+	if err != nil {
+		return false, err
+	}
 	r, err := c.TCasRef(name, oldValue, newValue, generation)
 	if err != nil {
 		return false, err
@@ -99,8 +117,12 @@ func CasRef(c *client.Client, name, oldValue, newValue string, generation uint64
 	return r.Ok, nil
 }
 
-func RemoveRef(c *client.Client, name, oldValue string, generation uint64) error {
-	_, err := c.TRemoveRef(name, oldValue, generation)
+func RemoveRef(c *client.Client, k *bpy.Key, name string, ref refs.Ref, generation uint64) error {
+	oldValue, err := refs.SerializeAndSign(k, ref)
+	if err != nil {
+		return err
+	}
+	_, err = c.TRemoveRef(name, oldValue, generation)
 	return err
 }
 

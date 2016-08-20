@@ -2,14 +2,12 @@ package get
 
 import (
 	"flag"
-	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/fs/fsutil"
 	"github.com/buppyio/bpy/remote"
 )
 
 func Get() {
-	var root [32]byte
 	refArg := flag.String("ref", "default", "ref of directory to list")
 	pathArg := flag.String("path", "", "directory to get")
 	flag.Parse()
@@ -38,7 +36,7 @@ func Get() {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
 
-	refHash, ok, err := remote.GetRef(c, *refArg)
+	ref, ok, err := remote.GetRef(c, &k, *refArg)
 	if err != nil {
 		common.Die("error fetching ref hash: %s\n", err.Error())
 	}
@@ -46,12 +44,7 @@ func Get() {
 		common.Die("ref '%s' does not exist", *refArg)
 	}
 
-	root, err = bpy.ParseHash(refHash)
-	if err != nil {
-		common.Die("error parsing hash: %s\n", err.Error())
-	}
-
-	err = fsutil.CpFsToHost(store, root, *pathArg, flag.Args()[0])
+	err = fsutil.CpFsToHost(store, ref.Root, *pathArg, flag.Args()[0])
 	if err != nil {
 		common.Die("error copying directory: %s\n", err.Error())
 	}

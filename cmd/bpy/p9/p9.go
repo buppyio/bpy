@@ -2,7 +2,6 @@ package p9
 
 import (
 	"flag"
-	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/cmd/bpy/p9/proto9"
 	"github.com/buppyio/bpy/remote"
@@ -10,7 +9,7 @@ import (
 	"net"
 )
 
-func handleConnection(con net.Conn, ref string) {
+func handleConnection(con net.Conn, refName string) {
 	defer con.Close()
 	k, err := common.GetKey()
 	if err != nil {
@@ -29,18 +28,13 @@ func handleConnection(con net.Conn, ref string) {
 		return
 	}
 
-	tagHash, ok, err := remote.GetRef(c, ref)
+	ref, ok, err := remote.GetRef(c, &k, refName)
 	if err != nil {
 		log.Fatalf("error fetching tag hash: %s\n", err.Error())
 	}
 
 	if !ok {
 		log.Fatalf("ref '%s' does not exist\n", ref)
-	}
-
-	root, err := bpy.ParseHash(tagHash)
-	if err != nil {
-		common.Die("error parsing hash: %s\n", err.Error())
 	}
 
 	maxMessageSize := uint32(1024 * 1024)
@@ -50,7 +44,7 @@ func handleConnection(con net.Conn, ref string) {
 		fids:           make(map[proto9.Fid]Handle),
 		client:         c,
 		store:          store,
-		root:           root,
+		root:           ref.Root,
 	}
 	srv.Serve()
 

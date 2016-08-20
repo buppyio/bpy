@@ -1,11 +1,10 @@
 package rm
 
 import (
-	"encoding/hex"
 	"flag"
-	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/fs"
+	"github.com/buppyio/bpy/refs"
 	"github.com/buppyio/bpy/remote"
 )
 
@@ -38,7 +37,7 @@ func Rm() {
 		common.Die("error getting current gc generation: %s\n", err.Error())
 	}
 
-	refHash, ok, err := remote.GetRef(c, *refArg)
+	ref, ok, err := remote.GetRef(c, &k, *refArg)
 	if err != nil {
 		common.Die("error fetching ref hash: %s\n", err.Error())
 	}
@@ -46,12 +45,7 @@ func Rm() {
 		common.Die("ref '%s' does not exist\n", *refArg)
 	}
 
-	rootHash, err := bpy.ParseHash(refHash)
-	if err != nil {
-		common.Die("error parsing hash: %s\n", err.Error())
-	}
-
-	newRoot, err := fs.Remove(store, rootHash, flag.Args()[0])
+	newRootEnt, err := fs.Remove(store, ref.Root, flag.Args()[0])
 	if err != nil {
 		common.Die("error removing file: %s\n", err.Error())
 	}
@@ -61,7 +55,11 @@ func Rm() {
 		common.Die("error closing store: %s\n", err.Error())
 	}
 
-	ok, err = remote.CasRef(c, *refArg, hex.EncodeToString(rootHash[:]), hex.EncodeToString(newRoot.HTree.Data[:]), generation)
+	newRef := refs.Ref{
+		Root: newRootEnt.HTree.Data,
+	}
+
+	ok, err = remote.CasRef(c, &k, *refArg, ref, newRef, generation)
 	if err != nil {
 		common.Die("creating ref: %s\n", err.Error())
 	}

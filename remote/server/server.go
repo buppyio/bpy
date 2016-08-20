@@ -29,7 +29,7 @@ var (
 const (
 	RefBucketName     = "refs"
 	GCStateBucketName = "gc"
-	RefDBName         = "refs.db"
+	BpyDBName         = "bpy.db"
 )
 
 type ReadWriteCloser interface {
@@ -523,7 +523,7 @@ func handleAttach(conn ReadWriteCloser, root string) (*server, error) {
 		}
 		return &server{
 			servePath: servePath,
-			refDBPath: filepath.Join(servePath, RefDBName),
+			refDBPath: filepath.Join(servePath, BpyDBName),
 			buf:       buf,
 			fids:      make(map[uint32]file),
 			pids:      make(map[uint32]*uploadState),

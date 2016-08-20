@@ -1,12 +1,11 @@
 package put
 
 import (
-	"encoding/hex"
 	"flag"
-	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/fs/fsutil"
+	"github.com/buppyio/bpy/refs"
 	"github.com/buppyio/bpy/remote"
 	"path/filepath"
 )
@@ -54,7 +53,7 @@ func Put() {
 		common.Die("error getting current gc generation: %s\n", err.Error())
 	}
 
-	refHash, ok, err := remote.GetRef(c, *refArg)
+	ref, ok, err := remote.GetRef(c, &k, *refArg)
 	if err != nil {
 		common.Die("error fetching ref hash: %s\n", err.Error())
 	}
@@ -62,17 +61,12 @@ func Put() {
 		common.Die("ref '%s' does not exist\n", *refArg)
 	}
 
-	destHash, err := bpy.ParseHash(refHash)
-	if err != nil {
-		common.Die("error parsing hash: %s\n", err.Error())
-	}
-
 	srcDirEnt, err := fsutil.CpHostToFs(store, srcPath)
 	if err != nil {
 		common.Die("error copying data: %s\n", err.Error())
 	}
 
-	newRoot, err := fs.Insert(store, destHash, destPath, srcDirEnt)
+	newRootEnt, err := fs.Insert(store, ref.Root, destPath, srcDirEnt)
 	if err != nil {
 		common.Die("error inserting src into folder: %s\n", err.Error())
 	}
@@ -82,7 +76,11 @@ func Put() {
 		common.Die("error closing remote: %s\n", err.Error())
 	}
 
-	ok, err = remote.CasRef(c, *refArg, hex.EncodeToString(destHash[:]), hex.EncodeToString(newRoot.HTree.Data[:]), generation)
+	newRef := refs.Ref{
+		Root: newRootEnt.HTree.Data,
+	}
+
+	ok, err = remote.CasRef(c, &k, *refArg, ref, newRef, generation)
 	if err != nil {
 		common.Die("creating ref: %s\n", err.Error())
 	}

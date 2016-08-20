@@ -7,6 +7,7 @@ import (
 	"github.com/buppyio/bpy/cstore"
 	"github.com/buppyio/bpy/cstore/cache"
 	"github.com/buppyio/bpy/fs"
+	"github.com/buppyio/bpy/refs"
 	"github.com/buppyio/bpy/remote"
 	"github.com/buppyio/bpy/remote/client"
 	"io"
@@ -136,14 +137,9 @@ func GetRemote(k *bpy.Key) (*client.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, ok, err := remote.GetRef(c, "default")
+	_, ok, err := remote.GetRef(c, k, "default")
 	if !ok {
-		k, err := GetKey()
-		if err != nil {
-			c.Close()
-			return nil, fmt.Errorf("error getting key: %s", err.Error())
-		}
-		store, err := GetCStore(&k, c)
+		store, err := GetCStore(k, c)
 		if err != nil {
 			c.Close()
 			return nil, fmt.Errorf("error getting store writer: %s", err.Error())
@@ -162,7 +158,8 @@ func GetRemote(k *bpy.Key) (*client.Client, error) {
 			c.Close()
 			return nil, fmt.Errorf("error closing store writer: %s", err.Error())
 		}
-		err = remote.NewRef(c, "default", hex.EncodeToString(ent.HTree.Data[:]), generation)
+
+		err = remote.NewRef(c, k, "default", refs.Ref{Root: ent.HTree.Data}, generation)
 		if err != nil {
 			c.Close()
 			return nil, fmt.Errorf("error initizializing default ref: %s", err.Error())

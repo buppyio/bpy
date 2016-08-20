@@ -2,7 +2,6 @@ package cat
 
 import (
 	"flag"
-	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/remote"
@@ -11,7 +10,6 @@ import (
 )
 
 func Cat() {
-	var root [32]byte
 	refArg := flag.String("ref", "default", "ref of directory to list")
 	flag.Parse()
 
@@ -35,7 +33,7 @@ func Cat() {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
 
-	refHash, ok, err := remote.GetRef(c, *refArg)
+	ref, ok, err := remote.GetRef(c, &k, *refArg)
 	if err != nil {
 		common.Die("error fetching ref hash: %s\n", err.Error())
 	}
@@ -44,13 +42,8 @@ func Cat() {
 		common.Die("ref '%s' does not exist\n", *refArg)
 	}
 
-	root, err = bpy.ParseHash(refHash)
-	if err != nil {
-		common.Die("error parsing hash: %s\n", err.Error())
-	}
-
 	for _, fpath := range flag.Args() {
-		rdr, err := fs.Open(store, root, fpath)
+		rdr, err := fs.Open(store, ref.Root, fpath)
 		if err != nil {
 			common.Die("error opening %s: %s\n", fpath, err.Error())
 		}
