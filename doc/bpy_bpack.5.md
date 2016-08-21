@@ -21,26 +21,26 @@ pack files as a content addressed storage system.
 The following is an example diagram showing the layout of 3 values and the index as stored on disk:
 
 ```
-+-------------+
++-------------+ <- off1
 | val[N1]     |
-+-------------+
++-------------+ <- off2
 | val[N2]     |
-+-------------+
++-------------+ <- off3
 | val[N3]     |
-+-------------+ <- indexstart
++-------------+ <- idxstart
 | keylen[3]   |
 | key[keylen] |
-| offset[8]   |
+| off1[8]     |
 | N1[3]       |
 +-------------+
 | keylen[3]   |
 | key[keylen] |
-| offset[8]   |
+| off2[8]     |
 | N2[3]       |
 +-------------+
 | keylen[3]   |
 | key[keylen] |
-| offset[8]   |
+| off3[8]     |
 | N3[3]       |
 +-------------+
 | idxstart[8] |
