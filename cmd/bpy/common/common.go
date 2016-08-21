@@ -139,20 +139,23 @@ func GetRemote(k *bpy.Key) (*client.Client, error) {
 	}
 	_, ok, err := remote.GetRef(c, k, "default")
 	if !ok {
+		generation, err := remote.GetGeneration(c)
+		if err != nil {
+			return nil, err
+		}
+		
 		store, err := GetCStore(k, c)
 		if err != nil {
 			c.Close()
 			return nil, fmt.Errorf("error getting store writer: %s", err.Error())
 		}
-		generation, err := remote.GetGeneration(c)
-		if err != nil {
-			return nil, err
-		}
+		
 		ent, err := fs.EmptyDir(store, 0755)
 		if err != nil {
 			c.Close()
 			return nil, fmt.Errorf("error creating empty default root: %s", err.Error())
 		}
+		
 		err = store.Close()
 		if err != nil {
 			c.Close()

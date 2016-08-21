@@ -116,4 +116,4 @@ Launch a 9p server and serve the given ref as a 9p filesystem
 
 # SEE ALSO
 
-**bpy_directories(5)**
+**bpy_directories(7)**
