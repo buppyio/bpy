@@ -8,7 +8,15 @@ import (
 	"time"
 )
 
+const (
+	RefBucketName     = "refs"
+	KeyIdBucketName   = "keyid"
+	GCStateBucketName = "gc"
+	BpyDBName         = "bpy.db"
+)
+
 type refListingFile struct {
+	keyId     string
 	offset    uint64
 	refDBPath string
 	entries   []string
@@ -39,13 +47,17 @@ func setGCState(tx *bolt.Tx, state gcState) error {
 	return stateBucket.Put([]byte("state"), data)
 }
 
-func openRefDB(dbPath string) (*bolt.DB, error) {
+func openDB(dbPath, keyId string) (*bolt.DB, error) {
 	db, err := bolt.Open(dbPath, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
 		return nil, err
 	}
 	err = db.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists([]byte(RefBucketName))
+		if err != nil {
+			return err
+		}
+		_, err = tx.CreateBucketIfNotExists([]byte(KeyIdBucketName))
 		if err != nil {
 			return err
 		}
@@ -68,9 +80,9 @@ func openRefDB(dbPath string) (*bolt.DB, error) {
 	return db, nil
 }
 
-func listRefs(dbPath string) ([]string, error) {
+func listRefs(dbPath string, keyId string) ([]string, error) {
 	listing := make([]string, 0, 32)
-	db, err := openRefDB(dbPath)
+	db, err := openDB(dbPath, keyId)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +103,7 @@ func listRefs(dbPath string) ([]string, error) {
 
 func (tl *refListingFile) ReadAtOffset(buf []byte, offset uint64) (int, error) {
 	if offset == 0 {
-		listing, err := listRefs(tl.refDBPath)
+		listing, err := listRefs(tl.refDBPath, tl.keyId)
 		if err != nil {
 			return 0, err
 		}

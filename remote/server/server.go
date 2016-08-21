@@ -19,17 +19,12 @@ var (
 	ErrNoSuchPid          = errors.New("no such pid")
 	ErrNoSuchFid          = errors.New("no such fid")
 	ErrNoSuchRef          = errors.New("no such ref")
+	ErrWrongKeyId         = errors.New("attaching with wrong key")
 	ErrBadGCID            = errors.New("GCID for remove incorrect (another concurrent gc)?")
 	ErrGCInProgress       = errors.New("gc in progress")
 	ErrRefAlreadyExists   = errors.New("ref already exists")
 	ErrStaleRefValue      = errors.New("ref value stale (concurrent write?)")
 	ErrGeneratingPackName = errors.New("error generating pack name")
-)
-
-const (
-	RefBucketName     = "refs"
-	GCStateBucketName = "gc"
-	BpyDBName         = "bpy.db"
 )
 
 type ReadWriteCloser interface {
@@ -53,7 +48,8 @@ type uploadState struct {
 
 type server struct {
 	servePath string
-	refDBPath string
+	dbPath    string
+	keyId     string
 	buf       []byte
 	fids      map[uint32]file
 	pids      map[uint32]*uploadState
@@ -95,7 +91,7 @@ func (srv *server) handleTOpen(t *proto.TOpen) proto.Message {
 
 	if t.Name == "refs" {
 		srv.fids[t.Fid] = &refListingFile{
-			refDBPath: srv.refDBPath,
+			refDBPath: srv.dbPath,
 		}
 		return &proto.ROpen{
 			Mid: t.Mid,
@@ -244,7 +240,7 @@ func (srv *server) handleTCancelPack(t *proto.TCancelPack) proto.Message {
 }
 
 func (srv *server) handleTRef(t *proto.TRef) proto.Message {
-	db, err := openRefDB(srv.refDBPath)
+	db, err := openDB(srv.dbPath, srv.keyId)
 	if err != nil {
 		makeError(t.Mid, err)
 	}
@@ -274,7 +270,7 @@ func (srv *server) handleTRef(t *proto.TRef) proto.Message {
 }
 
 func (srv *server) handleTGetRef(t *proto.TGetRef) proto.Message {
-	db, err := openRefDB(srv.refDBPath)
+	db, err := openDB(srv.dbPath, srv.keyId)
 	if err != nil {
 		makeError(t.Mid, err)
 	}
@@ -306,7 +302,7 @@ func (srv *server) handleTGetRef(t *proto.TGetRef) proto.Message {
 }
 
 func (srv *server) handleTCasRef(t *proto.TCasRef) proto.Message {
-	db, err := openRefDB(srv.refDBPath)
+	db, err := openDB(srv.dbPath, srv.keyId)
 	if err != nil {
 		makeError(t.Mid, err)
 	}
@@ -345,7 +341,7 @@ func (srv *server) handleTCasRef(t *proto.TCasRef) proto.Message {
 }
 
 func (srv *server) handleTRemoveRef(t *proto.TRemoveRef) proto.Message {
-	db, err := openRefDB(srv.refDBPath)
+	db, err := openDB(srv.dbPath, srv.keyId)
 	if err != nil {
 		makeError(t.Mid, err)
 	}
@@ -375,7 +371,7 @@ func (srv *server) handleTRemoveRef(t *proto.TRemoveRef) proto.Message {
 }
 
 func (srv *server) handleTRemove(t *proto.TRemove) proto.Message {
-	db, err := openRefDB(srv.refDBPath)
+	db, err := openDB(srv.dbPath, srv.keyId)
 	if err != nil {
 		makeError(t.Mid, err)
 	}
@@ -408,7 +404,7 @@ func (srv *server) handleTRemove(t *proto.TRemove) proto.Message {
 }
 
 func (srv *server) handleTStartGC(t *proto.TStartGC) proto.Message {
-	db, err := openRefDB(srv.refDBPath)
+	db, err := openDB(srv.dbPath, srv.keyId)
 	if err != nil {
 		makeError(t.Mid, err)
 	}
@@ -434,7 +430,7 @@ func (srv *server) handleTStartGC(t *proto.TStartGC) proto.Message {
 }
 
 func (srv *server) handleTStopGC(t *proto.TStopGC) proto.Message {
-	db, err := openRefDB(srv.refDBPath)
+	db, err := openDB(srv.dbPath, srv.keyId)
 	if err != nil {
 		makeError(t.Mid, err)
 	}
@@ -458,7 +454,7 @@ func (srv *server) handleTStopGC(t *proto.TStopGC) proto.Message {
 }
 
 func (srv *server) handleTGetGeneration(t *proto.TGetGeneration) proto.Message {
-	db, err := openRefDB(srv.refDBPath)
+	db, err := openDB(srv.dbPath, srv.keyId)
 	if err != nil {
 		makeError(t.Mid, err)
 	}
@@ -486,60 +482,96 @@ func (srv *server) handleTGetGeneration(t *proto.TGetGeneration) proto.Message {
 	}
 }
 
-func handleAttach(conn ReadWriteCloser, root string) (*server, error) {
-	maxsz := uint32(1024 * 1024)
-	buf := make([]byte, maxsz, maxsz)
-
-	t, err := proto.ReadMessage(conn, buf)
-	if err != nil {
-		return nil, err
+func (srv *server) handleTAttach(t *proto.TAttach) proto.Message {
+	if t.Mid != 1 || t.Version != "buppy1" {
+		return makeError(t.Mid, ErrBadRequest)
 	}
+	maxsz := uint32(len(srv.buf))
+	if t.MaxMessageSize < maxsz {
+		maxsz = t.MaxMessageSize
+	}
+	srv.buf = srv.buf[:maxsz]
+	matched, err := regexp.MatchString("[a-zA-Z0-9]+", t.KeyId)
+	if err != nil || !matched {
+		return makeError(t.Mid, ErrBadRequest)
+	}
+	srv.keyId = t.KeyId
+	db, err := openDB(srv.dbPath, srv.keyId)
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+	err = db.Update(func(tx *bolt.Tx) error {
+		keyIdBucket := tx.Bucket([]byte(KeyIdBucketName))
+		currentKeyId := keyIdBucket.Get([]byte("keyid"))
+		if currentKeyId != nil {
+			if string(currentKeyId) != srv.keyId {
+				return ErrWrongKeyId
+			}
+		} else {
+			err = keyIdBucket.Put([]byte("keyid"), []byte(srv.keyId))
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+	err = db.Close()
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+	err = os.MkdirAll(filepath.Join(srv.servePath, "packs"), 0777)
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+	return &proto.RAttach{
+		Mid:            t.Mid,
+		MaxMessageSize: maxsz,
+	}
+}
 
+func (srv *server) awaitAttach(conn ReadWriteCloser) error {
+
+	t, err := proto.ReadMessage(conn, srv.buf)
+	if err != nil {
+		return err
+	}
 	switch t := t.(type) {
 	case *proto.TAttach:
-		if t.Mid != 1 || t.Version != "buppy1" {
-			return nil, ErrBadRequest
-		}
-		if t.MaxMessageSize < maxsz {
-			maxsz = t.MaxMessageSize
-		}
-		buf = buf[:maxsz]
-		err = proto.WriteMessage(conn, &proto.RAttach{
-			Mid:            t.Mid,
-			MaxMessageSize: maxsz,
-		}, buf)
+		r := srv.handleTAttach(t)
+		err = proto.WriteMessage(conn, r, srv.buf)
 		if err != nil {
-			return nil, ErrBadRequest
+			return err
 		}
-
-		matched, err := regexp.MatchString("[a-zA-Z0-9]+", t.KeyId)
-		if err != nil || !matched {
-			return nil, ErrBadRequest
+		_, iserr := r.(*proto.RError)
+		if iserr {
+			return ErrBadRequest
 		}
-		servePath := filepath.Join(root, t.KeyId)
-		err = os.MkdirAll(filepath.Join(servePath, "packs"), 0777)
-		if err != nil {
-			return nil, err
-		}
-		return &server{
-			servePath: servePath,
-			refDBPath: filepath.Join(servePath, BpyDBName),
-			buf:       buf,
-			fids:      make(map[uint32]file),
-			pids:      make(map[uint32]*uploadState),
-		}, nil
+		return nil
 	default:
-		return nil, ErrBadRequest
+		return ErrBadRequest
 	}
 }
 
 func Serve(conn ReadWriteCloser, root string) error {
 	defer conn.Close()
 
-	srv, err := handleAttach(conn, root)
+	maxsz := uint32(1024 * 1024)
+	srv := &server{
+		servePath: root,
+		dbPath:    filepath.Join(root, BpyDBName),
+		buf:       make([]byte, maxsz, maxsz),
+		fids:      make(map[uint32]file),
+		pids:      make(map[uint32]*uploadState),
+	}
+
+	err := srv.awaitAttach(conn)
 	if err != nil {
 		return err
 	}
+
 	for {
 		var r proto.Message
 
