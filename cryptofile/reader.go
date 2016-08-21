@@ -98,7 +98,7 @@ func (r *Reader) readBlocks(idx int64, buf []byte) (int, error) {
 	r.ctr.Add(uint64(idx))
 	for i := int64(0); i < nblocks; i++ {
 		toDecrypt := buf[i*blocksz : (i+1)*blocksz]
-		r.block.Decrypt(r.enc, r.ctr.Vec)
+		r.block.Encrypt(r.enc, r.ctr.Vec)
 		Xor(toDecrypt, r.enc)
 		r.ctr.Add(1)
 	}
