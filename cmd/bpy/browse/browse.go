@@ -278,7 +278,7 @@ func (d *httpDir) Readdir(count int) ([]os.FileInfo, error) {
 }
 
 func Browse() {
-	addrArg := flag.String("addr", "127.0.0.1:8080", "address to listen on ")
+	addrArg := flag.String("addr", "127.0.0.1:8000", "address to listen on ")
 	flag.Parse()
 
 	k, err := common.GetKey()
