@@ -18,7 +18,7 @@ data stream without back tracking.
 In typical usage, the keys used by bpy are all sha256 hashes, using the 
 pack files as a content addressed storage system.
 
-An example diagram showing the layout of 3 values and the index as stored on disk.
+The following is an example diagram showing the layout of 3 values and the index as stored on disk:
 
 ```
 +-------------+
