@@ -10,7 +10,7 @@ import (
 	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/remote"
 	"github.com/buppyio/bpy/remote/client"
-	"log"
+	// "log"
 	"path"
 	"sort"
 )
@@ -90,7 +90,6 @@ func (gc *gcState) markRef(name string) error {
 }
 
 func (gc *gcState) markFsDir(root [32]byte) error {
-	log.Printf("mark fs dir\n")
 	err := gc.markHTree(root)
 	if err != nil {
 		return err
@@ -119,7 +118,6 @@ func (gc *gcState) markFsDir(root [32]byte) error {
 }
 
 func (gc *gcState) markHTree(root [32]byte) error {
-	log.Printf("mark htree\n")
 	_, ok := gc.visited[root]
 	if ok {
 		return nil
@@ -324,7 +322,7 @@ func (gc *gcState) sweepPack(pack remote.PackListing) error {
 			continue
 		}
 		runBase := run[0].Offset
-		log.Printf("moving run of values: base=%v, size=%v", runBase, runSize)
+		// log.Printf("moving run of values: base=%v, size=%v", runBase, runSize)
 		runData, err := packReader.GetAt(runBase, runSize)
 		if err != nil {
 			return err

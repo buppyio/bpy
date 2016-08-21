@@ -6,10 +6,8 @@ Alpha:
  - Add a way to download directories as zip/tar.gz
  - Make homepage list more information about refs
  - Add a logo somewhere
-- Rename tagdb and tags.go to just 'db'
 - Delete old ebpack/tmp files on attach if they are older than some age
 - Give refs infinite history between gc to allow error recovery
-- Add signature to tags
 - Add counter to tags which remote only allows to increment
 - Write comprehensive man pages
 
