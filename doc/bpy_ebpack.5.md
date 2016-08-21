@@ -8,8 +8,9 @@ ebpack - ebpack files are encrypted bpy_bpack(5) files
 
 # SYNOPSIS
 
-ebpack files are aes256 encrypted bpack files encryted using a CTR mode cipher. 
-The format allows random access decryption with a 32 byte granularity.
+During normal operation bpy writes client side encrypted bpy_bpack(5) files (ebpack) to the remote server to hinder
+unauthorized access. The ebpack files are AES256 encrypted bpack files encrypted using a CTR mode cipher
+to allow security and random access decryption with a 32 byte granularity.
 
 The file format consists of a 32 byte random nonce, with N 32 byte blocks of data.
 Each block of data is created via the operation ```XOR(AES256ENCRYPT(SECRETKEY, ADD(NONCE, N)), PLAINTEXT)```
