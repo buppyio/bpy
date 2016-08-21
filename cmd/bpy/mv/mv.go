@@ -28,12 +28,12 @@ func Mv() {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
 	defer c.Close()
-	
+
 	generation, err := remote.GetGeneration(c)
 	if err != nil {
 		common.Die("error getting current gc generation: %s\n", err.Error())
 	}
-	
+
 	store, err := common.GetCStore(&k, c)
 	if err != nil {
 		common.Die("error getting content store: %s\n", err.Error())

@@ -1,5 +1,9 @@
 package cryptofile
 
+import (
+	"fmt"
+)
+
 type ctrState struct {
 	Iv  []byte
 	Vec []byte
@@ -43,11 +47,11 @@ func (ctr *ctrState) Add(val uint64) {
 	}
 }
 
-func (ctr *ctrState) Xor(buf []byte) {
-	if len(ctr.Vec) != len(buf) {
-		panic("Xor with different length buffers")
+func Xor(dest, src []byte) {
+	if len(dest) != len(src) {
+		panic(fmt.Sprintf("Xor with different length buffers %v != %v", len(dest), len(src)))
 	}
-	for idx, v := range ctr.Vec {
-		buf[idx] = v ^ buf[idx]
+	for idx := range src {
+		dest[idx] = dest[idx] ^ src[idx]
 	}
 }

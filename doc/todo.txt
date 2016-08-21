@@ -15,6 +15,7 @@ Bugs:
 
 Improvements:
 
+- Change 'IV' in cryptofile to 'Nonce'
 - Add gc tests for - dedup, removing stuff, repacking, concurrency
 - Change fs api from "dest, src" to "src, dest", it is more natural since it works like mv or cp
 - Rename cstore.Writer to just CStore

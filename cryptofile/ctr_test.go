@@ -27,7 +27,7 @@ func TestCtr(t *testing.T) {
 	}
 
 	xorVal := []byte{1, 0xff, 0}
-	c.Xor(xorVal)
+	Xor(xorVal, c.Vec)
 
 	if !reflect.DeepEqual(xorVal, []byte{1, 0, 0xff}) {
 		t.Fatal("Add failed", c.Vec)

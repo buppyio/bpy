@@ -11,6 +11,7 @@ type Writer struct {
 	block cipher.Block
 	buf   []byte
 	nbuf  int
+	enc   []byte
 	ctr   *ctrState
 }
 
@@ -27,17 +28,18 @@ func NewWriter(w io.WriteCloser, b cipher.Block) (*Writer, error) {
 	return &Writer{
 		w:     w,
 		block: b,
-		buf:   make([]byte, b.BlockSize()),
+		buf:   make([]byte, b.BlockSize(), b.BlockSize()),
+		enc:   make([]byte, b.BlockSize(), b.BlockSize()),
 		ctr:   newCtrState(iv),
 	}, nil
 }
 
 func (w *Writer) flushBlock() error {
-	w.nbuf = 0
-	w.ctr.Xor(w.buf)
-	w.ctr.Add(1)
-	w.block.Encrypt(w.buf, w.buf)
+	w.block.Encrypt(w.enc, w.ctr.Vec)
+	Xor(w.buf, w.enc)
 	_, err := w.w.Write(w.buf)
+	w.nbuf = 0
+	w.ctr.Add(1)
 	return err
 }
 

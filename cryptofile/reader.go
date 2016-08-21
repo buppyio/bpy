@@ -19,6 +19,7 @@ type Reader struct {
 	offset int64
 	ctr    *ctrState
 	rbuf   [4096]byte
+	enc    []byte
 }
 
 func NewReader(r ReadSeekCloser, block cipher.Block, fsize int64) (*Reader, error) {
@@ -39,6 +40,7 @@ func NewReader(r ReadSeekCloser, block cipher.Block, fsize int64) (*Reader, erro
 		block: block,
 		size:  fsize - int64(len(iv)),
 		ctr:   newCtrState(iv),
+		enc:   make([]byte, len(iv), len(iv)),
 	}, nil
 }
 
@@ -95,9 +97,9 @@ func (r *Reader) readBlocks(idx int64, buf []byte) (int, error) {
 	r.ctr.Reset()
 	r.ctr.Add(uint64(idx))
 	for i := int64(0); i < nblocks; i++ {
-		block := buf[i*blocksz : (i+1)*blocksz]
-		r.block.Decrypt(block, block)
-		r.ctr.Xor(block)
+		toDecrypt := buf[i*blocksz : (i+1)*blocksz]
+		r.block.Decrypt(r.enc, r.ctr.Vec)
+		Xor(toDecrypt, r.enc)
 		r.ctr.Add(1)
 	}
 
