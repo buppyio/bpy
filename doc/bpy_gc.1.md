@@ -10,7 +10,7 @@ bpy gc - garbage collect and reclaim unreachable space on the remote store.
 
 gc means garbage collection, this command is how space is reclaimed after
 files are rm'd from a ref. During a garbage collection, the remote will block any updates to refs, and 
-any attempt to start a second instance of garbage collection will safely fail.
+any attempt to start a second collection will safely fail.
 
 The gc command works by starting from each ref and traversing the data marking every chunk that is reachable.
 After the marking phase is completed, the gc will perform what is known as a 'sweep'. 
@@ -28,7 +28,7 @@ the overhead of data fetching. Only the new pack data will be uploaded if the lo
 
 # Usage
 
-```bpy gc```
+```$ bpy gc```
 
 # Example
 
