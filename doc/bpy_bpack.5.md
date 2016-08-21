@@ -4,7 +4,7 @@
 
 # NAME
 
-bpack - bpack is the file format used by bpy for storing groups of keys and values.
+bpack - bpack is the file format used by bpy as an on disk mapping of keys to values.
 
 # SYNOPSIS
 
