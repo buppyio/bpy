@@ -12,8 +12,8 @@ ebpack files are aes256 encrypted bpack files encryted using a CTR mode cipher.
 The format allows random access decryption with a 32 byte granularity.
 
 The file format consists of a 32 byte random nonce, with N 32 byte blocks of data.
-Each block of data is created via the operation ```XOR(AES256ENCRYPT(SECRETKEY, ADD(NONCE, N)), PLAINTEXT)```.
-and each block of data is accessed via ```XOR(AES256DECRYPT(SECRETKEY, ADD(NONCE, N)), CIPHERTEXT)```
+Each block of data is created via the operation ```XOR(AES256ENCRYPT(SECRETKEY, ADD(NONCE, N)), PLAINTEXT)```
+and each block of data is accessed via ```XOR(AES256DECRYPT(SECRETKEY, ADD(NONCE, N)), CIPHERTEXT)```.
 
 Because the input data may not be a multiple of 32 bytes, there is always a padded final block.
 There maybe be up to 32 bytes of padding in the tail of the final block, starting from the end padding
