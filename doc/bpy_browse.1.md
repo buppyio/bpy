@@ -13,7 +13,7 @@ the remote data changes.
 
 # Usage
 
-```bpy browse[-addr=127.0.0.1:8000] [-no-browser]```
+```bpy browse [-addr=127.0.0.1:8000] [-no-browser]```
 
 provide the -no-browser flag to suppress the spawning of a web browser.
 

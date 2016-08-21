@@ -80,6 +80,9 @@ Change the permissions of a file or folder in the specifed ref
 ## cp
 Copy a file or folder and update the specified ref
 
+## gc
+Run the garbage collector to reclaim unused space and merge small pack files
+
 ## get
 Download the contents of a bpy ref folder
 
@@ -98,14 +101,8 @@ Generate a local key file used by bpy for encrypting data
 ## put
 Upload a local folder or file into the specifed ref
 
-## repack
-Merge small remote packs to increase performance
-
 ## rm
 Remove a file or folder from the specified ref
-
-## tag
-Make a new named ref based on the current value of an existing ref
 
 ## tar
 Create a tar archive from the contents of the specified ref and folder
@@ -119,4 +116,4 @@ Launch a 9p server and serve the given ref as a 9p filesystem
 
 # SEE ALSO
 
-**bpy_directories(5)** **bpy_file_formats(5)** **bpy_env_variables(7)**
+**bpy_directories(5)**
