@@ -2,7 +2,6 @@ package gc
 
 import (
 	"bufio"
-	"encoding/hex"
 	"errors"
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/bpack"
@@ -73,7 +72,6 @@ func GC(c *client.Client, store bpy.CStore, cacheClient *cache.Client, k *bpy.Ke
 }
 
 func (gc *gcState) markRef(name string) error {
-	log.Printf("mark ref\n")
 	ref, ok, err := remote.GetRef(gc.c, gc.k, name)
 	if err != nil {
 		return err
@@ -235,7 +233,6 @@ func (idx offsetSortedIdx) Less(i, j int) bool { return idx[i].Offset < idx[j].O
 
 func (gc *gcState) sweepPack(pack remote.PackListing) error {
 	packPath := path.Join("packs/", pack.Name)
-	log.Printf("sweeping %s", packPath)
 	f, err := gc.c.Open(packPath)
 	if err != nil {
 		return err
@@ -261,13 +258,13 @@ func (gc *gcState) sweepPack(pack remote.PackListing) error {
 			copy(hash[:], idxEnt.Key)
 			_, ok := gc.visited[hash]
 			if !ok {
-				log.Printf("can't skip 1, %s", hex.EncodeToString(hash[:]))
+				// log.Printf("can't skip 1, %s", hex.EncodeToString(hash[:]))
 				canSkip = false
 				break
 			}
 			_, ok = gc.moved[hash]
 			if ok {
-				log.Printf("can't skip 2")
+				// log.Printf("can't skip 2")
 				canSkip = false
 				break
 			}
