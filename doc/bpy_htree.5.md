@@ -10,7 +10,7 @@ htree - Hash tree format for storing streams of data.
 
 bpy stores all data internally as a hash tree data structure. Each node in tree is given an address which
 reflects a bpack key used to locate the node data.
-The node address calculated as ```SHA256(DEFLATE(NODEDATA))```, where the node data stored at the address is either a
+The node address is calculated as ```SHA256(DEFLATE(NODEDATA))```, where the node data stored at the address is either a
 flate compressed list of stream offsets and child node addresses, or for leaf nodes, the flate compressed
 stream data itself. 
 
