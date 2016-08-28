@@ -48,46 +48,45 @@ func Put() {
 		common.Die("error getting current gc generation: %s\n", err.Error())
 	}
 
-	store, err := common.GetCStore(&k, c)
-	if err != nil {
-		common.Die("error getting content store: %s\n", err.Error())
-	}
+	for {
+		store, err := common.GetCStore(&k, c)
+		if err != nil {
+			common.Die("error getting content store: %s\n", err.Error())
+		}
 
-	ref, ok, err := remote.GetRef(c, &k, *refArg)
-	if err != nil {
-		common.Die("error fetching ref hash: %s\n", err.Error())
-	}
-	if !ok {
-		common.Die("ref '%s' does not exist\n", *refArg)
-	}
+		ref, ok, err := remote.GetRef(c, &k, *refArg)
+		if err != nil {
+			common.Die("error fetching ref hash: %s\n", err.Error())
+		}
+		if !ok {
+			common.Die("ref '%s' does not exist\n", *refArg)
+		}
 
-	srcDirEnt, err := fsutil.CpHostToFs(store, srcPath)
-	if err != nil {
-		common.Die("error copying data: %s\n", err.Error())
-	}
+		srcDirEnt, err := fsutil.CpHostToFs(store, srcPath)
+		if err != nil {
+			common.Die("error copying data: %s\n", err.Error())
+		}
 
-	newRootEnt, err := fs.Insert(store, ref.Root, destPath, srcDirEnt)
-	if err != nil {
-		common.Die("error inserting src into folder: %s\n", err.Error())
-	}
+		newRootEnt, err := fs.Insert(store, ref.Root, destPath, srcDirEnt)
+		if err != nil {
+			common.Die("error inserting src into folder: %s\n", err.Error())
+		}
 
-	err = store.Close()
-	if err != nil {
-		common.Die("error closing remote: %s\n", err.Error())
-	}
+		err = store.Close()
+		if err != nil {
+			common.Die("error closing remote: %s\n", err.Error())
+		}
 
-	newRef := refs.Ref{
-		Root: newRootEnt.HTree.Data,
-	}
+		newRef := refs.Ref{
+			Root: newRootEnt.HTree.Data,
+		}
 
-	ok, err = remote.CasRef(c, &k, *refArg, ref, newRef, generation)
-	if err != nil {
-		common.Die("creating ref: %s\n", err.Error())
+		ok, err = remote.CasRef(c, &k, *refArg, ref, newRef, generation)
+		if err != nil {
+			common.Die("creating ref: %s\n", err.Error())
+		}
+		if ok {
+			break
+		}
 	}
-
-	if !ok {
-		// XXX: loop here
-		common.Die("ref concurrently modified, try again\n")
-	}
-
 }

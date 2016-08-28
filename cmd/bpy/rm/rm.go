@@ -32,41 +32,42 @@ func Rm() {
 		common.Die("error getting current gc generation: %s\n", err.Error())
 	}
 
-	store, err := common.GetCStore(&k, c)
-	if err != nil {
-		common.Die("error getting content store: %s\n", err.Error())
-	}
+	for {
+		store, err := common.GetCStore(&k, c)
+		if err != nil {
+			common.Die("error getting content store: %s\n", err.Error())
+		}
 
-	ref, ok, err := remote.GetRef(c, &k, *refArg)
-	if err != nil {
-		common.Die("error fetching ref hash: %s\n", err.Error())
-	}
-	if !ok {
-		common.Die("ref '%s' does not exist\n", *refArg)
-	}
+		ref, ok, err := remote.GetRef(c, &k, *refArg)
+		if err != nil {
+			common.Die("error fetching ref hash: %s\n", err.Error())
+		}
+		if !ok {
+			common.Die("ref '%s' does not exist\n", *refArg)
+		}
 
-	newRootEnt, err := fs.Remove(store, ref.Root, flag.Args()[0])
-	if err != nil {
-		common.Die("error removing file: %s\n", err.Error())
-	}
+		newRootEnt, err := fs.Remove(store, ref.Root, flag.Args()[0])
+		if err != nil {
+			common.Die("error removing file: %s\n", err.Error())
+		}
 
-	err = store.Close()
-	if err != nil {
-		common.Die("error closing store: %s\n", err.Error())
-	}
+		err = store.Close()
+		if err != nil {
+			common.Die("error closing store: %s\n", err.Error())
+		}
 
-	newRef := refs.Ref{
-		Root: newRootEnt.HTree.Data,
-	}
+		newRef := refs.Ref{
+			Root: newRootEnt.HTree.Data,
+		}
 
-	ok, err = remote.CasRef(c, &k, *refArg, ref, newRef, generation)
-	if err != nil {
-		common.Die("creating ref: %s\n", err.Error())
-	}
+		ok, err = remote.CasRef(c, &k, *refArg, ref, newRef, generation)
+		if err != nil {
+			common.Die("creating ref: %s\n", err.Error())
+		}
 
-	if !ok {
-		// XXX: loop here
-		common.Die("ref concurrently modified, try again\n")
-	}
+		if ok {
+			break
+		}
 
+	}
 }
