@@ -14,7 +14,7 @@ func Rm() {
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {
-		common.Die("please path to remove\n")
+		common.Die("please specify the path to remove\n")
 	}
 
 	k, err := common.GetKey()
@@ -71,7 +71,7 @@ func Rm() {
 
 		ok, err = remote.CasNamedRef(c, &k, *refArg, refHash, newRefHash, generation)
 		if err != nil {
-			common.Die("creating ref: %s\n", err.Error())
+			common.Die("error creating ref: %s\n", err.Error())
 		}
 
 		if ok {
