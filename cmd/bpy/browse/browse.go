@@ -7,9 +7,11 @@ import (
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/fs"
+	"github.com/buppyio/bpy/refs"
 	"github.com/buppyio/bpy/remote"
 	"github.com/buppyio/bpy/remote/client"
 	"github.com/pkg/browser"
+
 	"html"
 	"log"
 	"net/http"
@@ -65,7 +67,7 @@ type rootHandler struct {
 }
 
 func (h *rootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	refs, err := remote.ListRefs(h.c)
+	refs, err := remote.ListNamedRefs(h.c)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "error x: %s", err.Error())
@@ -99,7 +101,7 @@ func (h *refHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		refName, walkPath = fullPath[:idx], fullPath[idx:]
 	}
 
-	ref, ok, err := remote.GetRef(h.c, h.k, refName)
+	refHash, ok, err := remote.GetNamedRef(h.c, h.k, refName)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "error: %s", err.Error())
@@ -109,6 +111,11 @@ func (h *refHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		fmt.Fprintf(w, "ref '%s' does not exist", refName)
 		return
+	}
+
+	ref, err := refs.GetRef(h.store, refHash)
+	if err != nil {
+		common.Die("error fetching ref: %s\n", err.Error())
 	}
 
 	ent, err := fs.Walk(h.store, ref.Root, walkPath)
@@ -174,12 +181,17 @@ func (httpFs *httpFs) Open(fullPath string) (http.File, error) {
 	if idx != -1 {
 		refName, path = fullPath[:idx], fullPath[idx:]
 	}
-	ref, ok, err := remote.GetRef(httpFs.c, httpFs.k, refName)
+	refHash, ok, err := remote.GetNamedRef(httpFs.c, httpFs.k, refName)
 	if err != nil {
 		return nil, err
 	}
 	if !ok {
 		return nil, fmt.Errorf("ref '%s' does not exist", refName)
+	}
+
+	ref, err := refs.GetRef(httpFs.store, refHash)
+	if err != nil {
+		common.Die("error fetching ref: %s\n", err.Error())
 	}
 
 	ent, err := fs.Walk(httpFs.store, ref.Root, path)

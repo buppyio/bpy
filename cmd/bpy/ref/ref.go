@@ -23,7 +23,7 @@ func list() {
 		common.Die("error getting remote: %s", err.Error())
 	}
 	defer c.Close()
-	reflist, err := remote.ListRefs(c)
+	reflist, err := remote.ListNamedRefs(c)
 	if err != nil {
 		common.Die("error getting ref list: %s", err.Error())
 	}

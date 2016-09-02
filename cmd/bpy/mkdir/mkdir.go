@@ -39,12 +39,17 @@ func Mkdir() {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
 
-	ref, ok, err := remote.GetRef(c, &k, *refArg)
+	refHash, ok, err := remote.GetNamedRef(c, &k, *refArg)
 	if err != nil {
 		common.Die("error fetching ref hash: %s\n", err.Error())
 	}
 	if !ok {
 		common.Die("ref '%s' does not exist\n", *refArg)
+	}
+
+	ref, err := refs.GetRef(store, refHash)
+	if err != nil {
+		common.Die("error fetching ref: %s\n", err.Error())
 	}
 
 	emptyDirEnt, err := fs.EmptyDir(store, 0755)
@@ -56,16 +61,19 @@ func Mkdir() {
 	if err != nil {
 		common.Die("error inserting empty dir into folder: %s\n", err.Error())
 	}
-	newRef := refs.Ref{
-		Root: newRootEnt.HTree.Data,
-	}
+
+	newRefHash, err := refs.PutRef(store, refs.Ref{
+		Root:    newRootEnt.HTree.Data,
+		HasPrev: true,
+		Prev:    refHash,
+	})
 
 	err = store.Close()
 	if err != nil {
 		common.Die("error closing remote: %s\n", err.Error())
 	}
 
-	ok, err = remote.CasRef(c, &k, *refArg, ref, newRef, generation)
+	ok, err = remote.CasNamedRef(c, &k, *refArg, refHash, newRefHash, generation)
 	if err != nil {
 		common.Die("creating ref: %s\n", err.Error())
 	}

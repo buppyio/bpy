@@ -40,7 +40,7 @@ func Mv() {
 			common.Die("error getting content store: %s\n", err.Error())
 		}
 
-		ref, ok, err := remote.GetRef(c, &k, *refArg)
+		refHash, ok, err := remote.GetNamedRef(c, &k, *refArg)
 		if err != nil {
 			common.Die("error fetching ref hash: %s\n", err.Error())
 		}
@@ -48,9 +48,23 @@ func Mv() {
 			common.Die("ref '%s' does not exist\n", *refArg)
 		}
 
+		ref, err := refs.GetRef(store, refHash)
+		if err != nil {
+			common.Die("error fetching ref: %s\n", err.Error())
+		}
+
 		newRoot, err := fs.Move(store, ref.Root, destPath, srcPath)
 		if err != nil {
 			common.Die("error moving folder: %s\n", err.Error())
+		}
+
+		newRefHash, err := refs.PutRef(store, refs.Ref{
+			Root:    newRoot.HTree.Data,
+			HasPrev: true,
+			Prev:    refHash,
+		})
+		if err != nil {
+			common.Die("error creating new ref: %s\n", err.Error())
 		}
 
 		err = store.Close()
@@ -58,10 +72,7 @@ func Mv() {
 			common.Die("error closing remote: %s\n", err.Error())
 		}
 
-		newRef := refs.Ref{
-			Root: newRoot.HTree.Data,
-		}
-		ok, err = remote.CasRef(c, &k, *refArg, ref, newRef, generation)
+		ok, err = remote.CasNamedRef(c, &k, *refArg, refHash, newRefHash, generation)
 		if err != nil {
 			common.Die("creating ref: %s\n", err.Error())
 		}

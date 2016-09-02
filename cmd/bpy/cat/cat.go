@@ -4,6 +4,7 @@ import (
 	"flag"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/fs"
+	"github.com/buppyio/bpy/refs"
 	"github.com/buppyio/bpy/remote"
 	"io"
 	"os"
@@ -33,9 +34,14 @@ func Cat() {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
 
-	ref, ok, err := remote.GetRef(c, &k, *refArg)
+	refHash, ok, err := remote.GetNamedRef(c, &k, *refArg)
 	if err != nil {
 		common.Die("error fetching ref hash: %s\n", err.Error())
+	}
+
+	ref, err := refs.GetRef(store, refHash)
+	if err != nil {
+		common.Die("error fetching ref: %s\n", err.Error())
 	}
 
 	if !ok {

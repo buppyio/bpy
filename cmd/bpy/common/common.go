@@ -137,7 +137,7 @@ func GetRemote(k *bpy.Key) (*client.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, ok, err := remote.GetRef(c, k, "default")
+	_, ok, err := remote.GetNamedRef(c, k, "default")
 	if !ok {
 		generation, err := remote.GetGeneration(c)
 		if err != nil {
@@ -156,13 +156,19 @@ func GetRemote(k *bpy.Key) (*client.Client, error) {
 			return nil, fmt.Errorf("error creating empty default root: %s", err.Error())
 		}
 
+		hash, err := refs.PutRef(store, refs.Ref{Root: ent.HTree.Data})
+		if err != nil {
+			c.Close()
+			return nil, fmt.Errorf("error creating base ref: %s", err.Error())
+		}
+
 		err = store.Close()
 		if err != nil {
 			c.Close()
 			return nil, fmt.Errorf("error closing store writer: %s", err.Error())
 		}
 
-		err = remote.NewRef(c, k, "default", refs.Ref{Root: ent.HTree.Data}, generation)
+		err = remote.NewNamedRef(c, k, "default", hash, generation)
 		if err != nil {
 			c.Close()
 			return nil, fmt.Errorf("error initizializing default ref: %s", err.Error())

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/cmd/bpy/p9/proto9"
+	"github.com/buppyio/bpy/refs"
 	"github.com/buppyio/bpy/remote"
 	"log"
 	"net"
@@ -28,13 +29,17 @@ func handleConnection(con net.Conn, refName string) {
 		return
 	}
 
-	ref, ok, err := remote.GetRef(c, &k, refName)
+	refHash, ok, err := remote.GetNamedRef(c, &k, refName)
 	if err != nil {
 		log.Fatalf("error fetching tag hash: %s\n", err.Error())
 	}
-
 	if !ok {
-		log.Fatalf("ref '%s' does not exist\n", ref)
+		log.Fatalf("ref '%s' does not exist\n", refName)
+	}
+
+	ref, err := refs.GetRef(store, refHash)
+	if err != nil {
+		common.Die("error fetching ref: %s\n", err.Error())
 	}
 
 	maxMessageSize := uint32(1024 * 1024)

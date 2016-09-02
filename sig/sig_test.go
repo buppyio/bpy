@@ -13,7 +13,7 @@ func TestSigs(t *testing.T) {
 	}
 
 	h := [32]byte{}
-	signed := SerializeAndSignHash(&k, h)
+	signed := SignHash(&k, h)
 	got, err := ParseSignedHash(&k, signed)
 	if err != nil {
 		t.Fatal(err)

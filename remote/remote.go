@@ -6,8 +6,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"github.com/buppyio/bpy"
-	"github.com/buppyio/bpy/refs"
 	"github.com/buppyio/bpy/remote/client"
+	"github.com/buppyio/bpy/sig"
 	"io"
 	"io/ioutil"
 	"time"
@@ -55,7 +55,7 @@ func ListPacks(c *client.Client) ([]PackListing, error) {
 	return listing, nil
 }
 
-func ListRefs(c *client.Client) ([]string, error) {
+func ListNamedRefs(c *client.Client) ([]string, error) {
 	f, err := c.Open("refs")
 	if err != nil {
 		return nil, err
@@ -80,36 +80,30 @@ func ListRefs(c *client.Client) ([]string, error) {
 	return listing, nil
 }
 
-func GetRef(c *client.Client, k *bpy.Key, name string) (refs.Ref, bool, error) {
+func GetNamedRef(c *client.Client, k *bpy.Key, name string) ([32]byte, bool, error) {
 	r, err := c.TGetRef(name)
 	if err != nil {
-		return refs.Ref{}, false, err
+		return [32]byte{}, false, err
 	}
 	if !r.Ok {
-		return refs.Ref{}, false, nil
+		return [32]byte{}, false, nil
 	}
-	ref, err := refs.ParseRef(k, r.Value)
-	return ref, true, err
+	hash, err := sig.ParseSignedHash(k, r.Value)
+	if err != nil {
+		return [32]byte{}, false, err
+	}
+	return hash, true, err
 }
 
-func NewRef(c *client.Client, k *bpy.Key, name string, ref refs.Ref, generation uint64) error {
-	value, err := refs.SerializeAndSign(k, ref)
-	if err != nil {
-		return err
-	}
-	_, err = c.TRef(name, value, generation)
+func NewNamedRef(c *client.Client, k *bpy.Key, name string, hash [32]byte, generation uint64) error {
+	signed := sig.SignHash(k, hash)
+	_, err := c.TRef(name, signed, generation)
 	return err
 }
 
-func CasRef(c *client.Client, k *bpy.Key, name string, oldRef, newRef refs.Ref, generation uint64) (bool, error) {
-	oldValue, err := refs.SerializeAndSign(k, oldRef)
-	if err != nil {
-		return false, err
-	}
-	newValue, err := refs.SerializeAndSign(k, newRef)
-	if err != nil {
-		return false, err
-	}
+func CasNamedRef(c *client.Client, k *bpy.Key, name string, oldHash, newHash [32]byte, generation uint64) (bool, error) {
+	oldValue := sig.SignHash(k, oldHash)
+	newValue := sig.SignHash(k, newHash)
 	r, err := c.TCasRef(name, oldValue, newValue, generation)
 	if err != nil {
 		return false, err
@@ -117,12 +111,9 @@ func CasRef(c *client.Client, k *bpy.Key, name string, oldRef, newRef refs.Ref, 
 	return r.Ok, nil
 }
 
-func RemoveRef(c *client.Client, k *bpy.Key, name string, ref refs.Ref, generation uint64) error {
-	oldValue, err := refs.SerializeAndSign(k, ref)
-	if err != nil {
-		return err
-	}
-	_, err = c.TRemoveRef(name, oldValue, generation)
+func RemoveNamedRef(c *client.Client, k *bpy.Key, name string, old [32]byte, generation uint64) error {
+	oldValue := sig.SignHash(k, old)
+	_, err := c.TRemoveRef(name, oldValue, generation)
 	return err
 }
 

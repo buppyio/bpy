@@ -7,6 +7,7 @@ import (
 	"github.com/buppyio/bpy/bpack"
 	"github.com/buppyio/bpy/cstore/cache"
 	"github.com/buppyio/bpy/fs"
+	"github.com/buppyio/bpy/refs"
 	"github.com/buppyio/bpy/remote"
 	"github.com/buppyio/bpy/remote/client"
 	// "log"
@@ -51,13 +52,13 @@ func GC(c *client.Client, store bpy.CStore, cacheClient *cache.Client, k *bpy.Ke
 		canDelete:   []string{},
 	}
 
-	refs, err := remote.ListRefs(c)
+	refs, err := remote.ListNamedRefs(c)
 	if err != nil {
 		return err
 	}
 
 	for _, ref := range refs {
-		err = gc.markRef(ref)
+		err = gc.markNamedRef(ref)
 		if err != nil {
 			return err
 		}
@@ -71,8 +72,8 @@ func GC(c *client.Client, store bpy.CStore, cacheClient *cache.Client, k *bpy.Ke
 	return remote.StopGC(c)
 }
 
-func (gc *gcState) markRef(name string) error {
-	ref, ok, err := remote.GetRef(gc.c, gc.k, name)
+func (gc *gcState) markNamedRef(name string) error {
+	hash, ok, err := remote.GetNamedRef(gc.c, gc.k, name)
 	if err != nil {
 		return err
 	}
@@ -80,9 +81,26 @@ func (gc *gcState) markRef(name string) error {
 		return errors.New("ref does not exist")
 	}
 
+	err = gc.markHTree(hash)
+	if err != nil {
+		return err
+	}
+
+	ref, err := refs.GetRef(gc.store, hash)
+	if err != nil {
+		return err
+	}
+
 	err = gc.markFsDir(ref.Root)
 	if err != nil {
 		return err
+	}
+
+	if ref.HasPrev {
+		err = gc.markFsDir(ref.Prev)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

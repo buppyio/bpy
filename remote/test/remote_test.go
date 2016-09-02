@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"github.com/buppyio/bpy"
-	"github.com/buppyio/bpy/refs"
 	"github.com/buppyio/bpy/remote"
 	"github.com/buppyio/bpy/remote/client"
 	"github.com/buppyio/bpy/remote/server"
@@ -38,7 +37,7 @@ func newTestConnPair() (*TestConn, *TestConn) {
 	return conn1, conn2
 }
 
-func TestRemote(t *testing.T) {
+func TestRemotePacks(t *testing.T) {
 	testPath, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatal(err)
@@ -98,7 +97,7 @@ func TestRemote(t *testing.T) {
 	}
 }
 
-func TestRefs(t *testing.T) {
+func TestNamedRefs(t *testing.T) {
 	testPath, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatal(err)
@@ -119,32 +118,32 @@ func TestRefs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	testvals := make(map[string]refs.Ref)
-	ref := refs.Ref{}
-	_, err = io.ReadFull(rand.Reader, ref.Root[:])
+	testvals := make(map[string][32]byte)
+	ref := [32]byte{}
+	_, err = io.ReadFull(rand.Reader, ref[:])
 	if err != nil {
 		t.Fatal(err)
 	}
 	testvals["foo"] = ref
-	_, err = io.ReadFull(rand.Reader, ref.Root[:])
+	_, err = io.ReadFull(rand.Reader, ref[:])
 	if err != nil {
 		t.Fatal(err)
 	}
 	testvals["foo1"] = ref
-	_, err = io.ReadFull(rand.Reader, ref.Root[:])
+	_, err = io.ReadFull(rand.Reader, ref[:])
 	if err != nil {
 		t.Fatal(err)
 	}
 	testvals["foo2"] = ref
 
 	for k, v := range testvals {
-		err = remote.NewRef(c, &key, k, v, generation)
+		err = remote.NewNamedRef(c, &key, k, v, generation)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	allRefs, err := remote.ListRefs(c)
+	allRefs, err := remote.ListNamedRefs(c)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +157,7 @@ func TestRefs(t *testing.T) {
 	}
 
 	for k, v := range testvals {
-		val, ok, err := remote.GetRef(c, &key, k)
+		val, ok, err := remote.GetNamedRef(c, &key, k)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -170,22 +169,22 @@ func TestRefs(t *testing.T) {
 		}
 	}
 
-	err = remote.RemoveRef(c, &key, "foo", refs.Ref{}, generation)
+	err = remote.RemoveNamedRef(c, &key, "foo", [32]byte{}, generation)
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	err = remote.RemoveRef(c, &key, "foo", testvals["foo"], generation)
+	err = remote.RemoveNamedRef(c, &key, "foo", testvals["foo"], generation)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, ok, err := remote.GetRef(c, &key, "foo")
+	_, ok, err := remote.GetNamedRef(c, &key, "foo")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if ok {
 		t.Fatal("expected no ref")
 	}
-	allRefs, err = remote.ListRefs(c)
+	allRefs, err = remote.ListNamedRefs(c)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,13 +192,13 @@ func TestRefs(t *testing.T) {
 		t.Fatal("incorrect number of refs")
 	}
 
-	casval := refs.Ref{}
-	_, err = io.ReadFull(rand.Reader, casval.Root[:])
+	casval := [32]byte{}
+	_, err = io.ReadFull(rand.Reader, casval[:])
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ok, err = remote.CasRef(c, &key, "foo2", refs.Ref{}, casval, generation)
+	ok, err = remote.CasNamedRef(c, &key, "foo2", [32]byte{}, casval, generation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +206,7 @@ func TestRefs(t *testing.T) {
 		t.Fatal("expected cas fail")
 	}
 
-	ok, err = remote.CasRef(c, &key, "foo2", testvals["foo2"], casval, generation)
+	ok, err = remote.CasNamedRef(c, &key, "foo2", testvals["foo2"], casval, generation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,7 +214,7 @@ func TestRefs(t *testing.T) {
 		t.Fatal("expected cas success")
 	}
 
-	val, ok, err := remote.GetRef(c, &key, "foo2")
+	val, ok, err := remote.GetNamedRef(c, &key, "foo2")
 	if err != nil {
 		t.Fatal(err)
 	}

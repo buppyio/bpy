@@ -36,7 +36,7 @@ func ParseSignedHash(k *bpy.Key, signedAndSig string) ([32]byte, error) {
 	return hash, err
 }
 
-func SerializeAndSignHash(k *bpy.Key, hash [32]byte) string {
+func SignHash(k *bpy.Key, hash [32]byte) string {
 	hashHex := hex.EncodeToString(hash[:])
 	mac := hmac.New(sha256.New, k.HmacKey[:])
 	mac.Write([]byte(hashHex))
