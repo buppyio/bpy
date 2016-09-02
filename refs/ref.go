@@ -1,54 +1,61 @@
 package refs
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/buppyio/bpy"
-	"strings"
+	"github.com/buppyio/bpy/htree"
+	"io/ioutil"
 )
 
 var (
-	ErrInvalidRefString = errors.New("invalid ref string")
-	ErrSigFailed        = errors.New("def signature check failed")
+	ErrInvalidRef = errors.New("invalid ref")
 )
 
 type Ref struct {
-	Root [32]byte
+	Root    [32]byte
+	HasPrev bool
+	Prev    [32]byte
 }
 
-func ParseRef(k *bpy.Key, signedRef string) (Ref, error) {
-	idx := strings.LastIndex(signedRef, ":")
-	if idx == -1 {
-		return Ref{}, ErrInvalidRefString
-	}
-	refString := signedRef[:idx]
-	refMac, err := hex.DecodeString(signedRef[idx+1:])
+func GetRef(store bpy.CStore, hash [32]byte) (Ref, error) {
+	rdr, err := htree.NewReader(store, hash)
 	if err != nil {
-		return Ref{}, ErrInvalidRefString
+		return Ref{}, nil
 	}
-	mac := hmac.New(sha256.New, k.HmacKey[:])
-	mac.Write([]byte(refString))
-	expectedMAC := mac.Sum(nil)
-	if !hmac.Equal(refMac, expectedMAC) {
-		return Ref{}, ErrSigFailed
+	data, err := ioutil.ReadAll(rdr)
+	if err != nil {
+		return Ref{}, nil
 	}
-	ref := Ref{}
-	err = json.Unmarshal([]byte(refString), &ref)
-	return ref, err
+	switch len(data) {
+	case 32:
+		ref := Ref{}
+		copy(ref.Root[:], data)
+		return ref, nil
+	case 64:
+		ref := Ref{}
+		copy(ref.Root[:], data[0:32])
+		copy(ref.Prev[:], data[32:64])
+		ref.HasPrev = true
+		return ref, nil
+	default:
+		return Ref{}, ErrInvalidRef
+	}
 }
 
-func SerializeAndSign(k *bpy.Key, ref Ref) (string, error) {
-	refBytes, err := json.Marshal(ref)
+func PutRef(store bpy.CStore, ref Ref) ([32]byte, error) {
+	w := htree.NewWriter(store)
+	_, err := w.Write(ref.Root[:])
 	if err != nil {
-		return "", err
+		w.Close()
+		return [32]byte{}, err
 	}
-	mac := hmac.New(sha256.New, k.HmacKey[:])
-	mac.Write([]byte(refBytes))
-	refMac := mac.Sum(nil)
-	signedRef := fmt.Sprintf("%s:%s", string(refBytes), hex.EncodeToString(refMac))
-	return signedRef, nil
+	if ref.HasPrev {
+		_, err := w.Write(ref.Prev[:])
+		if err != nil {
+			w.Close()
+			return [32]byte{}, err
+		}
+	}
+	tree, err := w.Close()
+	return tree.Data, err
 }
