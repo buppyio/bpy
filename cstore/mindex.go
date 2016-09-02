@@ -101,7 +101,7 @@ func cacheIndex(idxpath string, index bpack.Index) error {
 	if err != nil {
 		return err
 	}
-	tmppath := tmpname + ".tmp"
+	tmppath := filepath.Join(filepath.Dir(idxpath), tmpname+".tmp")
 	tmpf, err := os.Create(tmppath)
 	if err != nil {
 		return err
