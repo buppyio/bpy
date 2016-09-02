@@ -1,6 +1,7 @@
 package refs
 
 import (
+	"encoding/binary"
 	"errors"
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/htree"
@@ -12,9 +13,10 @@ var (
 )
 
 type Ref struct {
-	Root    [32]byte
-	HasPrev bool
-	Prev    [32]byte
+	CreatedAt int64
+	Root      [32]byte
+	HasPrev   bool
+	Prev      [32]byte
 }
 
 func GetRef(store bpy.CStore, hash [32]byte) (Ref, error) {
@@ -26,13 +28,19 @@ func GetRef(store bpy.CStore, hash [32]byte) (Ref, error) {
 	if err != nil {
 		return Ref{}, nil
 	}
+
+	createdAt := int64(binary.LittleEndian.Uint64(data[0:8]))
+	data = data[8:]
+
 	switch len(data) {
 	case 32:
 		ref := Ref{}
+		ref.CreatedAt = createdAt
 		copy(ref.Root[:], data)
 		return ref, nil
 	case 64:
 		ref := Ref{}
+		ref.CreatedAt = createdAt
 		copy(ref.Root[:], data[0:32])
 		copy(ref.Prev[:], data[32:64])
 		ref.HasPrev = true
@@ -44,11 +52,20 @@ func GetRef(store bpy.CStore, hash [32]byte) (Ref, error) {
 
 func PutRef(store bpy.CStore, ref Ref) ([32]byte, error) {
 	w := htree.NewWriter(store)
-	_, err := w.Write(ref.Root[:])
+	defer w.Close()
+
+	var t [8]byte
+	binary.LittleEndian.PutUint64(t[:], uint64(ref.CreatedAt))
+	_, err := w.Write(t[:])
 	if err != nil {
-		w.Close()
 		return [32]byte{}, err
 	}
+
+	_, err = w.Write(ref.Root[:])
+	if err != nil {
+		return [32]byte{}, err
+	}
+
 	if ref.HasPrev {
 		_, err := w.Write(ref.Prev[:])
 		if err != nil {

@@ -6,6 +6,7 @@ import (
 	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/refs"
 	"github.com/buppyio/bpy/remote"
+	"time"
 )
 
 func Rm() {
@@ -57,9 +58,10 @@ func Rm() {
 		}
 
 		newRefHash, err := refs.PutRef(store, refs.Ref{
-			Root:    newRootEnt.HTree.Data,
-			HasPrev: true,
-			Prev:    refHash,
+			CreatedAt: time.Now().Unix(),
+			Root:      newRootEnt.HTree.Data,
+			HasPrev:   true,
+			Prev:      refHash,
 		})
 
 		err = store.Close()

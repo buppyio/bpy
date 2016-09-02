@@ -6,6 +6,7 @@ import (
 	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/refs"
 	"github.com/buppyio/bpy/remote"
+	"time"
 )
 
 func Cp() {
@@ -59,9 +60,10 @@ func Cp() {
 		}
 
 		newRefHash, err := refs.PutRef(store, refs.Ref{
-			Root:    newRoot.HTree.Data,
-			HasPrev: true,
-			Prev:    refHash,
+			CreatedAt: time.Now().Unix(),
+			Root:      newRoot.HTree.Data,
+			HasPrev:   true,
+			Prev:      refHash,
 		})
 		if err != nil {
 			common.Die("error creating new ref: %s\n", err.Error())

@@ -17,6 +17,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"regexp"
+	"time"
 )
 
 const (
@@ -156,7 +157,12 @@ func GetRemote(k *bpy.Key) (*client.Client, error) {
 			return nil, fmt.Errorf("error creating empty default root: %s", err.Error())
 		}
 
-		hash, err := refs.PutRef(store, refs.Ref{Root: ent.HTree.Data})
+		ref := refs.Ref{
+			CreatedAt: time.Now().Unix(),
+			Root:      ent.HTree.Data,
+		}
+
+		hash, err := refs.PutRef(store, ref)
 		if err != nil {
 			c.Close()
 			return nil, fmt.Errorf("error creating base ref: %s", err.Error())

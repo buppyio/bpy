@@ -80,8 +80,11 @@ func (gc *gcState) markNamedRef(name string) error {
 	if !ok {
 		return errors.New("ref does not exist")
 	}
+	return gc.markRef(hash)
+}
 
-	err = gc.markHTree(hash)
+func (gc *gcState) markRef(hash [32]byte) error {
+	err := gc.markHTree(hash)
 	if err != nil {
 		return err
 	}
@@ -97,7 +100,7 @@ func (gc *gcState) markNamedRef(name string) error {
 	}
 
 	if ref.HasPrev {
-		err = gc.markFsDir(ref.Prev)
+		err = gc.markRef(ref.Prev)
 		if err != nil {
 			return err
 		}
