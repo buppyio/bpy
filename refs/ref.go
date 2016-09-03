@@ -6,6 +6,7 @@ import (
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/htree"
 	"io/ioutil"
+	"time"
 )
 
 var (
@@ -75,4 +76,35 @@ func PutRef(store bpy.CStore, ref Ref) ([32]byte, error) {
 	}
 	tree, err := w.Close()
 	return tree.Data, err
+}
+
+func GetAtTime(store bpy.CStore, ref Ref, at time.Time) (Ref, bool, error) {
+	for {
+		t := time.Unix(ref.CreatedAt, 0)
+		if t.Before(at) {
+			return ref, true, nil
+		}
+		if ref.HasPrev == false {
+			return Ref{}, false, nil
+		}
+		nextRef, err := GetRef(store, ref.Prev)
+		if err != nil {
+			return Ref{}, false, err
+		}
+		ref = nextRef
+	}
+}
+
+func GetNVersionsAgo(store bpy.CStore, ref Ref, n int64) (Ref, error) {
+	for n != 0 {
+		if ref.HasPrev == false {
+			break
+		}
+		nextRef, err := GetRef(store, ref.Prev)
+		if err != nil {
+			return Ref{}, err
+		}
+		ref = nextRef
+	}
+	return ref, nil
 }
