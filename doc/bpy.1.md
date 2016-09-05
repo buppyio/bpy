@@ -37,7 +37,7 @@ Finally, store a backup into the 'default' ref
 
 ```
 echo "important document" > document.txt
-bpy put .
+bpy put document.txt
 ```
 
 Once you have data stored in your bpy drive, there are multiple ways to retrieve it, try any
