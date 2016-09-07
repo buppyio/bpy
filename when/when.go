@@ -13,6 +13,6 @@ func Parse(whenString string) (time.Time, error) {
 		}
 		return time.Now().Add(-d), nil
 	} else {
-		return time.Parse("", whenString)
+		return time.Parse("15:04:05 2/1/2006", whenString)
 	}
 }
