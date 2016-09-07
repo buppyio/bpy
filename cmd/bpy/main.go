@@ -8,6 +8,7 @@ import (
 	"github.com/buppyio/bpy/cmd/bpy/cp"
 	"github.com/buppyio/bpy/cmd/bpy/gc"
 	"github.com/buppyio/bpy/cmd/bpy/get"
+	"github.com/buppyio/bpy/cmd/bpy/hist"
 	"github.com/buppyio/bpy/cmd/bpy/ls"
 	"github.com/buppyio/bpy/cmd/bpy/mkdir"
 	"github.com/buppyio/bpy/cmd/bpy/mv"
@@ -24,7 +25,7 @@ import (
 
 func help() {
 	fmt.Println("Please specify one of the following subcommands:")
-	fmt.Println("browse, cat, cache-daemon, cp, gc, get, ls, mkdir, mv, new-key, put, rm, ref, tar, zip, 9p")
+	fmt.Println("browse, cat, cache-daemon, cp, gc, get, hist, ls, mkdir, mv, new-key, put, rm, ref, tar, zip, 9p")
 	fmt.Println("")
 	fmt.Println("For more use -h on the sub commands.")
 	fmt.Println("Also check the docs at https://buppy.io/docs")
@@ -47,6 +48,8 @@ func main() {
 			cmd = gc.GC
 		case "get":
 			cmd = get.Get
+		case "hist":
+			cmd = hist.Hist
 		case "ls":
 			cmd = ls.Ls
 		case "mkdir":

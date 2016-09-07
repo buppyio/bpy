@@ -7,10 +7,13 @@ import (
 	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/refs"
 	"github.com/buppyio/bpy/remote"
+	"github.com/buppyio/bpy/when"
 )
 
 func Ls() {
 	refArg := flag.String("ref", "default", "ref of directory to list")
+	whenArg := flag.String("when", "", "time query")
+
 	lsPath := "/"
 	flag.Parse()
 
@@ -41,12 +44,27 @@ func Ls() {
 		common.Die("error fetching ref hash: %s\n", err.Error())
 	}
 	if !ok {
-		common.Die("ref '%s' does not exist", *refArg)
+		common.Die("ref '%s' does not exist\n", *refArg)
 	}
 
 	ref, err := refs.GetRef(store, refHash)
 	if err != nil {
 		common.Die("error fetching ref: %s\n", err.Error())
+	}
+
+	if *whenArg != "" {
+		refTime, err := when.Parse(*whenArg)
+		if err != nil {
+			common.Die("error parsing 'when' arg: %s\n", err.Error())
+		}
+		refPast, ok, err := refs.GetAtTime(store, ref, refTime)
+		if err != nil {
+			common.Die("error looking at ref history: %s\n", err.Error())
+		}
+		if !ok {
+			common.Die("ref did not exist at %s\n", refTime.String())
+		}
+		ref = refPast
 	}
 
 	ents, err := fs.Ls(store, ref.Root, lsPath)
