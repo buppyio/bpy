@@ -79,23 +79,25 @@ func PutRef(store bpy.CStore, ref Ref) ([32]byte, error) {
 }
 
 func GetAtTime(store bpy.CStore, ref Ref, at time.Time) (Ref, bool, error) {
+	atUnix := at.Unix()
 	for {
-		t := time.Unix(ref.CreatedAt, 0)
-		if t.Before(at) {
+		if atUnix >= ref.CreatedAt {
 			return ref, true, nil
 		}
+
 		if ref.HasPrev == false {
 			return Ref{}, false, nil
 		}
-		nextRef, err := GetRef(store, ref.Prev)
+
+		prevRef, err := GetRef(store, ref.Prev)
 		if err != nil {
 			return Ref{}, false, err
 		}
-		ref = nextRef
+		ref = prevRef
 	}
 }
 
-func GetNVersionsAgo(store bpy.CStore, ref Ref, n int64) (Ref, error) {
+func GetNVersionsAgo(store bpy.CStore, ref Ref, n uint64) (Ref, error) {
 	for n != 0 {
 		if ref.HasPrev == false {
 			break
@@ -105,6 +107,7 @@ func GetNVersionsAgo(store bpy.CStore, ref Ref, n int64) (Ref, error) {
 			return Ref{}, err
 		}
 		ref = nextRef
+		n -= 1
 	}
 	return ref, nil
 }
