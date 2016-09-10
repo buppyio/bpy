@@ -110,7 +110,6 @@ func dbg() {
 		case "write-htree":
 			cmd = writehtree
 		default:
-			cmd = dbghelp
 		}
 		copy(os.Args[1:], os.Args[2:])
 		os.Args = os.Args[0 : len(os.Args)-1]
