@@ -7,6 +7,7 @@ import (
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/refs"
 	"github.com/buppyio/bpy/remote"
+	"github.com/buppyio/bpy/when"
 	"os"
 	"time"
 )
@@ -20,7 +21,7 @@ func histHelp() {
 func prune() {
 	refArg := flag.String("ref", "default", "ref to fetch history for")
 	pruneAllArg := flag.Bool("all", false, "prune all")
-	// pruneOlderThan := flag.String("older-than", "", "prune older than this time spec")
+	pruneOlderThanArg := flag.String("older-than", "", "prune older than this time spec")
 
 	flag.Parse()
 
@@ -75,6 +76,58 @@ func prune() {
 			common.Die("error closing content store: %s\n", err.Error())
 		}
 		return
+	}
+
+	if *pruneOlderThanArg == "" {
+		common.Die("please specify how much history to prune with -older-than")
+	}
+
+	pruneOlderThan, err := when.Parse(*pruneOlderThanArg)
+	if err != nil {
+		common.Die("error parsing prune time spec: %s\n", err.Error())
+	}
+
+	prunedHist := make([]refs.Ref, 0, 0)
+
+	prunedHist = append(prunedHist, ref)
+	for {
+		ref, err = refs.GetRef(store, ref.Prev)
+		if err != nil {
+			common.Die("error fetching ref: %s\n", err.Error())
+		}
+
+		if !ref.HasPrev {
+			break
+		}
+
+		if time.Unix(ref.CreatedAt, 0).Before(pruneOlderThan) {
+			break
+		}
+
+		prunedHist = append(prunedHist, ref)
+	}
+
+	prunedHist[len(prunedHist)-1].HasPrev = false
+
+	for i := len(prunedHist) - 1; i != 0; i-- {
+		newRefHash, err := refs.PutRef(store, prunedHist[i])
+		if err != nil {
+			common.Die("error storing ref: %s\n", err.Error())
+		}
+		prunedHist[i-1].Prev = newRefHash
+	}
+
+	newRefHash, err := refs.PutRef(store, prunedHist[0])
+	if err != nil {
+		common.Die("error storing ref: %s\n", err.Error())
+	}
+
+	ok, err = remote.CasNamedRef(c, &k, *refArg, refHash, newRefHash, generation)
+	if err != nil {
+		common.Die("error swapping ref: %s\n", err.Error())
+	}
+	if !ok {
+		common.Die("ref concurrently modified, try again\n")
 	}
 
 	err = store.Close()

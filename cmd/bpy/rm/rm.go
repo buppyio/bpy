@@ -13,10 +13,6 @@ func Rm() {
 	refArg := flag.String("ref", "default", "ref put rm from")
 	flag.Parse()
 
-	if len(flag.Args()) != 1 {
-		common.Die("please specify the path to remove\n")
-	}
-
 	k, err := common.GetKey()
 	if err != nil {
 		common.Die("error getting bpy key data: %s\n", err.Error())
@@ -52,14 +48,18 @@ func Rm() {
 			common.Die("error fetching ref: %s\n", err.Error())
 		}
 
-		newRootEnt, err := fs.Remove(store, ref.Root, flag.Args()[0])
-		if err != nil {
-			common.Die("error removing file: %s\n", err.Error())
+		newRoot := ref.Root
+		for _, toRemove := range flag.Args() {
+			newRootEnt, err := fs.Remove(store, newRoot, toRemove)
+			if err != nil {
+				common.Die("error removing file: %s\n", err.Error())
+			}
+			newRoot = newRootEnt.HTree.Data
 		}
 
 		newRefHash, err := refs.PutRef(store, refs.Ref{
 			CreatedAt: time.Now().Unix(),
-			Root:      newRootEnt.HTree.Data,
+			Root:      newRoot,
 			HasPrev:   true,
 			Prev:      refHash,
 		})
