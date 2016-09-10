@@ -7,7 +7,6 @@ Alpha:
  - Make homepage list more information about refs
  - Add a logo somewhere
 - Delete old ebpack/tmp files on attach if they are older than some age
-- Give refs infinite history between gc to allow error recovery
 - Add counter to tags which remote only allows to increment
 - Write comprehensive man pages
 
@@ -15,6 +14,7 @@ Bugs:
 
 Improvements:
 
+- Change 'gc generation' to 'gc epoch'
 - Change 'IV' in cryptofile to 'Nonce'
 - Add gc tests for - dedup, removing stuff, repacking, concurrency
 - Change fs api from "dest, src" to "src, dest", it is more natural since it works like mv or cp
