@@ -13,7 +13,7 @@ will not be reclaimed until the next garbage collection bpy_gc(1).
 
 # Usage
 
-```$ bpy rm [-ref=default] path```
+```$ bpy rm [-ref=default] file1 [file2..]```
 
 # Example
 

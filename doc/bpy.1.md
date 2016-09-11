@@ -86,8 +86,8 @@ Run the garbage collector to reclaim unused space and merge small pack files
 ## get
 Download the contents of a bpy ref folder
 
-## history
-Fetch hash history of a given ref
+## hist
+Fetch or prune the history of a given ref
 
 ## ls
 Get a directory listing of the specified ref and folder
