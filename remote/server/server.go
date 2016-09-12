@@ -10,6 +10,9 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"io/ioutil"
+	"time"
+	"strings"
 )
 
 var (
@@ -482,6 +485,27 @@ func (srv *server) handleTGetGeneration(t *proto.TGetGeneration) proto.Message {
 	}
 }
 
+func cleanOldTempPacks(packPath string) error {
+	dirEnts, err := ioutil.ReadDir(packPath)
+	if err != nil {
+		return err
+	}
+	for _, ent := range dirEnts {
+		if !strings.HasSuffix(ent.Name(), ".tmp") {
+			continue
+		}
+		if !(time.Now().Sub(ent.ModTime()).Hours() > 7*24) {
+			continue
+		}
+		tmpFilePath := filepath.Join(packPath, ent.Name())
+		err = os.Remove(tmpFilePath)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (srv *server) handleTAttach(t *proto.TAttach) proto.Message {
 	if t.Mid != 1 || t.Version != "buppy1" {
 		return makeError(t.Mid, ErrBadRequest)
@@ -522,7 +546,12 @@ func (srv *server) handleTAttach(t *proto.TAttach) proto.Message {
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
-	err = os.MkdirAll(filepath.Join(srv.servePath, "packs"), 0777)
+	packPath := filepath.Join(srv.servePath, "packs")
+	err = os.MkdirAll(packPath, 0777)
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+	err = cleanOldTempPacks(packPath)
 	if err != nil {
 		return makeError(t.Mid, err)
 	}

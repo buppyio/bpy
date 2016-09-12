@@ -6,9 +6,10 @@ Alpha:
  - Add a way to download directories as zip/tar.gz
  - Make homepage list more information about refs
  - Add a logo somewhere
-- Delete old ebpack/tmp files on attach if they are older than some age
 - Add counter to tags which remote only allows to increment
 - Write comprehensive man pages
+- fix 9p mode
+- make cache automatic?
 
 Bugs:
 
