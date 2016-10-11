@@ -7,10 +7,8 @@ import (
 )
 
 const (
-	RefBucketName     = "refs"
-	KeyIdBucketName   = "keyid"
-	GCStateBucketName = "gc"
-	BpyDBName         = "bpy.db"
+	MetaDataBucketName = "refs"
+	BpyDBName          = "bpy.db"
 )
 
 type refListingFile struct {
@@ -26,7 +24,7 @@ type gcState struct {
 }
 
 func getGCState(tx *bolt.Tx) (gcState, error) {
-	stateBucket := tx.Bucket([]byte(GCStateBucketName))
+	stateBucket := tx.Bucket([]byte(MetaDataBucketName))
 	stateBytes := stateBucket.Get([]byte("state"))
 	state := gcState{}
 	err := json.Unmarshal(stateBytes, &state)
@@ -37,7 +35,7 @@ func getGCState(tx *bolt.Tx) (gcState, error) {
 }
 
 func setGCState(tx *bolt.Tx, state gcState) error {
-	stateBucket := tx.Bucket([]byte(GCStateBucketName))
+	stateBucket := tx.Bucket([]byte(MetaDataBucketName))
 	data, err := json.Marshal(state)
 	if err != nil {
 		return err
@@ -51,15 +49,7 @@ func openDB(dbPath, keyId string) (*bolt.DB, error) {
 		return nil, err
 	}
 	err = db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte(RefBucketName))
-		if err != nil {
-			return err
-		}
-		_, err = tx.CreateBucketIfNotExists([]byte(KeyIdBucketName))
-		if err != nil {
-			return err
-		}
-		gcStateBucket, err := tx.CreateBucketIfNotExists([]byte(GCStateBucketName))
+		gcStateBucket, err := tx.CreateBucketIfNotExists([]byte(MetaDataBucketName))
 		if err != nil {
 			return err
 		}

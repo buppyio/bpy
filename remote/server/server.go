@@ -240,7 +240,7 @@ func (srv *server) handleTGetRef(t *proto.TGetRoot) proto.Message {
 	defer db.Close()
 	var value string
 	err = db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(RefBucketName))
+		b := tx.Bucket([]byte(MetaDataBucketName))
 		valueBytes := b.Get([]byte("root"))
 		if valueBytes != nil {
 			value = string(valueBytes)
@@ -270,7 +270,7 @@ func (srv *server) handleTCasRef(t *proto.TCasRoot) proto.Message {
 		if t.Generation != state.Generation {
 			return ErrGCInProgress
 		}
-		b := tx.Bucket([]byte(RefBucketName))
+		b := tx.Bucket([]byte(MetaDataBucketName))
 		valueBytes := b.Get([]byte("root"))
 		if valueBytes != nil {
 			if string(valueBytes) != t.OldValue {
@@ -446,7 +446,7 @@ func (srv *server) handleTAttach(t *proto.TAttach) proto.Message {
 		return makeError(t.Mid, err)
 	}
 	err = db.Update(func(tx *bolt.Tx) error {
-		keyIdBucket := tx.Bucket([]byte(KeyIdBucketName))
+		keyIdBucket := tx.Bucket([]byte(MetaDataBucketName))
 		currentKeyId := keyIdBucket.Get([]byte("keyid"))
 		if currentKeyId != nil {
 			if string(currentKeyId) != srv.keyId {
