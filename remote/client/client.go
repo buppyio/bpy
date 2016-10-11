@@ -141,6 +141,7 @@ func (c *Client) Close() error {
 	if c.closed {
 		return nil
 	}
+
 	for _, ch := range c.calls {
 		close(ch)
 	}

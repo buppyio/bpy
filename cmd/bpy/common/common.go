@@ -39,8 +39,6 @@ func (s *slave) Write(buf []byte) (int, error) {
 }
 
 func (s *slave) Close() error {
-	s.in.Close()
-	s.out.Close()
 	return s.cmd.Process.Kill()
 }
 
