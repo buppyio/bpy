@@ -98,7 +98,7 @@ type BufferedWriteCloser struct {
 }
 
 func (bwc *BufferedWriteCloser) Write(buf []byte) (int, error) {
-	return bwc.W.Write(buf)
+	return bwc.B.Write(buf)
 }
 
 func (bwc *BufferedWriteCloser) Close() error {

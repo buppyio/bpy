@@ -6,13 +6,13 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/buppyio/bpy/remote/proto"
 	"io"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
-	"io/ioutil"
-	"time"
 	"strings"
+	"time"
 )
 
 var (

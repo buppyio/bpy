@@ -16,7 +16,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
-	"regexp"
+	"strings"
 	"time"
 )
 
@@ -44,12 +44,13 @@ func (s *slave) Close() error {
 	return s.cmd.Process.Kill()
 }
 
-func dialRemote(remote string) (io.ReadWriteCloser, error) {
-	url, path, err := ParseRemoteString(remote)
-	if err != nil {
-		return nil, err
+func dialRemote(cmdstr string) (io.ReadWriteCloser, error) {
+	// XXX strings.Fields doesn't handle quotes correctly
+	spltcmd := strings.Fields(cmdstr)
+	if len(spltcmd) < 2 {
+		return nil, fmt.Errorf("invalid remote command: '%s'", cmdstr)
 	}
-	cmd := exec.Command("ssh", url, "bpy", "remote", path)
+	cmd := exec.Command(spltcmd[0], spltcmd[1:]...)
 	out, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, err
@@ -129,8 +130,8 @@ func GetKey() (bpy.Key, error) {
 }
 
 func GetRemote(k *bpy.Key) (*client.Client, error) {
-	url := os.Getenv("BPY_REMOTE")
-	slv, err := dialRemote(url)
+	cmd := os.Getenv("BPY_REMOTE_CMD")
+	slv, err := dialRemote(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -139,6 +140,9 @@ func GetRemote(k *bpy.Key) (*client.Client, error) {
 		return nil, err
 	}
 	_, ok, err := remote.GetNamedRef(c, k, "default")
+	if err != nil {
+		return nil, fmt.Errorf("error fetching ref: %s", err.Error())
+	}
 	if !ok {
 		generation, err := remote.GetGeneration(c)
 		if err != nil {
@@ -214,14 +218,4 @@ func GetCStore(k *bpy.Key, remote *client.Client) (bpy.CStore, error) {
 func Die(msg string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, msg, args...)
 	os.Exit(1)
-}
-
-func ParseRemoteString(remote string) (string, string, error) {
-	r := regexp.MustCompile("ssh://([^/]+)(.+)")
-
-	matches := r.FindStringSubmatch(remote)
-	if matches == nil {
-		return "", "", fmt.Errorf("invalid remote: '%s'\n", remote)
-	}
-	return matches[1], matches[2], nil
 }
