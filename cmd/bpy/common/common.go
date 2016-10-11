@@ -178,7 +178,7 @@ func GetRemote(k *bpy.Key) (*client.Client, error) {
 			return nil, fmt.Errorf("error closing store writer: %s", err.Error())
 		}
 
-		_, err = remote.CasRef(c, k, [32]byte{}, hash, generation)
+		_, err = remote.CasRoot(c, k, [32]byte{}, hash, generation)
 		if err != nil {
 			c.Close()
 			return nil, fmt.Errorf("error initizializing root: %s", err.Error())

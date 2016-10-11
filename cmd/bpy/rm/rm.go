@@ -68,7 +68,7 @@ func Rm() {
 			common.Die("error closing store: %s\n", err.Error())
 		}
 
-		ok, err = remote.CasRef(c, &k, rootHash, newRefHash, generation)
+		ok, err = remote.CasRoot(c, &k, rootHash, newRefHash, generation)
 		if err != nil {
 			common.Die("error swapping root: %s\n", err.Error())
 		}

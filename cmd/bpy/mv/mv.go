@@ -73,7 +73,7 @@ func Mv() {
 			common.Die("error closing remote: %s\n", err.Error())
 		}
 
-		ok, err = remote.CasRef(c, &k, rootHash, newRefHash, generation)
+		ok, err = remote.CasRoot(c, &k, rootHash, newRefHash, generation)
 		if err != nil {
 			common.Die("creating ref: %s\n", err.Error())
 		}

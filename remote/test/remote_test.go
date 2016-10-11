@@ -128,7 +128,7 @@ func TestRoot(t *testing.T) {
 
 	root0 := [32]byte{}
 	root0[0] = 1
-	ok, err = remote.CasRef(c, &key, [32]byte{}, root0, generation)
+	ok, err = remote.CasRoot(c, &key, [32]byte{}, root0, generation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +147,7 @@ func TestRoot(t *testing.T) {
 	root1 := root0
 	root1[0] = 2
 
-	ok, err = remote.CasRef(c, &key, [32]byte{}, root1, generation)
+	ok, err = remote.CasRoot(c, &key, [32]byte{}, root1, generation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +163,7 @@ func TestRoot(t *testing.T) {
 		t.Fatal("bad val")
 	}
 
-	ok, err = remote.CasRef(c, &key, root0, root1, generation)
+	ok, err = remote.CasRoot(c, &key, root0, root1, generation)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -63,7 +63,7 @@ func prune() {
 		newRef.HasPrev = false
 
 		newRefHash, err := refs.PutRef(store, newRef)
-		ok, err = remote.CasRef(c, &k, rootHash, newRefHash, generation)
+		ok, err = remote.CasRoot(c, &k, rootHash, newRefHash, generation)
 		if err != nil {
 			common.Die("error swapping root: %s\n", err.Error())
 		}
@@ -121,7 +121,7 @@ func prune() {
 		common.Die("error storing ref: %s\n", err.Error())
 	}
 
-	ok, err = remote.CasRef(c, &k, rootHash, newRefHash, generation)
+	ok, err = remote.CasRoot(c, &k, rootHash, newRefHash, generation)
 	if err != nil {
 		common.Die("error swapping root: %s\n", err.Error())
 	}

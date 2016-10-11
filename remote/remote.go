@@ -95,7 +95,7 @@ func GetRoot(c *client.Client, k *bpy.Key) ([32]byte, bool, error) {
 	return hash, true, err
 }
 
-func CasRef(c *client.Client, k *bpy.Key, oldHash, newHash [32]byte, generation uint64) (bool, error) {
+func CasRoot(c *client.Client, k *bpy.Key, oldHash, newHash [32]byte, generation uint64) (bool, error) {
 	oldValue := sig.SignHash(k, oldHash)
 	newValue := sig.SignHash(k, newHash)
 	r, err := c.TCasRef(oldValue, newValue, generation)
