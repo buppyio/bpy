@@ -11,7 +11,6 @@ import (
 	"github.com/buppyio/bpy/remote"
 	"github.com/buppyio/bpy/remote/client"
 	"github.com/pkg/browser"
-
 	"html"
 	"log"
 	"net/http"
@@ -140,7 +139,7 @@ type httpFs struct {
 }
 
 func (httpFs *httpFs) Open(fullPath string) (http.File, error) {
-	fullPath = fullPath[3:]
+	fullPath = fullPath[4:]
 	log.Printf("open: %s", fullPath)
 	rootHash, ok, err := remote.GetRoot(httpFs.c, httpFs.k)
 	if err != nil {
@@ -271,8 +270,9 @@ func Browse() {
 	}
 
 	http.Handle("/", &rootHandler{
-		c: c,
-		k: &k,
+		c:     c,
+		k:     &k,
+		store: store,
 	})
 
 	http.Handle("/raw/", http.FileServer(&httpFs{
