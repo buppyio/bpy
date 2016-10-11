@@ -29,7 +29,7 @@ func handleConnection(con net.Conn) {
 		return
 	}
 
-	refHash, ok, err := remote.GetRef(c, &k)
+	rootHash, ok, err := remote.GetRoot(c, &k)
 	if err != nil {
 		log.Fatalf("error fetching tag hash: %s", err.Error())
 	}
@@ -37,7 +37,7 @@ func handleConnection(con net.Conn) {
 		log.Fatalf("root missing")
 	}
 
-	ref, err := refs.GetRef(store, refHash)
+	ref, err := refs.GetRef(store, rootHash)
 	if err != nil {
 		common.Die("error fetching ref: %s", err.Error())
 	}

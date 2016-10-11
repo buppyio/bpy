@@ -118,7 +118,7 @@ func TestRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, ok, err := remote.GetRef(c, &key)
+	_, ok, err := remote.GetRoot(c, &key)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestRoot(t *testing.T) {
 		t.Fatal("expected cas success")
 	}
 
-	val, ok, err := remote.GetRef(c, &key)
+	val, ok, err := remote.GetRoot(c, &key)
 	if !ok {
 		t.Fatal("expected root")
 	}
@@ -155,7 +155,7 @@ func TestRoot(t *testing.T) {
 		t.Fatal("expected cas failure")
 	}
 
-	val, ok, err = remote.GetRef(c, &key)
+	val, ok, err = remote.GetRoot(c, &key)
 	if !ok {
 		t.Fatal("expected root")
 	}
@@ -171,7 +171,7 @@ func TestRoot(t *testing.T) {
 		t.Fatal("expected cas success")
 	}
 
-	val, ok, err = remote.GetRef(c, &key)
+	val, ok, err = remote.GetRoot(c, &key)
 	if !ok {
 		t.Fatal("expected root")
 	}

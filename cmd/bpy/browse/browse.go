@@ -67,7 +67,7 @@ type rootHandler struct {
 
 func (h *rootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	walkPath := r.URL.Path
-	refHash, ok, err := remote.GetRef(h.c, h.k)
+	rootHash, ok, err := remote.GetRoot(h.c, h.k)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "error: %s", err.Error())
@@ -79,7 +79,7 @@ func (h *rootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ref, err := refs.GetRef(h.store, refHash)
+	ref, err := refs.GetRef(h.store, rootHash)
 	if err != nil {
 		common.Die("error fetching ref: %s\n", err.Error())
 	}
@@ -142,7 +142,7 @@ type httpFs struct {
 func (httpFs *httpFs) Open(fullPath string) (http.File, error) {
 	fullPath = fullPath[3:]
 	log.Printf("open: %s", fullPath)
-	refHash, ok, err := remote.GetRef(httpFs.c, httpFs.k)
+	rootHash, ok, err := remote.GetRoot(httpFs.c, httpFs.k)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +150,7 @@ func (httpFs *httpFs) Open(fullPath string) (http.File, error) {
 		return nil, fmt.Errorf("root missing")
 	}
 
-	ref, err := refs.GetRef(httpFs.store, refHash)
+	ref, err := refs.GetRef(httpFs.store, rootHash)
 	if err != nil {
 		common.Die("error fetching ref: %s\n", err.Error())
 	}

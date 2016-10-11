@@ -139,7 +139,7 @@ func GetRemote(k *bpy.Key) (*client.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, ok, err := remote.GetRef(c, k)
+	_, ok, err := remote.GetRoot(c, k)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching ref: %s", err.Error())
 	}

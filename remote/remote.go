@@ -80,7 +80,7 @@ func ListNamedRefs(c *client.Client) ([]string, error) {
 	return listing, nil
 }
 
-func GetRef(c *client.Client, k *bpy.Key) ([32]byte, bool, error) {
+func GetRoot(c *client.Client, k *bpy.Key) ([32]byte, bool, error) {
 	r, err := c.TGetRef()
 	if err != nil {
 		return [32]byte{}, false, err

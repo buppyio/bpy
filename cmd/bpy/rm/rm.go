@@ -34,15 +34,15 @@ func Rm() {
 			common.Die("error getting content store: %s\n", err.Error())
 		}
 
-		refHash, ok, err := remote.GetRef(c, &k)
+		rootHash, ok, err := remote.GetRoot(c, &k)
 		if err != nil {
-			common.Die("error fetching ref hash: %s\n", err.Error())
+			common.Die("error fetching root hash: %s\n", err.Error())
 		}
 		if !ok {
 			common.Die("root missing\n")
 		}
 
-		ref, err := refs.GetRef(store, refHash)
+		ref, err := refs.GetRef(store, rootHash)
 		if err != nil {
 			common.Die("error fetching ref: %s\n", err.Error())
 		}
@@ -60,7 +60,7 @@ func Rm() {
 			CreatedAt: time.Now().Unix(),
 			Root:      newRoot,
 			HasPrev:   true,
-			Prev:      refHash,
+			Prev:      rootHash,
 		})
 
 		err = store.Close()
@@ -68,7 +68,7 @@ func Rm() {
 			common.Die("error closing store: %s\n", err.Error())
 		}
 
-		ok, err = remote.CasRef(c, &k, refHash, newRefHash, generation)
+		ok, err = remote.CasRef(c, &k, rootHash, newRefHash, generation)
 		if err != nil {
 			common.Die("error swapping root: %s\n", err.Error())
 		}
