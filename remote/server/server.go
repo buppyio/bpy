@@ -232,7 +232,7 @@ func (srv *server) handleTCancelPack(t *proto.TCancelPack) proto.Message {
 	}
 }
 
-func (srv *server) handleTGetRef(t *proto.TGetRef) proto.Message {
+func (srv *server) handleTGetRef(t *proto.TGetRoot) proto.Message {
 	db, err := openDB(srv.dbPath, srv.keyId)
 	if err != nil {
 		makeError(t.Mid, err)
@@ -250,13 +250,13 @@ func (srv *server) handleTGetRef(t *proto.TGetRef) proto.Message {
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
-	return &proto.RGetRef{
+	return &proto.RGetRoot{
 		Mid:   t.Mid,
 		Value: value,
 	}
 }
 
-func (srv *server) handleTCasRef(t *proto.TCasRef) proto.Message {
+func (srv *server) handleTCasRef(t *proto.TCasRoot) proto.Message {
 	db, err := openDB(srv.dbPath, srv.keyId)
 	if err != nil {
 		makeError(t.Mid, err)
@@ -280,7 +280,7 @@ func (srv *server) handleTCasRef(t *proto.TCasRef) proto.Message {
 		return b.Put([]byte("root"), []byte(t.NewValue))
 	})
 	if err == ErrStaleRefValue {
-		return &proto.RCasRef{
+		return &proto.RCasRoot{
 			Mid: t.Mid,
 			Ok:  false,
 		}
@@ -288,7 +288,7 @@ func (srv *server) handleTCasRef(t *proto.TCasRef) proto.Message {
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
-	return &proto.RCasRef{
+	return &proto.RCasRoot{
 		Mid: t.Mid,
 		Ok:  true,
 	}
@@ -545,9 +545,9 @@ func Serve(conn ReadWriteCloser, root string) error {
 			r = srv.handleTReadAt(t)
 		case *proto.TClose:
 			r = srv.handleTClose(t)
-		case *proto.TGetRef:
+		case *proto.TGetRoot:
 			r = srv.handleTGetRef(t)
-		case *proto.TCasRef:
+		case *proto.TCasRoot:
 			r = srv.handleTCasRef(t)
 		case *proto.TRemove:
 			r = srv.handleTRemove(t)

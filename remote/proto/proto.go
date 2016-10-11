@@ -29,14 +29,10 @@ const (
 	RCANCELPACK
 	TREMOVE
 	RREMOVE
-	TTAG
-	RTAG
-	TGETTAG
-	RGETTAG
-	TCASTAG
-	RCASTAG
-	TREMOVETAG
-	RREMOVETAG
+	TGETROOT
+	RGETROOT
+	TCASROOT
+	RCASROOT
 	TSTARTGC
 	RSTARTGC
 	TSTOPGC
@@ -68,23 +64,23 @@ type RError struct {
 	Message string
 }
 
-type TGetRef struct {
+type TGetRoot struct {
 	Mid uint16
 }
 
-type RGetRef struct {
+type RGetRoot struct {
 	Mid   uint16
 	Value string
 }
 
-type TCasRef struct {
+type TCasRoot struct {
 	Mid        uint16
 	OldValue   string
 	NewValue   string
 	Generation uint64
 }
 
-type RCasRef struct {
+type RCasRoot struct {
 	Mid uint16
 	Ok  bool
 }
@@ -273,14 +269,14 @@ func UnpackMessage(buf []byte) (Message, error) {
 		m = &TCancelPack{}
 	case RCANCELPACK:
 		m = &RCancelPack{}
-	case TGETTAG:
-		m = &TGetRef{}
-	case RGETTAG:
-		m = &RGetRef{}
-	case TCASTAG:
-		m = &TCasRef{}
-	case RCASTAG:
-		m = &RCasRef{}
+	case TGETROOT:
+		m = &TGetRoot{}
+	case RGETROOT:
+		m = &RGetRoot{}
+	case TCASROOT:
+		m = &TCasRoot{}
+	case RCASROOT:
+		m = &RCasRoot{}
 	case TREMOVE:
 		m = &TRemove{}
 	case RREMOVE:
@@ -339,14 +335,14 @@ func GetMessageType(m Message) byte {
 		return TCANCELPACK
 	case *RCancelPack:
 		return RCANCELPACK
-	case *TGetRef:
-		return TGETTAG
-	case *RGetRef:
-		return RGETTAG
-	case *TCasRef:
-		return TCASTAG
-	case *RCasRef:
-		return RCASTAG
+	case *TGetRoot:
+		return TGETROOT
+	case *RGetRoot:
+		return RGETROOT
+	case *TCasRoot:
+		return TCASROOT
+	case *RCasRoot:
+		return RCASROOT
 	case *TRemove:
 		return TREMOVE
 	case *RRemove:
@@ -403,13 +399,13 @@ func GetMessageId(m Message) uint16 {
 		return m.Mid
 	case *RCancelPack:
 		return m.Mid
-	case *TGetRef:
+	case *TGetRoot:
 		return m.Mid
-	case *RGetRef:
+	case *RGetRoot:
 		return m.Mid
-	case *TCasRef:
+	case *TCasRoot:
 		return m.Mid
-	case *RCasRef:
+	case *RCasRoot:
 		return m.Mid
 	case *TRemove:
 		return m.Mid

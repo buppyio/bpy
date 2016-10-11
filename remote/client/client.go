@@ -229,12 +229,12 @@ func (c *Client) WriteMessage(m proto.Message) error {
 	return proto.WriteMessage(c.conn, m, c.wBuf)
 }
 
-func (c *Client) TCasRef(oldValue, newValue string, generation uint64) (*proto.RCasRef, error) {
+func (c *Client) TCasRef(oldValue, newValue string, generation uint64) (*proto.RCasRoot, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.Call(&proto.TCasRef{
+	resp, err := c.Call(&proto.TCasRoot{
 		Mid:        mid,
 		OldValue:   oldValue,
 		NewValue:   newValue,
@@ -244,26 +244,26 @@ func (c *Client) TCasRef(oldValue, newValue string, generation uint64) (*proto.R
 		return nil, err
 	}
 	switch resp := resp.(type) {
-	case *proto.RCasRef:
+	case *proto.RCasRoot:
 		return resp, nil
 	default:
 		return nil, ErrBadResponse
 	}
 }
 
-func (c *Client) TGetRef() (*proto.RGetRef, error) {
+func (c *Client) TGetRef() (*proto.RGetRoot, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.Call(&proto.TGetRef{
+	resp, err := c.Call(&proto.TGetRoot{
 		Mid: mid,
 	}, ch, mid)
 	if err != nil {
 		return nil, err
 	}
 	switch resp := resp.(type) {
-	case *proto.RGetRef:
+	case *proto.RGetRoot:
 		return resp, nil
 	default:
 		return nil, ErrBadResponse
