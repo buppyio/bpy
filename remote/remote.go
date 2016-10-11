@@ -80,12 +80,12 @@ func ListNamedRefs(c *client.Client) ([]string, error) {
 	return listing, nil
 }
 
-func GetNamedRef(c *client.Client, k *bpy.Key, name string) ([32]byte, bool, error) {
-	r, err := c.TGetRef(name)
+func GetRef(c *client.Client, k *bpy.Key) ([32]byte, bool, error) {
+	r, err := c.TGetRef()
 	if err != nil {
 		return [32]byte{}, false, err
 	}
-	if !r.Ok {
+	if r.Value == "" {
 		return [32]byte{}, false, nil
 	}
 	hash, err := sig.ParseSignedHash(k, r.Value)
@@ -95,26 +95,14 @@ func GetNamedRef(c *client.Client, k *bpy.Key, name string) ([32]byte, bool, err
 	return hash, true, err
 }
 
-func NewNamedRef(c *client.Client, k *bpy.Key, name string, hash [32]byte, generation uint64) error {
-	signed := sig.SignHash(k, hash)
-	_, err := c.TRef(name, signed, generation)
-	return err
-}
-
-func CasNamedRef(c *client.Client, k *bpy.Key, name string, oldHash, newHash [32]byte, generation uint64) (bool, error) {
+func CasRef(c *client.Client, k *bpy.Key, oldHash, newHash [32]byte, generation uint64) (bool, error) {
 	oldValue := sig.SignHash(k, oldHash)
 	newValue := sig.SignHash(k, newHash)
-	r, err := c.TCasRef(name, oldValue, newValue, generation)
+	r, err := c.TCasRef(oldValue, newValue, generation)
 	if err != nil {
 		return false, err
 	}
 	return r.Ok, nil
-}
-
-func RemoveNamedRef(c *client.Client, k *bpy.Key, name string, old [32]byte, generation uint64) error {
-	oldValue := sig.SignHash(k, old)
-	_, err := c.TRemoveRef(name, oldValue, generation)
-	return err
 }
 
 func Remove(c *client.Client, path, gcId string) error {

@@ -52,16 +52,17 @@ func GC(c *client.Client, store bpy.CStore, cacheClient *cache.Client, k *bpy.Ke
 		canDelete:   []string{},
 	}
 
-	refs, err := remote.ListNamedRefs(c)
+	hash, ok, err := remote.GetRef(gc.c, gc.k)
 	if err != nil {
 		return err
 	}
+	if !ok {
+		return errors.New("root missing")
+	}
 
-	for _, ref := range refs {
-		err = gc.markNamedRef(ref)
-		if err != nil {
-			return err
-		}
+	err = gc.markRef(hash)
+	if err != nil {
+		return err
 	}
 
 	err = gc.sweep()
@@ -70,17 +71,6 @@ func GC(c *client.Client, store bpy.CStore, cacheClient *cache.Client, k *bpy.Ke
 	}
 
 	return remote.StopGC(c)
-}
-
-func (gc *gcState) markNamedRef(name string) error {
-	hash, ok, err := remote.GetNamedRef(gc.c, gc.k, name)
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return errors.New("ref does not exist")
-	}
-	return gc.markRef(hash)
 }
 
 func (gc *gcState) markRef(hash [32]byte) error {

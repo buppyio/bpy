@@ -97,7 +97,7 @@ func TestRemotePacks(t *testing.T) {
 	}
 }
 
-func TestNamedRefs(t *testing.T) {
+func TestRoot(t *testing.T) {
 	testPath, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatal(err)
@@ -118,95 +118,17 @@ func TestNamedRefs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	testvals := make(map[string][32]byte)
-	ref := [32]byte{}
-	_, err = io.ReadFull(rand.Reader, ref[:])
-	if err != nil {
-		t.Fatal(err)
-	}
-	testvals["foo"] = ref
-	_, err = io.ReadFull(rand.Reader, ref[:])
-	if err != nil {
-		t.Fatal(err)
-	}
-	testvals["foo1"] = ref
-	_, err = io.ReadFull(rand.Reader, ref[:])
-	if err != nil {
-		t.Fatal(err)
-	}
-	testvals["foo2"] = ref
-
-	for k, v := range testvals {
-		err = remote.NewNamedRef(c, &key, k, v, generation)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	allRefs, err := remote.ListNamedRefs(c)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(allRefs) != 3 {
-		t.Fatal("incorrect number of refs")
-	}
-
-	if allRefs[0] != "foo" || allRefs[1] != "foo1" || allRefs[2] != "foo2" {
-		t.Fatal("incorrect ref listing")
-	}
-
-	for k, v := range testvals {
-		val, ok, err := remote.GetNamedRef(c, &key, k)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !ok {
-			t.Fatal("expected ref")
-		}
-		if !reflect.DeepEqual(v, val) {
-			t.Fatalf("value got('%s') != expected('%v')", v, val)
-		}
-	}
-
-	err = remote.RemoveNamedRef(c, &key, "foo", [32]byte{}, generation)
-	if err == nil {
-		t.Fatal("expected error")
-	}
-	err = remote.RemoveNamedRef(c, &key, "foo", testvals["foo"], generation)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, ok, err := remote.GetNamedRef(c, &key, "foo")
+	_, ok, err := remote.GetRef(c, &key)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if ok {
-		t.Fatal("expected no ref")
-	}
-	allRefs, err = remote.ListNamedRefs(c)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(allRefs) != 2 {
-		t.Fatal("incorrect number of refs")
+		t.Fatal("expected missing root")
 	}
 
-	casval := [32]byte{}
-	_, err = io.ReadFull(rand.Reader, casval[:])
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ok, err = remote.CasNamedRef(c, &key, "foo2", [32]byte{}, casval, generation)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if ok {
-		t.Fatal("expected cas fail")
-	}
-
-	ok, err = remote.CasNamedRef(c, &key, "foo2", testvals["foo2"], casval, generation)
+	root0 := [32]byte{}
+	root0[0] = 1
+	ok, err = remote.CasRef(c, &key, [32]byte{}, root0, generation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,14 +136,46 @@ func TestNamedRefs(t *testing.T) {
 		t.Fatal("expected cas success")
 	}
 
-	val, ok, err := remote.GetNamedRef(c, &key, "foo2")
+	val, ok, err := remote.GetRef(c, &key)
+	if !ok {
+		t.Fatal("expected root")
+	}
+	if !reflect.DeepEqual(val, root0) {
+		t.Fatal("bad val")
+	}
+
+	root1 := root0
+	root1[0] = 2
+
+	ok, err = remote.CasRef(c, &key, [32]byte{}, root1, generation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok {
+		t.Fatal("expected cas failure")
+	}
+
+	val, ok, err = remote.GetRef(c, &key)
+	if !ok {
+		t.Fatal("expected root")
+	}
+	if !reflect.DeepEqual(val, root0) {
+		t.Fatal("bad val")
+	}
+
+	ok, err = remote.CasRef(c, &key, root0, root1, generation)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !ok {
-		t.Fatal("expected get success")
+		t.Fatal("expected cas success")
 	}
-	if !reflect.DeepEqual(val, casval) {
+
+	val, ok, err = remote.GetRef(c, &key)
+	if !ok {
+		t.Fatal("expected root")
+	}
+	if !reflect.DeepEqual(val, root1) {
 		t.Fatal("bad val")
 	}
 }

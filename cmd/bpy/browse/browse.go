@@ -17,7 +17,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"strings"
 	"time"
 )
 
@@ -67,41 +66,8 @@ type rootHandler struct {
 }
 
 func (h *rootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	refs, err := remote.ListNamedRefs(h.c)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "error x: %s", err.Error())
-		return
-	}
-	w.Write(head)
-	w.Write([]byte("<div id=\"content\">\n"))
-	w.Write([]byte("<table id=\"files\">\n"))
-	w.Write([]byte("<thead><tr><td>Name</td></tr></thead>\n"))
-	for _, ref := range refs {
-		name := html.EscapeString(ref)
-		link := html.EscapeString(path.Join("/ref/", name))
-		fmt.Fprintf(w, "<tr><td><a href=\"%s\"'>%s</a></td></tr>", link, name)
-	}
-	w.Write([]byte("</table>\n"))
-	w.Write([]byte("</div>\n"))
-	w.Write(tail)
-}
-
-type refHandler struct {
-	c     *client.Client
-	k     *bpy.Key
-	store bpy.CStore
-}
-
-func (h *refHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fullPath := r.URL.Path[5:]
-	refName, walkPath := fullPath, "/"
-	idx := strings.Index(fullPath, "/")
-	if idx != -1 {
-		refName, walkPath = fullPath[:idx], fullPath[idx:]
-	}
-
-	refHash, ok, err := remote.GetNamedRef(h.c, h.k, refName)
+	walkPath := r.URL.Path
+	refHash, ok, err := remote.GetRef(h.c, h.k)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "error: %s", err.Error())
@@ -109,7 +75,7 @@ func (h *refHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintf(w, "ref '%s' does not exist", refName)
+		fmt.Fprintf(w, "root missing\n")
 		return
 	}
 
@@ -144,9 +110,9 @@ func (h *refHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		link := ""
 		if dirEnt.IsDir() {
 			size = "-"
-			link = path.Join(path.Join("/ref/", fullPath), name)
+			link = path.Join(walkPath, name)
 		} else {
-			link = path.Join(path.Join("/raw/", fullPath), name)
+			link = path.Join(path.Join("/raw/", walkPath), name)
 		}
 		link = html.EscapeString(link)
 		fmt.Fprintf(w, "<tr><td>%s</td><td><a href=\"%s\"'>%s</a></td><td>%s</td></tr>", mode, link, name, size)
@@ -174,19 +140,14 @@ type httpFs struct {
 }
 
 func (httpFs *httpFs) Open(fullPath string) (http.File, error) {
-	fullPath = fullPath[5:]
+	fullPath = fullPath[3:]
 	log.Printf("open: %s", fullPath)
-	refName, path := fullPath, "/"
-	idx := strings.Index(fullPath, "/")
-	if idx != -1 {
-		refName, path = fullPath[:idx], fullPath[idx:]
-	}
-	refHash, ok, err := remote.GetNamedRef(httpFs.c, httpFs.k, refName)
+	refHash, ok, err := remote.GetRef(httpFs.c, httpFs.k)
 	if err != nil {
 		return nil, err
 	}
 	if !ok {
-		return nil, fmt.Errorf("ref '%s' does not exist", refName)
+		return nil, fmt.Errorf("root missing")
 	}
 
 	ref, err := refs.GetRef(httpFs.store, refHash)
@@ -194,13 +155,13 @@ func (httpFs *httpFs) Open(fullPath string) (http.File, error) {
 		common.Die("error fetching ref: %s\n", err.Error())
 	}
 
-	ent, err := fs.Walk(httpFs.store, ref.Root, path)
+	ent, err := fs.Walk(httpFs.store, ref.Root, fullPath)
 	if err != nil {
 		return nil, err
 	}
 
 	if ent.EntMode.IsRegular() {
-		rdr, err := fs.Open(httpFs.store, ref.Root, path)
+		rdr, err := fs.Open(httpFs.store, ref.Root, fullPath)
 		if err != nil {
 			return nil, err
 		}
@@ -216,7 +177,7 @@ func (httpFs *httpFs) Open(fullPath string) (http.File, error) {
 		return &httpDir{
 			httpFs: httpFs,
 			root:   ref.Root,
-			path:   path,
+			path:   fullPath,
 			ent:    ent,
 		}, nil
 	}
@@ -312,12 +273,6 @@ func Browse() {
 	http.Handle("/", &rootHandler{
 		c: c,
 		k: &k,
-	})
-
-	http.Handle("/ref/", &refHandler{
-		c:     c,
-		k:     &k,
-		store: store,
 	})
 
 	http.Handle("/raw/", http.FileServer(&httpFs{

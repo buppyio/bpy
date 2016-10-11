@@ -11,7 +11,6 @@ import (
 )
 
 func Cat() {
-	refArg := flag.String("ref", "default", "ref of directory to list")
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {
@@ -34,18 +33,18 @@ func Cat() {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
 
-	refHash, ok, err := remote.GetNamedRef(c, &k, *refArg)
+	refHash, ok, err := remote.GetRef(c, &k)
 	if err != nil {
 		common.Die("error fetching ref hash: %s\n", err.Error())
+	}
+
+	if !ok {
+		common.Die("root missing\n")
 	}
 
 	ref, err := refs.GetRef(store, refHash)
 	if err != nil {
 		common.Die("error fetching ref: %s\n", err.Error())
-	}
-
-	if !ok {
-		common.Die("ref '%s' does not exist\n", *refArg)
 	}
 
 	for _, fpath := range flag.Args() {

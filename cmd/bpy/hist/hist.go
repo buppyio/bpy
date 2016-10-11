@@ -19,7 +19,6 @@ func histHelp() {
 }
 
 func prune() {
-	refArg := flag.String("ref", "default", "ref to fetch history for")
 	pruneAllArg := flag.Bool("all", false, "prune all")
 	pruneOlderThanArg := flag.String("older-than", "", "prune older than this time spec")
 
@@ -46,12 +45,12 @@ func prune() {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
 
-	refHash, ok, err := remote.GetNamedRef(c, &k, *refArg)
+	refHash, ok, err := remote.GetRef(c, &k)
 	if err != nil {
 		common.Die("error fetching ref hash: %s\n", err.Error())
 	}
 	if !ok {
-		common.Die("ref '%s' does not exist\n", *refArg)
+		common.Die("root missing\n")
 	}
 
 	ref, err := refs.GetRef(store, refHash)
@@ -64,7 +63,7 @@ func prune() {
 		newRef.HasPrev = false
 
 		newRefHash, err := refs.PutRef(store, newRef)
-		ok, err = remote.CasNamedRef(c, &k, *refArg, refHash, newRefHash, generation)
+		ok, err = remote.CasRef(c, &k, refHash, newRefHash, generation)
 		if err != nil {
 			common.Die("error swapping ref: %s\n", err.Error())
 		}
@@ -122,7 +121,7 @@ func prune() {
 		common.Die("error storing ref: %s\n", err.Error())
 	}
 
-	ok, err = remote.CasNamedRef(c, &k, *refArg, refHash, newRefHash, generation)
+	ok, err = remote.CasRef(c, &k, refHash, newRefHash, generation)
 	if err != nil {
 		common.Die("error swapping ref: %s\n", err.Error())
 	}
@@ -137,8 +136,6 @@ func prune() {
 }
 
 func list() {
-	refArg := flag.String("ref", "default", "ref to fetch history for")
-
 	flag.Parse()
 
 	k, err := common.GetKey()
@@ -157,12 +154,12 @@ func list() {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
 
-	refHash, ok, err := remote.GetNamedRef(c, &k, *refArg)
+	refHash, ok, err := remote.GetRef(c, &k)
 	if err != nil {
 		common.Die("error fetching ref hash: %s\n", err.Error())
 	}
 	if !ok {
-		common.Die("ref '%s' does not exist\n", *refArg)
+		common.Die("root missing\n")
 	}
 
 	for {

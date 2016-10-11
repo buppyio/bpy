@@ -9,7 +9,6 @@ import (
 )
 
 func Get() {
-	refArg := flag.String("ref", "default", "ref of directory to list")
 	pathArg := flag.String("path", "", "directory to get")
 	flag.Parse()
 
@@ -37,12 +36,12 @@ func Get() {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
 
-	refHash, ok, err := remote.GetNamedRef(c, &k, *refArg)
+	refHash, ok, err := remote.GetRef(c, &k)
 	if err != nil {
 		common.Die("error fetching ref hash: %s\n", err.Error())
 	}
 	if !ok {
-		common.Die("ref '%s' does not exist", *refArg)
+		common.Die("root missing")
 	}
 
 	ref, err := refs.GetRef(store, refHash)

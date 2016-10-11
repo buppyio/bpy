@@ -21,7 +21,6 @@ var (
 	ErrFidInUse           = errors.New("fid in use")
 	ErrNoSuchPid          = errors.New("no such pid")
 	ErrNoSuchFid          = errors.New("no such fid")
-	ErrNoSuchRef          = errors.New("no such ref")
 	ErrWrongKeyId         = errors.New("attaching with wrong key")
 	ErrBadGCID            = errors.New("GCID for remove incorrect (another concurrent gc)?")
 	ErrGCInProgress       = errors.New("gc in progress")
@@ -86,15 +85,6 @@ func (srv *server) handleTOpen(t *proto.TOpen) proto.Message {
 	if t.Name == "packs" {
 		srv.fids[t.Fid] = &packListingFile{
 			packDir: filepath.Join(srv.servePath, "packs"),
-		}
-		return &proto.ROpen{
-			Mid: t.Mid,
-		}
-	}
-
-	if t.Name == "refs" {
-		srv.fids[t.Fid] = &refListingFile{
-			refDBPath: srv.dbPath,
 		}
 		return &proto.ROpen{
 			Mid: t.Mid,
@@ -242,36 +232,6 @@ func (srv *server) handleTCancelPack(t *proto.TCancelPack) proto.Message {
 	}
 }
 
-func (srv *server) handleTRef(t *proto.TRef) proto.Message {
-	db, err := openDB(srv.dbPath, srv.keyId)
-	if err != nil {
-		makeError(t.Mid, err)
-	}
-	defer db.Close()
-	err = db.Update(func(tx *bolt.Tx) error {
-		state, err := getGCState(tx)
-		if err != nil {
-			return err
-		}
-		if t.Generation != state.Generation {
-			return ErrGCInProgress
-		}
-		b := tx.Bucket([]byte(RefBucketName))
-		valueBytes := b.Get([]byte(t.Name))
-		if valueBytes != nil {
-			return ErrRefAlreadyExists
-		}
-		err = b.Put([]byte(t.Name), []byte(t.Value))
-		return err
-	})
-	if err != nil {
-		return makeError(t.Mid, err)
-	}
-	return &proto.RRef{
-		Mid: t.Mid,
-	}
-}
-
 func (srv *server) handleTGetRef(t *proto.TGetRef) proto.Message {
 	db, err := openDB(srv.dbPath, srv.keyId)
 	if err != nil {
@@ -281,26 +241,18 @@ func (srv *server) handleTGetRef(t *proto.TGetRef) proto.Message {
 	var value string
 	err = db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(RefBucketName))
-		valueBytes := b.Get([]byte(t.Name))
-		if valueBytes == nil {
-			return ErrNoSuchRef
+		valueBytes := b.Get([]byte("root"))
+		if valueBytes != nil {
+			value = string(valueBytes)
 		}
-		value = string(valueBytes)
 		return nil
 	})
-	if err == ErrNoSuchRef {
-		return &proto.RGetRef{
-			Mid: t.Mid,
-			Ok:  false,
-		}
-	}
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
 	return &proto.RGetRef{
 		Mid:   t.Mid,
 		Value: value,
-		Ok:    true,
 	}
 }
 
@@ -319,14 +271,13 @@ func (srv *server) handleTCasRef(t *proto.TCasRef) proto.Message {
 			return ErrGCInProgress
 		}
 		b := tx.Bucket([]byte(RefBucketName))
-		valueBytes := b.Get([]byte(t.Name))
-		if valueBytes == nil {
-			return ErrNoSuchRef
+		valueBytes := b.Get([]byte("root"))
+		if valueBytes != nil {
+			if string(valueBytes) != t.OldValue {
+				return ErrStaleRefValue
+			}
 		}
-		if string(valueBytes) != t.OldValue {
-			return ErrStaleRefValue
-		}
-		return b.Put([]byte(t.Name), []byte(t.NewValue))
+		return b.Put([]byte("root"), []byte(t.NewValue))
 	})
 	if err == ErrStaleRefValue {
 		return &proto.RCasRef{
@@ -340,36 +291,6 @@ func (srv *server) handleTCasRef(t *proto.TCasRef) proto.Message {
 	return &proto.RCasRef{
 		Mid: t.Mid,
 		Ok:  true,
-	}
-}
-
-func (srv *server) handleTRemoveRef(t *proto.TRemoveRef) proto.Message {
-	db, err := openDB(srv.dbPath, srv.keyId)
-	if err != nil {
-		makeError(t.Mid, err)
-	}
-	defer db.Close()
-	err = db.Update(func(tx *bolt.Tx) error {
-		state, err := getGCState(tx)
-		if err != nil {
-			return err
-		}
-		if t.Generation != state.Generation {
-			return ErrGCInProgress
-		}
-		b := tx.Bucket([]byte(RefBucketName))
-		valueBytes := b.Get([]byte(t.Name))
-		if string(valueBytes) != t.OldValue {
-			return ErrStaleRefValue
-		}
-		err = b.Delete([]byte(t.Name))
-		return err
-	})
-	if err != nil {
-		return makeError(t.Mid, err)
-	}
-	return &proto.RRemoveRef{
-		Mid: t.Mid,
 	}
 }
 
@@ -624,14 +545,10 @@ func Serve(conn ReadWriteCloser, root string) error {
 			r = srv.handleTReadAt(t)
 		case *proto.TClose:
 			r = srv.handleTClose(t)
-		case *proto.TRef:
-			r = srv.handleTRef(t)
 		case *proto.TGetRef:
 			r = srv.handleTGetRef(t)
 		case *proto.TCasRef:
 			r = srv.handleTCasRef(t)
-		case *proto.TRemoveRef:
-			r = srv.handleTRemoveRef(t)
 		case *proto.TRemove:
 			r = srv.handleTRemove(t)
 		case *proto.TStartGC:

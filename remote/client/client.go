@@ -229,36 +229,13 @@ func (c *Client) WriteMessage(m proto.Message) error {
 	return proto.WriteMessage(c.conn, m, c.wBuf)
 }
 
-func (c *Client) TRef(name, value string, generation uint64) (*proto.RRef, error) {
-	ch, mid, err := c.newCall()
-	if err != nil {
-		return nil, err
-	}
-	resp, err := c.Call(&proto.TRef{
-		Mid:        mid,
-		Name:       name,
-		Value:      value,
-		Generation: generation,
-	}, ch, mid)
-	if err != nil {
-		return nil, err
-	}
-	switch resp := resp.(type) {
-	case *proto.RRef:
-		return resp, nil
-	default:
-		return nil, ErrBadResponse
-	}
-}
-
-func (c *Client) TCasRef(name, oldValue, newValue string, generation uint64) (*proto.RCasRef, error) {
+func (c *Client) TCasRef(oldValue, newValue string, generation uint64) (*proto.RCasRef, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
 	}
 	resp, err := c.Call(&proto.TCasRef{
 		Mid:        mid,
-		Name:       name,
 		OldValue:   oldValue,
 		NewValue:   newValue,
 		Generation: generation,
@@ -274,36 +251,13 @@ func (c *Client) TCasRef(name, oldValue, newValue string, generation uint64) (*p
 	}
 }
 
-func (c *Client) TRemoveRef(name, oldValue string, generation uint64) (*proto.RRemoveRef, error) {
-	ch, mid, err := c.newCall()
-	if err != nil {
-		return nil, err
-	}
-	resp, err := c.Call(&proto.TRemoveRef{
-		Mid:        mid,
-		Name:       name,
-		OldValue:   oldValue,
-		Generation: generation,
-	}, ch, mid)
-	if err != nil {
-		return nil, err
-	}
-	switch resp := resp.(type) {
-	case *proto.RRemoveRef:
-		return resp, nil
-	default:
-		return nil, ErrBadResponse
-	}
-}
-
-func (c *Client) TGetRef(name string) (*proto.RGetRef, error) {
+func (c *Client) TGetRef() (*proto.RGetRef, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
 	}
 	resp, err := c.Call(&proto.TGetRef{
-		Mid:  mid,
-		Name: name,
+		Mid: mid,
 	}, ch, mid)
 	if err != nil {
 		return nil, err

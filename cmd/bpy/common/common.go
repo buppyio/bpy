@@ -139,7 +139,7 @@ func GetRemote(k *bpy.Key) (*client.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, ok, err := remote.GetNamedRef(c, k, "default")
+	_, ok, err := remote.GetRef(c, k)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching ref: %s", err.Error())
 	}
@@ -178,10 +178,10 @@ func GetRemote(k *bpy.Key) (*client.Client, error) {
 			return nil, fmt.Errorf("error closing store writer: %s", err.Error())
 		}
 
-		err = remote.NewNamedRef(c, k, "default", hash, generation)
+		_, err = remote.CasRef(c, k, [32]byte{}, hash, generation)
 		if err != nil {
 			c.Close()
-			return nil, fmt.Errorf("error initizializing default ref: %s", err.Error())
+			return nil, fmt.Errorf("error initizializing root: %s", err.Error())
 		}
 	}
 	return c, nil

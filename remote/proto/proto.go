@@ -68,31 +68,17 @@ type RError struct {
 	Message string
 }
 
-type TRef struct {
-	Mid        uint16
-	Name       string
-	Value      string
-	Generation uint64
-}
-
-type RRef struct {
-	Mid uint16
-}
-
 type TGetRef struct {
-	Mid  uint16
-	Name string
+	Mid uint16
 }
 
 type RGetRef struct {
 	Mid   uint16
-	Ok    bool
 	Value string
 }
 
 type TCasRef struct {
 	Mid        uint16
-	Name       string
 	OldValue   string
 	NewValue   string
 	Generation uint64
@@ -101,17 +87,6 @@ type TCasRef struct {
 type RCasRef struct {
 	Mid uint16
 	Ok  bool
-}
-
-type TRemoveRef struct {
-	Mid        uint16
-	Name       string
-	OldValue   string
-	Generation uint64
-}
-
-type RRemoveRef struct {
-	Mid uint16
 }
 
 type TAttach struct {
@@ -298,10 +273,6 @@ func UnpackMessage(buf []byte) (Message, error) {
 		m = &TCancelPack{}
 	case RCANCELPACK:
 		m = &RCancelPack{}
-	case TTAG:
-		m = &TRef{}
-	case RTAG:
-		m = &RRef{}
 	case TGETTAG:
 		m = &TGetRef{}
 	case RGETTAG:
@@ -310,10 +281,6 @@ func UnpackMessage(buf []byte) (Message, error) {
 		m = &TCasRef{}
 	case RCASTAG:
 		m = &RCasRef{}
-	case TREMOVETAG:
-		m = &TRemoveRef{}
-	case RREMOVETAG:
-		m = &RRemoveRef{}
 	case TREMOVE:
 		m = &TRemove{}
 	case RREMOVE:
@@ -372,10 +339,6 @@ func GetMessageType(m Message) byte {
 		return TCANCELPACK
 	case *RCancelPack:
 		return RCANCELPACK
-	case *TRef:
-		return TTAG
-	case *RRef:
-		return RTAG
 	case *TGetRef:
 		return TGETTAG
 	case *RGetRef:
@@ -384,10 +347,6 @@ func GetMessageType(m Message) byte {
 		return TCASTAG
 	case *RCasRef:
 		return RCASTAG
-	case *TRemoveRef:
-		return TREMOVETAG
-	case *RRemoveRef:
-		return RREMOVETAG
 	case *TRemove:
 		return TREMOVE
 	case *RRemove:
@@ -444,10 +403,6 @@ func GetMessageId(m Message) uint16 {
 		return m.Mid
 	case *RCancelPack:
 		return m.Mid
-	case *TRef:
-		return m.Mid
-	case *RRef:
-		return m.Mid
 	case *TGetRef:
 		return m.Mid
 	case *RGetRef:
@@ -455,10 +410,6 @@ func GetMessageId(m Message) uint16 {
 	case *TCasRef:
 		return m.Mid
 	case *RCasRef:
-		return m.Mid
-	case *TRemoveRef:
-		return m.Mid
-	case *RRemoveRef:
 		return m.Mid
 	case *TRemove:
 		return m.Mid

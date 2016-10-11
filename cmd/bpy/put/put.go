@@ -12,7 +12,6 @@ import (
 )
 
 func Put() {
-	refArg := flag.String("ref", "default", "ref put data into")
 	flag.Parse()
 
 	if len(flag.Args()) < 1 {
@@ -55,12 +54,12 @@ func Put() {
 			common.Die("error getting content store: %s\n", err.Error())
 		}
 
-		refHash, ok, err := remote.GetNamedRef(c, &k, *refArg)
+		refHash, ok, err := remote.GetRef(c, &k)
 		if err != nil {
 			common.Die("error fetching ref hash: %s\n", err.Error())
 		}
 		if !ok {
-			common.Die("ref '%s' does not exist\n", *refArg)
+			common.Die("root missing\n")
 		}
 
 		ref, err := refs.GetRef(store, refHash)
@@ -90,9 +89,9 @@ func Put() {
 			common.Die("error closing remote: %s\n", err.Error())
 		}
 
-		ok, err = remote.CasNamedRef(c, &k, *refArg, refHash, newRefHash, generation)
+		ok, err = remote.CasRef(c, &k, refHash, newRefHash, generation)
 		if err != nil {
-			common.Die("creating ref: %s\n", err.Error())
+			common.Die("error swapping root: %s\n", err.Error())
 		}
 		if ok {
 			break
