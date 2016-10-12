@@ -14,7 +14,7 @@ A time spec can take one of two formats, an exact date, or a relative time spec.
 Exact dates are specified in the format "hh:mm:ss dd/MM/YYYY" while relative times
 are specified as "NN(s|m|h) ago". 
 
-Examples:
+# Example
 
 ```
 bpy ls -when="5m ago" # 5 minutes ago

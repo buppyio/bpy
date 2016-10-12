@@ -13,11 +13,11 @@ stream. Useful for quickly inspecting the contents of a single file.
 
 # Usage
 
-```bpy cat [-ref=default] path```
+```bpy cat [-at=TIMESPEC] path```
 
 # Example
 
-Read the contents of a file
+Read the contents of two files:
 
 ```
 $ bpy ls

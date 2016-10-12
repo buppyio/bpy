@@ -4,20 +4,20 @@
 
 # NAME
 
-bpy rm - remove a file or folder from a ref
+bpy rm - remove a file or folder
 
 # SYNOPSIS
 
-rm removes a file or folder from the given ref. The file contents and disk space
-will not be reclaimed until the next garbage collection bpy_gc(1).
+rm removes a file or folder. The file contents and disk space
+will not be reclaimed until the next history clearing and garbage collection with bpy_hist(1) and bpy_gc(1).
 
 # Usage
 
-```$ bpy rm [-ref=default] file1 [file2..]```
+```$ bpy rm file1 [file2..]```
 
 # Example
 
-Remove a file
+Remove a folder:
 
 ```
 $ bpy ls

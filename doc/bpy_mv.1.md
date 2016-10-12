@@ -8,15 +8,15 @@ bpy put - move a file or folder
 
 # SYNOPSIS
 
-The mv command lets you move a file or folder from one path to another within a ref
+The mv command lets you move a file or folder from one path to another.
 
 # Usage
 
-```bpy mv [-ref=default] src dest```
+```bpy mv src dest```
 
 # Example
 
-Rename a file
+Rename a file:
 
 ```
 $ bpy ls

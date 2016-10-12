@@ -19,7 +19,7 @@ provide the -no-browser flag to suppress the spawning of a web browser.
 
 # Example
 
-Run a local webserver where you can browse the bpy file system
+Run a local webserver where you can browse the bpy file system:
 
 ```
 $ bpy browse

@@ -8,15 +8,15 @@ bpy zip - export a bpy folder to a zip archive
 
 # SYNOPSIS
 
-The tar command creates a tar archive out of the specified ref and folder.
+The zuo command creates a zip archive out of the specified folder.
 
 # Usage
 
-```bpy tar [-ref=default] src```
+```bpy zip [-at=TIMESPEC] src > src.zip```
 
 # Example
 
-Fetch the entire ref as a zip archive
+Fetch the entire root as a zip archive:
 
 ```
 $ bpy zip / > out.zip

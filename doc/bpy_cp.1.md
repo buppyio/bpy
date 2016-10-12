@@ -8,11 +8,11 @@ bpy cp - copy a file or folder
 
 # SYNOPSIS
 
-The cp command lets you copy a file or folder from one path to another within a ref
+The cp command lets you copy a file or folder from one path to another.
 
 # Usage
 
-```bpy cp [-ref=default] src dest```
+```bpy cp [-at=TIMESPEC] src dest```
 
 # Example
 

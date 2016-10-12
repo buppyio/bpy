@@ -4,15 +4,15 @@
 
 # NAME
 
-bpy mkdir - create a directory in the bpy filesystem
+bpy mkdir - create a directory in the bpy drive.
 
 # SYNOPSIS
 
-The mkdir command allows the creation of a new folder in the specified ref.
+The mkdir command allows the creation of a new folder.
 
 # Usage
 
-```$ bpy mkdir [-ref=default] path```
+```$ bpy mkdir path```
 
 # Example
 

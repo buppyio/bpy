@@ -13,12 +13,12 @@ in the local file system.
 
 # Usage
 
-```bpy get [-ref=default] src dest```
+```bpy get src dest```
 
 # Example
 
 
-Download the entire default ref to the local folder called 'export'
+Download the entire root to the local folder called 'export'
 
 ```
 $ bpy get / export

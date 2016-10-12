@@ -4,21 +4,19 @@
 
 # NAME
 
-bpy put - put a local folder into a bpy ref
+bpy put - put a local folder into the bpy drive.
 
 # SYNOPSIS
 
-The put command lets you upload a local file or folder into the bpy ref root, or into 
-a subfolder of that ref.
+The put command lets you upload a local file or folder into the bpy root or a subfolder.
 
 # Usage
 
-```bpy put [-ref=default] src [dest]```
+```bpy put src [dest]```
 
 # Example
 
-
-Put the current working directory into the root of the default bpy ref.
+Put the current working directory into the root of the bpy drive:
 
 ```
 $ pwd
@@ -28,7 +26,7 @@ $ bpy ls
 stuff/
 ```
 
-Put a single file into the stuff folder in the default.
+Put a single file into the stuff folder:
 
 ```
 $ bpy put /home/ac/somefile.txt stuff/
@@ -38,7 +36,7 @@ $ bpy ls stuff
 somefile.txt
 ```
 
-Put a single file into the root directory with a different name.
+Put a single file into the root directory with a different name:
 
 ```
 $ bpy put /home/ac/somefile.txt foo.txt

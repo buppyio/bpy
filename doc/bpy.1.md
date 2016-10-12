@@ -26,11 +26,10 @@ bpy new-key -f ~/.bpy/bpy.key
 ```
 
 Next setup the remote server data is going to be stored in. It requires
-the bpy binary installed on your server, and passwordless ssh access to your
-server.
-
+the bpy binary installed on your remote server, and a way to establish a connection
+to the bpy remote command. Here we use ssh.
 ```
-export BPY_REMOTE="ssh://yourserver/home/youruser/bpydata"
+export BPY_REMOTE_CMD="ssh $YOURSERVER bpy remote /home/youruser/bpydata"
 ```
 
 Finally, store a backup into the 'default' ref
@@ -69,7 +68,7 @@ sudo mount -t 9p -o port=9001 127.0.0.1 /mnt
 # Sub Commands
 
 ## browse
-Launch a webserver and browse a bpy ref via a web browser
+Launch a webserver and browse files a web browser
 
 ## cat
 Read the contents of one or more file
@@ -78,40 +77,40 @@ Read the contents of one or more file
 Change the permissions of a file or folder in the specifed ref
 
 ## cp
-Copy a file or folder and update the specified ref
+Copy a file or folder
 
 ## gc
 Run the garbage collector to reclaim unused space and merge small pack files
 
 ## get
-Download the contents of a bpy ref folder
+Download the contents of a folder
 
 ## hist
-Fetch or prune the history of a given ref
+Fetch or prune the history
 
 ## ls
-Get a directory listing of the specified ref and folder
+Get a directory listing of the specified folder
 
 ## mv
-Move a file or folder and update the specified ref
+Move a file or folder
 
 ## new-key
 Generate a local key file used by bpy for encrypting data
 
 ## put
-Upload a local folder or file into the specifed ref
+Upload a local folder or file
 
 ## rm
-Remove a file or folder from the specified ref
+Remove a file or folder
 
 ## tar
-Create a tar archive from the contents of the specified ref and folder
+Create a tar archive from the contents of the specified folder
 
 ## zip
-Create a zip archive from the contents of the specified ref and folder
+Create a zip archive from the contents of the specified folder
 
 ## 9p
-Launch a 9p server and serve the given ref as a 9p filesystem
+Launch a 9p server and serve as a read only 9p filesystem
 
 
 # SEE ALSO
