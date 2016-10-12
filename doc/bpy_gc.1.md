@@ -39,4 +39,4 @@ $ bpy gc
 
 # SEE ALSO
 
-**bpy(1)**
+**bpy(1)**, **bpy_hist(1)**

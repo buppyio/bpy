@@ -40,4 +40,4 @@ $ bpy hist prune -older-than="12:00:00 1/2/2016"
 
 # SEE ALSO
 
-**bpy(1)**, **bpy_timespec(7)**
+**bpy(1)**, **bpy_gc(1)**, **bpy_timespec(7)**

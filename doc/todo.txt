@@ -1,33 +1,26 @@
 Alpha:
 
 - Make browse ui more polished
- - Center file browse
- - Add some sort of divider for file listing table eader
- - Add a way to download directories as zip/tar.gz
- - Make homepage list more information about refs
- - Add a logo somewhere
-- Add counter to tags which remote only allows to increment
+ - Center file browse?
+ - Add some sort of divider for file listing table header?
+ - Add a way to download directories as zip/tar.gz?
+ - Add a logo somewhere?
 - Write comprehensive man pages
-- fix 9p mode
 - make cache automatic?
 
 Bugs:
 
 Improvements:
 
-- Change 'gc generation' to 'gc epoch'
-- Change 'IV' in cryptofile to 'Nonce'
+- make 9p dynamically update
 - Add gc tests for - dedup, removing stuff, repacking, concurrency
 - Change fs api from "dest, src" to "src, dest", it is more natural since it works like mv or cp
 - Rename cstore.Writer to just CStore
 - Double check cstore memcache + mindex need to be string maps, and can't use arrays directly.
-- Add command to migrate tags between key files
 - Add tests for cstore that excercises packfile rotation
-- Add more user friendly failure messages for ssh failure (maybe use crypto/go ssh client)
 - Rename 'Pack' remote api to 'Stream'
 - Implement hash split in htree
 - Steal ideas like bloom filters, cstore is actually just an LSM.
 - Only fetch changed indexes instead of reloading entire index when a lookup fails.
-- make 9p server refresh tag periodically
 - Test every message type in proto packing/unpack tests
 
