@@ -55,16 +55,6 @@ View your data via the web interface:
 bpy browse
 ```
 
-Serve your drive as a 9p network file system:
-
-```
-bpy 9p -addr=127.0.0.1:9001
-```
-and then in another terminal mount the 9p file system (linux example)
-```
-sudo mount -t 9p -o port=9001 127.0.0.1 /mnt
-```
-
 # Sub Commands
 
 ## browse
@@ -108,10 +98,6 @@ Create a tar archive from the contents of the specified folder
 
 ## zip
 Create a zip archive from the contents of the specified folder
-
-## 9p
-Launch a 9p server and serve as a read only 9p filesystem
-
 
 # SEE ALSO
 

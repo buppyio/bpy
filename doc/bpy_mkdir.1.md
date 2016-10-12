@@ -16,7 +16,7 @@ The mkdir command allows the creation of a new folder.
 
 # Example
 
-Remove a file
+make a directory:
 
 ```
 $ bpy ls
