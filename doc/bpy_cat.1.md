@@ -2,11 +2,11 @@
 % Andrew Chambers
 % 2016
 
-# NAME
+# Name
 
 bpy cat - print the contents of a list of files to stdout
 
-# SYNOPSIS
+# Synopsis
 
 cat print the contents of a list of files to stdout, concatinating them into a single
 stream. Useful for quickly inspecting the contents of a single file.

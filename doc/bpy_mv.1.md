@@ -2,11 +2,11 @@
 % Andrew Chambers
 % 2016
 
-# NAME
+# Name
 
 bpy put - move a file or folder
 
-# SYNOPSIS
+# Synopsis
 
 The mv command lets you move a file or folder from one path to another.
 

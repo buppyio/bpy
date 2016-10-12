@@ -2,11 +2,11 @@
 % Andrew Chambers
 % 2016
 
-# NAME
+# Name
 
 bpy mkdir - create a directory in the bpy drive.
 
-# SYNOPSIS
+# Synopsis
 
 The mkdir command allows the creation of a new folder.
 

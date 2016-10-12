@@ -2,11 +2,11 @@
 % Andrew Chambers
 % 2016
 
-# NAME
+# Name
 
 bpy browse - launch a webserver that allows browsing
 
-# SYNOPSIS
+# Synopsis
 
 The browse command allows a convenient web based user interface that updates when
 the remote data changes. 

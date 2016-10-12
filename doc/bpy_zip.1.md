@@ -2,11 +2,11 @@
 % Andrew Chambers
 % 2016
 
-# NAME
+# Name
 
 bpy zip - export a bpy folder to a zip archive
 
-# SYNOPSIS
+# Synopsis
 
 The zuo command creates a zip archive out of the specified folder.
 

@@ -2,11 +2,11 @@
 % Andrew Chambers
 % 2016
 
-# NAME
+# Name
 
 bpy put - put a local folder into the bpy drive.
 
-# SYNOPSIS
+# Synopsis
 
 The put command lets you upload a local file or folder into the bpy root or a subfolder.
 

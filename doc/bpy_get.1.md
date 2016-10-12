@@ -2,11 +2,11 @@
 % Andrew Chambers
 % 2016
 
-# NAME
+# Name
 
 bpy get - get a remote folder and copy it to the local file system
 
-# SYNOPSIS
+# Synopsis
 
 The get command lets you download folders or files from the remote store and save them
 in the local file system.

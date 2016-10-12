@@ -2,11 +2,11 @@
 % Andrew Chambers
 % 2016
 
-# NAME
+# Name
 
 bpack - bpack is the file format used by bpy as an on disk mapping of keys to values.
 
-# SYNOPSIS
+# Synopsis
 
 Bpy stores file data on disk as a collection of bpack files. Bpack files
 are a simple format that stores a list of values concatenated, with an index

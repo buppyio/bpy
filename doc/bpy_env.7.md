@@ -2,11 +2,11 @@
 % Andrew Chambers
 % 2016
 
-# NAME
+# Name
 
 bpy env - environment variables
 
-# SYNOPSIS
+# Synopsis
 
 This page describes the various environment variables used by bpy(1).
 

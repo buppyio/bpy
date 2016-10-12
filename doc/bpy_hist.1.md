@@ -2,11 +2,11 @@
 % Andrew Chambers
 % 2016
 
-# NAME
+# Name
 
 bpy hist - list or prune a drive history
 
-# SYNOPSIS
+# Synopsis
 
 Whenever you make a change to your bpy files, data not removed. Bpy maintains a full history
 of changes in case you ever need to revert a mistake such as accidental deletion of a file.

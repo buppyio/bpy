@@ -2,11 +2,11 @@
 % Andrew Chambers
 % 2016
 
-# NAME
+# Name
 
 bpy tar - export a bpy folder to a tar archive
 
-# SYNOPSIS
+# Synopsis
 
 The tar command creates a tar archive out of the specified folder.
 

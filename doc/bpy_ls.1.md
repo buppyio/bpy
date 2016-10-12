@@ -2,11 +2,11 @@
 % Andrew Chambers
 % 2016
 
-# NAME
+# Name
 
 bpy ls - list directory contents
 
-# SYNOPSIS
+# Synopsis
 
 The ls command lets you list the contents of a bpy directory in a similar
 way that the system ls command does on unixy systems.

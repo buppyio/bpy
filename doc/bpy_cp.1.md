@@ -2,11 +2,11 @@
 % Andrew Chambers
 % 2016
 
-# NAME
+# Name
 
 bpy cp - copy a file or folder
 
-# SYNOPSIS
+# Synopsis
 
 The cp command lets you copy a file or folder from one path to another.
 

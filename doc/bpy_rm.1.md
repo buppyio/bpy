@@ -2,11 +2,11 @@
 % Andrew Chambers
 % 2016
 
-# NAME
+# Name
 
 bpy rm - remove a file or folder
 
-# SYNOPSIS
+# Synopsis
 
 rm removes a file or folder. The file contents and disk space
 will not be reclaimed until the next history clearing and garbage collection with bpy_hist(1) and bpy_gc(1).

@@ -2,11 +2,11 @@
 % Andrew Chambers
 % 2016
 
-# NAME
+# Name
 
 bpy - Buppy file storage from https://buppy.io
 
-# SYNOPSIS
+# Synopsis
 
 ``bpy`` is a tool for storing files securely on a remote server.
 Data is encrypted and deduplicated by the client without giving the server access

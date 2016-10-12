@@ -2,11 +2,11 @@
 % Andrew Chambers
 % 2016
 
-# NAME
+# Name
 
 htree - Hash tree format for storing streams of data.
 
-# SYNOPSIS
+# Synopsis
 
 bpy stores all data internally as a hash tree data structure. Each node in tree is given an address which
 reflects a bpack key used to locate the node data.

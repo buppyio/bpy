@@ -2,11 +2,11 @@
 % Andrew Chambers
 % 2016
 
-# NAME
+# Name
 
 ebpack - ebpack files are encrypted bpy_bpack(5) files
 
-# SYNOPSIS
+# Synopsis
 
 During normal operation bpy writes client side encrypted bpy_bpack(5) files (ebpack) to the remote server to hinder
 unauthorized access. The ebpack files are AES256 encrypted bpack files encrypted using a CTR mode cipher

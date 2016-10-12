@@ -2,11 +2,11 @@
 % Andrew Chambers
 % 2016
 
-# NAME
+# Name
 
 bpy time spec
 
-# SYNOPSIS
+# Synopsis
 
 This page describes the time spec format used by the majority of bpy(1) commands.
 

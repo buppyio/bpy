@@ -2,11 +2,11 @@
 % Andrew Chambers
 % 2016
 
-# NAME
+# Name
 
 bpy gc - garbage collect and reclaim unreachable space on the remote store.
 
-# SYNOPSIS
+# Synopsis
 
 gc means garbage collection, this command is how space is reclaimed after
 files are rm'd using bpy_rm(1) and the undo history is pruned used bpy_hist(1). During a garbage collection, the remote will block any updates to roots, and any attempt to start a second collection will cause the original collection to safely fail.
