@@ -32,7 +32,7 @@ Clear all history:
 $ bpy hist prune -all
 ```
 
-Clear all history older than  midday on the first of February 2016:
+Clear history older than midday on the first of February 2016:
 
 ```
 $ bpy hist prune -older-than="12:00:00 1/2/2016"
@@ -40,4 +40,4 @@ $ bpy hist prune -older-than="12:00:00 1/2/2016"
 
 # SEE ALSO
 
-**bpy(1)** **bpy_timespec(7)**
+**bpy(1)**, **bpy_timespec(7)**
