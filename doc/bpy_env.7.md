@@ -44,3 +44,8 @@ Example:
 $ export BPY_REMOTE_CMD="bpy remote /home/localuser/bpy_datadir"
 $ export BPY_REMOTE_CMD="ssh $SERVER /bin/bpy remote /bpy_datadir"
 ```
+
+
+# SEE ALSO
+
+**bpy(1)**

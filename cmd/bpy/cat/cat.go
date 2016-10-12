@@ -6,11 +6,14 @@ import (
 	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/refs"
 	"github.com/buppyio/bpy/remote"
+	"github.com/buppyio/bpy/when"
 	"io"
 	"os"
 )
 
 func Cat() {
+	whenArg := flag.String("when", "", "time query")
+
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {
@@ -45,6 +48,21 @@ func Cat() {
 	ref, err := refs.GetRef(store, rootHash)
 	if err != nil {
 		common.Die("error fetching ref: %s\n", err.Error())
+	}
+
+	if *whenArg != "" {
+		refTime, err := when.Parse(*whenArg)
+		if err != nil {
+			common.Die("error parsing 'when' arg: %s\n", err.Error())
+		}
+		refPast, ok, err := refs.GetAtTime(store, ref, refTime)
+		if err != nil {
+			common.Die("error looking at ref history: %s\n", err.Error())
+		}
+		if !ok {
+			common.Die("ref did not exist at %s\n", refTime.String())
+		}
+		ref = refPast
 	}
 
 	for _, fpath := range flag.Args() {

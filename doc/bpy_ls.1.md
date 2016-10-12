@@ -13,7 +13,7 @@ way that the system ls command does on unixy systems.
 
 # Usage
 
-```bpy ls [-at=TIMESPEC] [path]```
+```bpy ls [-when=TIMESPEC] [path]```
 
 # Example
 
@@ -28,4 +28,4 @@ hello/
 
 # SEE ALSO
 
-**bpy(1)**
+**bpy(1)**, **bpy_timespec(7)**

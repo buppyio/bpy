@@ -29,4 +29,4 @@ renamed.txt
 
 # SEE ALSO
 
-**bpy(1)**
+**bpy(1)**, **bpy_timespec(7)**

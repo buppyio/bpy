@@ -13,7 +13,7 @@ stream. Useful for quickly inspecting the contents of a single file.
 
 # Usage
 
-```bpy cat [-at=TIMESPEC] path```
+```bpy cat [-when=TIMESPEC] path```
 
 # Example
 
@@ -30,4 +30,4 @@ world!
 
 # SEE ALSO
 
-**bpy(1)**
+**bpy(1)**, **bpy_timespec(7)**
