@@ -29,9 +29,9 @@ func handleConnection(con net.Conn) {
 		return
 	}
 
-	rootHash, ok, err := remote.GetRoot(c, &k)
+	_, rootHash, ok, err := remote.GetRoot(c, &k)
 	if err != nil {
-		log.Fatalf("error fetching tag hash: %s", err.Error())
+		log.Fatalf("error fetching root hash: %s", err.Error())
 	}
 	if !ok {
 		log.Fatalf("root missing")

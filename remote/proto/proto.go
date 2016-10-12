@@ -75,8 +75,7 @@ type RGetRoot struct {
 
 type TCasRoot struct {
 	Mid        uint16
-	OldValue   string
-	NewValue   string
+	Value      string
 	Generation uint64
 }
 

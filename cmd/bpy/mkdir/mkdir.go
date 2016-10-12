@@ -39,7 +39,7 @@ func Mkdir() {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
 
-	rootHash, ok, err := remote.GetRoot(c, &k)
+	rootVersion, rootHash, ok, err := remote.GetRoot(c, &k)
 	if err != nil {
 		common.Die("error fetching root hash: %s\n", err.Error())
 	}
@@ -74,7 +74,7 @@ func Mkdir() {
 		common.Die("error closing remote: %s\n", err.Error())
 	}
 
-	ok, err = remote.CasRoot(c, &k, rootHash, newRefHash, generation)
+	ok, err = remote.CasRoot(c, &k, rootVersion+1, newRefHash, generation)
 	if err != nil {
 		common.Die("swapping root: %s\n", err.Error())
 	}

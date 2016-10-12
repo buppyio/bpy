@@ -230,15 +230,14 @@ func (c *Client) WriteMessage(m proto.Message) error {
 	return proto.WriteMessage(c.conn, m, c.wBuf)
 }
 
-func (c *Client) TCasRef(oldValue, newValue string, generation uint64) (*proto.RCasRoot, error) {
+func (c *Client) TCasRef(newValue string, generation uint64) (*proto.RCasRoot, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
 	}
 	resp, err := c.Call(&proto.TCasRoot{
 		Mid:        mid,
-		OldValue:   oldValue,
-		NewValue:   newValue,
+		Value:      newValue,
 		Generation: generation,
 	}, ch, mid)
 	if err != nil {

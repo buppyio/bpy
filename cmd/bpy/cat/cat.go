@@ -33,7 +33,7 @@ func Cat() {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
 
-	rootHash, ok, err := remote.GetRoot(c, &k)
+	_, rootHash, ok, err := remote.GetRoot(c, &k)
 	if err != nil {
 		common.Die("error fetching root hash: %s\n", err.Error())
 	}

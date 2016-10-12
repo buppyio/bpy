@@ -55,50 +55,24 @@ func ListPacks(c *client.Client) ([]PackListing, error) {
 	return listing, nil
 }
 
-func ListNamedRefs(c *client.Client) ([]string, error) {
-	f, err := c.Open("refs")
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	data, err := ioutil.ReadAll(f)
-	if err != nil {
-		return nil, err
-	}
-	listing := []string{}
-	for len(data) != 0 {
-		if len(data) < 2 {
-			return nil, ErrCorruptPackListing
-		}
-		namesz := int(binary.BigEndian.Uint16(data[0:2]))
-		if len(data) < namesz+2 {
-			return nil, ErrCorruptRefListing
-		}
-		listing = append(listing, string(data[2:2+namesz]))
-		data = data[2+namesz:]
-	}
-	return listing, nil
-}
-
-func GetRoot(c *client.Client, k *bpy.Key) ([32]byte, bool, error) {
+func GetRoot(c *client.Client, k *bpy.Key) (int64, [32]byte, bool, error) {
 	r, err := c.TGetRef()
 	if err != nil {
-		return [32]byte{}, false, err
+		return -1, [32]byte{}, false, err
 	}
 	if r.Value == "" {
-		return [32]byte{}, false, nil
+		return -1, [32]byte{}, false, nil
 	}
-	hash, err := sig.ParseSignedHash(k, r.Value)
+	version, hash, err := sig.ParseSignedHash(k, r.Value)
 	if err != nil {
-		return [32]byte{}, false, err
+		return -1, [32]byte{}, false, err
 	}
-	return hash, true, err
+	return version, hash, true, err
 }
 
-func CasRoot(c *client.Client, k *bpy.Key, oldHash, newHash [32]byte, generation uint64) (bool, error) {
-	oldValue := sig.SignHash(k, oldHash)
-	newValue := sig.SignHash(k, newHash)
-	r, err := c.TCasRef(oldValue, newValue, generation)
+func CasRoot(c *client.Client, k *bpy.Key, newVersion int64, newHash [32]byte, generation uint64) (bool, error) {
+	newValue := sig.SignHash(k, newVersion, newHash)
+	r, err := c.TCasRef(newValue, generation)
 	if err != nil {
 		return false, err
 	}

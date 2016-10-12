@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/buppyio/bpy/remote/proto"
+	"github.com/buppyio/bpy/sig"
 	"io"
 	"io/ioutil"
 	"os"
@@ -235,7 +236,7 @@ func (srv *server) handleTCancelPack(t *proto.TCancelPack) proto.Message {
 func (srv *server) handleTGetRef(t *proto.TGetRoot) proto.Message {
 	db, err := openDB(srv.dbPath, srv.keyId)
 	if err != nil {
-		makeError(t.Mid, err)
+		return makeError(t.Mid, err)
 	}
 	defer db.Close()
 	var value string
@@ -259,9 +260,13 @@ func (srv *server) handleTGetRef(t *proto.TGetRoot) proto.Message {
 func (srv *server) handleTCasRef(t *proto.TCasRoot) proto.Message {
 	db, err := openDB(srv.dbPath, srv.keyId)
 	if err != nil {
-		makeError(t.Mid, err)
+		return makeError(t.Mid, err)
 	}
 	defer db.Close()
+	newVersion, err := sig.ParseVersion(t.Value)
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
 	err = db.Update(func(tx *bolt.Tx) error {
 		state, err := getGCState(tx)
 		if err != nil {
@@ -273,11 +278,15 @@ func (srv *server) handleTCasRef(t *proto.TCasRoot) proto.Message {
 		b := tx.Bucket([]byte(MetaDataBucketName))
 		valueBytes := b.Get([]byte("root"))
 		if valueBytes != nil {
-			if string(valueBytes) != t.OldValue {
+			oldVersion, err := sig.ParseVersion(string(valueBytes))
+			if err != nil {
+				return err
+			}
+			if oldVersion+1 != newVersion {
 				return ErrStaleRefValue
 			}
 		}
-		return b.Put([]byte("root"), []byte(t.NewValue))
+		return b.Put([]byte("root"), []byte(t.Value))
 	})
 	if err == ErrStaleRefValue {
 		return &proto.RCasRoot{
