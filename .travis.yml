@@ -1,7 +1,7 @@
 language: go
 
 go:
-  - tip
+  - 1.7.1
 
 install: true
-script: go test `go list ./... | grep -v 'github.com/buppyio/bpy/vendor/'`
+script: go test `go list ./... | grep -v 'github.com/buppyio/bpy/vendor/'` && go build github.com/buppyio/bpy/cmd/bpy
