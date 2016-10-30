@@ -66,7 +66,7 @@ type rootHandler struct {
 
 func (h *rootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	walkPath := r.URL.Path
-	_, rootHash, ok, err := remote.GetRoot(h.c, h.k)
+	rootHash, _, ok, err := remote.GetRoot(h.c, h.k)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "error: %s", err.Error())
@@ -141,7 +141,7 @@ type httpFs struct {
 func (httpFs *httpFs) Open(fullPath string) (http.File, error) {
 	fullPath = fullPath[4:]
 	log.Printf("open: %s", fullPath)
-	_, rootHash, ok, err := remote.GetRoot(httpFs.c, httpFs.k)
+	rootHash, _, ok, err := remote.GetRoot(httpFs.c, httpFs.k)
 	if err != nil {
 		return nil, err
 	}

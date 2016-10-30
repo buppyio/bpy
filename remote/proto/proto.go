@@ -3,6 +3,7 @@ package proto
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"reflect"
 )
@@ -69,13 +70,18 @@ type TGetRoot struct {
 }
 
 type RGetRoot struct {
-	Mid   uint16
-	Value string
+	Mid       uint16
+	Value     string
+	Version   uint64
+	Signature string
+	Ok        bool
 }
 
 type TCasRoot struct {
 	Mid        uint16
+	Version    uint64
 	Value      string
+	Signature  string
 	Generation uint64
 }
 
@@ -359,7 +365,7 @@ func GetMessageType(m Message) byte {
 	case *RGetGeneration:
 		return RGETGENERATION
 	}
-	panic("GetMessageType: internal error")
+	panic(fmt.Sprintf("GetMessageType: internal error (%)", m))
 }
 
 func GetMessageId(m Message) uint16 {

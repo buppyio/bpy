@@ -45,7 +45,7 @@ func prune() {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
 
-	rootVersion, rootHash, ok, err := remote.GetRoot(c, &k)
+	rootHash, rootVersion, ok, err := remote.GetRoot(c, &k)
 	if err != nil {
 		common.Die("error fetching root hash: %s\n", err.Error())
 	}
@@ -63,7 +63,7 @@ func prune() {
 		newRef.HasPrev = false
 
 		newRefHash, err := refs.PutRef(store, newRef)
-		ok, err = remote.CasRoot(c, &k, rootVersion+1, newRefHash, generation)
+		ok, err = remote.CasRoot(c, &k, newRefHash, rootVersion+1, generation)
 		if err != nil {
 			common.Die("error swapping root: %s\n", err.Error())
 		}
@@ -121,7 +121,7 @@ func prune() {
 		common.Die("error storing ref: %s\n", err.Error())
 	}
 
-	ok, err = remote.CasRoot(c, &k, rootVersion+1, newRefHash, generation)
+	ok, err = remote.CasRoot(c, &k, newRefHash, rootVersion+1, generation)
 	if err != nil {
 		common.Die("error swapping root: %s\n", err.Error())
 	}
@@ -154,7 +154,7 @@ func list() {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
 
-	_, rootHash, ok, err := remote.GetRoot(c, &k)
+	rootHash, _, ok, err := remote.GetRoot(c, &k)
 	if err != nil {
 		common.Die("error fetching root hash: %s\n", err.Error())
 	}

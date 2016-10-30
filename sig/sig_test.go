@@ -2,37 +2,34 @@ package sig
 
 import (
 	"github.com/buppyio/bpy"
-	"reflect"
 	"testing"
 )
 
 func TestSigs(t *testing.T) {
-	k, err := bpy.NewKey()
+	k1, err := bpy.NewKey()
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	h := [32]byte{}
-	signed := SignHash(&k, 123, h)
-	version, got, err := ParseSignedHash(&k, signed)
+	k2, err := bpy.NewKey()
 	if err != nil {
 		t.Fatal(err)
 	}
+	ver1 := uint64(0)
+	ver2 := uint64(1)
 
-	if version != 123 {
-		t.Fatal("Bad version")
+	val1 := "a"
+	val2 := "b"
+
+	signed := SignValue(&k1, val1, ver1)
+
+	if SignValue(&k1, val1, ver2) == signed {
+		t.Fatal("signatures shouldn't match")
+	}
+	if SignValue(&k1, val2, ver1) == signed {
+		t.Fatal("signatures shouldn't match")
+	}
+	if SignValue(&k2, val1, ver1) == signed {
+		t.Fatal("signatures shouldn't match")
 	}
 
-	if !reflect.DeepEqual(h, got) {
-		t.Fatal("parsing ref failed")
-	}
-
-	for i := 0; i < len(signed); i++ {
-		corrupt := []byte(signed)
-		corrupt[i] = corrupt[i] + 1
-		_, _, err := ParseSignedHash(&k, string(corrupt))
-		if err == nil {
-			t.Fatal("expected failure")
-		}
-	}
 }

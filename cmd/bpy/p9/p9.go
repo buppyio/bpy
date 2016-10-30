@@ -29,7 +29,7 @@ func handleConnection(con net.Conn) {
 		return
 	}
 
-	_, rootHash, ok, err := remote.GetRoot(c, &k)
+	rootHash, _, ok, err := remote.GetRoot(c, &k)
 	if err != nil {
 		log.Fatalf("error fetching root hash: %s", err.Error())
 	}

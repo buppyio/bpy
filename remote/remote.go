@@ -14,10 +14,11 @@ import (
 )
 
 var (
-	ErrTooSmallForEntry   = errors.New("buffer too small for stat entry")
-	ErrBadReadOffset      = errors.New("bad read offset")
-	ErrCorruptPackListing = errors.New("corrupt pack listing")
-	ErrCorruptRefListing  = errors.New("corrupt ref listing")
+	ErrTooSmallForEntry    = errors.New("buffer too small for stat entry")
+	ErrBadReadOffset       = errors.New("bad read offset")
+	ErrCorruptPackListing  = errors.New("corrupt pack listing")
+	ErrCorruptRefListing   = errors.New("corrupt ref listing")
+	ErrRootSignatureFailed = errors.New("root signature failed! corruption or tampering detected!")
 )
 
 type PackListing struct {
@@ -55,24 +56,34 @@ func ListPacks(c *client.Client) ([]PackListing, error) {
 	return listing, nil
 }
 
-func GetRoot(c *client.Client, k *bpy.Key) (int64, [32]byte, bool, error) {
-	r, err := c.TGetRef()
+func GetRoot(c *client.Client, k *bpy.Key) ([32]byte, uint64, bool, error) {
+	r, err := c.TGetRoot()
 	if err != nil {
-		return -1, [32]byte{}, false, err
+		return [32]byte{}, 0, false, err
 	}
-	if r.Value == "" {
-		return -1, [32]byte{}, false, nil
+
+	if !r.Ok {
+		return [32]byte{}, 0, false, nil
 	}
-	version, hash, err := sig.ParseSignedHash(k, r.Value)
+	signature := sig.SignValue(k, r.Value, r.Version)
 	if err != nil {
-		return -1, [32]byte{}, false, err
+		return [32]byte{}, 0, false, err
 	}
-	return version, hash, true, err
+	if signature != r.Signature {
+		return [32]byte{}, 0, false, ErrRootSignatureFailed
+	}
+	h, err := bpy.ParseHash(r.Value)
+	if err != nil {
+		return [32]byte{}, 0, false, err
+	}
+	return h, r.Version, true, nil
 }
 
-func CasRoot(c *client.Client, k *bpy.Key, newVersion int64, newHash [32]byte, generation uint64) (bool, error) {
-	newValue := sig.SignHash(k, newVersion, newHash)
-	r, err := c.TCasRef(newValue, generation)
+func CasRoot(c *client.Client, k *bpy.Key, newHash [32]byte, newVersion uint64, generation uint64) (bool, error) {
+	newValue := hex.EncodeToString(newHash[:])
+	newSignature := sig.SignValue(k, newValue, newVersion)
+
+	r, err := c.TCasRoot(newValue, newVersion, newSignature, generation)
 	if err != nil {
 		return false, err
 	}

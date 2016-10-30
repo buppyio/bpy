@@ -52,7 +52,7 @@ func GC(c *client.Client, store bpy.CStore, cacheClient *cache.Client, k *bpy.Ke
 		canDelete:   []string{},
 	}
 
-	_, hash, ok, err := remote.GetRoot(gc.c, gc.k)
+	hash, _, ok, err := remote.GetRoot(gc.c, gc.k)
 	if err != nil {
 		return err
 	}

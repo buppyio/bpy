@@ -230,7 +230,7 @@ func (c *Client) WriteMessage(m proto.Message) error {
 	return proto.WriteMessage(c.conn, m, c.wBuf)
 }
 
-func (c *Client) TCasRef(newValue string, generation uint64) (*proto.RCasRoot, error) {
+func (c *Client) TCasRoot(newValue string, newVersion uint64, signature string, generation uint64) (*proto.RCasRoot, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
@@ -238,6 +238,8 @@ func (c *Client) TCasRef(newValue string, generation uint64) (*proto.RCasRoot, e
 	resp, err := c.Call(&proto.TCasRoot{
 		Mid:        mid,
 		Value:      newValue,
+		Version:    newVersion,
+		Signature:  signature,
 		Generation: generation,
 	}, ch, mid)
 	if err != nil {
@@ -251,7 +253,7 @@ func (c *Client) TCasRef(newValue string, generation uint64) (*proto.RCasRoot, e
 	}
 }
 
-func (c *Client) TGetRef() (*proto.RGetRoot, error) {
+func (c *Client) TGetRoot() (*proto.RGetRoot, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err

@@ -5,19 +5,20 @@ import (
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/buppyio/bpy/remote/proto"
-	"github.com/buppyio/bpy/sig"
 	"io"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
 
 var (
 	ErrBadRequest         = errors.New("bad request")
+	ErrServerError        = errors.New("server error")
 	ErrPidInUse           = errors.New("pid in use")
 	ErrFidInUse           = errors.New("fid in use")
 	ErrNoSuchPid          = errors.New("no such pid")
@@ -25,8 +26,7 @@ var (
 	ErrWrongKeyId         = errors.New("attaching with wrong key")
 	ErrBadGCID            = errors.New("GCID for remove incorrect (another concurrent gc)?")
 	ErrGCInProgress       = errors.New("gc in progress")
-	ErrRefAlreadyExists   = errors.New("ref already exists")
-	ErrStaleRefValue      = errors.New("ref value stale (concurrent write?)")
+	ErrStaleRootValue     = errors.New("root value stale (concurrent write?)")
 	ErrGeneratingPackName = errors.New("error generating pack name")
 )
 
@@ -233,40 +233,53 @@ func (srv *server) handleTCancelPack(t *proto.TCancelPack) proto.Message {
 	}
 }
 
-func (srv *server) handleTGetRef(t *proto.TGetRoot) proto.Message {
+func (srv *server) handleTGetRoot(t *proto.TGetRoot) proto.Message {
 	db, err := openDB(srv.dbPath, srv.keyId)
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
 	defer db.Close()
+
 	var value string
+	var signature string
+	var versionString string
+
 	err = db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(MetaDataBucketName))
-		valueBytes := b.Get([]byte("root"))
-		if valueBytes != nil {
-			value = string(valueBytes)
-		}
+		value = string(b.Get([]byte("root")))
+		versionString = string(b.Get([]byte("rootversion")))
+		signature = string(b.Get([]byte("rootsignature")))
 		return nil
 	})
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
+
+	var version uint64
+
+	if versionString != "" {
+		version, err = strconv.ParseUint(versionString, 10, 64)
+		if err != nil {
+			return makeError(t.Mid, ErrServerError)
+		}
+	}
+
 	return &proto.RGetRoot{
-		Mid:   t.Mid,
-		Value: value,
+		Mid:       t.Mid,
+		Value:     value,
+		Signature: signature,
+		Version:   version,
+		Ok:        versionString != "",
 	}
 }
 
-func (srv *server) handleTCasRef(t *proto.TCasRoot) proto.Message {
+func (srv *server) handleTCasRoot(t *proto.TCasRoot) proto.Message {
 	db, err := openDB(srv.dbPath, srv.keyId)
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
 	defer db.Close()
-	newVersion, err := sig.ParseVersion(t.Value)
-	if err != nil {
-		return makeError(t.Mid, err)
-	}
+
 	err = db.Update(func(tx *bolt.Tx) error {
 		state, err := getGCState(tx)
 		if err != nil {
@@ -276,19 +289,37 @@ func (srv *server) handleTCasRef(t *proto.TCasRoot) proto.Message {
 			return ErrGCInProgress
 		}
 		b := tx.Bucket([]byte(MetaDataBucketName))
-		valueBytes := b.Get([]byte("root"))
-		if valueBytes != nil {
-			oldVersion, err := sig.ParseVersion(string(valueBytes))
+
+		versionBytes := b.Get([]byte("rootversion"))
+
+		if versionBytes != nil {
+			oldVersion, err := strconv.ParseUint(string(versionBytes), 10, 64)
 			if err != nil {
-				return err
+				return ErrServerError
 			}
-			if oldVersion+1 != newVersion {
-				return ErrStaleRefValue
+
+			if t.Version != oldVersion+1 {
+				return ErrStaleRootValue
 			}
 		}
-		return b.Put([]byte("root"), []byte(t.Value))
+
+		err = b.Put([]byte("root"), []byte(t.Value))
+		if err != nil {
+			return ErrServerError
+		}
+		err = b.Put([]byte("rootversion"), []byte(fmt.Sprintf("%d", t.Version)))
+		if err != nil {
+			return ErrServerError
+		}
+		err = b.Put([]byte("rootsignature"), []byte(t.Signature))
+		if err != nil {
+			return ErrServerError
+		}
+
+		return nil
 	})
-	if err == ErrStaleRefValue {
+
+	if err == ErrStaleRootValue {
 		return &proto.RCasRoot{
 			Mid: t.Mid,
 			Ok:  false,
@@ -555,9 +586,9 @@ func Serve(conn ReadWriteCloser, root string) error {
 		case *proto.TClose:
 			r = srv.handleTClose(t)
 		case *proto.TGetRoot:
-			r = srv.handleTGetRef(t)
+			r = srv.handleTGetRoot(t)
 		case *proto.TCasRoot:
-			r = srv.handleTCasRef(t)
+			r = srv.handleTCasRoot(t)
 		case *proto.TRemove:
 			r = srv.handleTRemove(t)
 		case *proto.TStartGC:

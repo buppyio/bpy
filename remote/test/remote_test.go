@@ -127,8 +127,7 @@ func TestRoot(t *testing.T) {
 	}
 
 	root0 := [32]byte{}
-	root0[0] = 1
-	ok, err = remote.CasRoot(c, &key, 0, root0, generation)
+	ok, err = remote.CasRoot(c, &key, root0, 0, generation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +135,7 @@ func TestRoot(t *testing.T) {
 		t.Fatal("expected cas success")
 	}
 
-	version, val, ok, err := remote.GetRoot(c, &key)
+	val, version, ok, err := remote.GetRoot(c, &key)
 	if !ok {
 		t.Fatal("expected root")
 	}
@@ -147,10 +146,10 @@ func TestRoot(t *testing.T) {
 		t.Fatal("bad version")
 	}
 
-	root1 := root0
-	root1[0] = 2
+	root1 := [32]byte{}
+	root1[0] = 1
 
-	ok, err = remote.CasRoot(c, &key, 0, root1, generation)
+	ok, err = remote.CasRoot(c, &key, root1, 0, generation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +157,7 @@ func TestRoot(t *testing.T) {
 		t.Fatal("expected cas failure")
 	}
 
-	version, val, ok, err = remote.GetRoot(c, &key)
+	val, version, ok, err = remote.GetRoot(c, &key)
 	if !ok {
 		t.Fatal("expected root")
 	}
@@ -169,7 +168,7 @@ func TestRoot(t *testing.T) {
 		t.Fatal("bad version")
 	}
 
-	ok, err = remote.CasRoot(c, &key, 1, root1, generation)
+	ok, err = remote.CasRoot(c, &key, root1, 1, generation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +176,7 @@ func TestRoot(t *testing.T) {
 		t.Fatal("expected cas success")
 	}
 
-	version, val, ok, err = remote.GetRoot(c, &key)
+	val, version, ok, err = remote.GetRoot(c, &key)
 	if !ok {
 		t.Fatal("expected root")
 	}
