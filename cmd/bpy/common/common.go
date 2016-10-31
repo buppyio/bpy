@@ -86,31 +86,41 @@ func GetIndexCacheDir() (string, error) {
 	return filepath.Join(d, "cache"), nil
 }
 
-func GetCacheDaemonAddress() (string, error) {
-	return os.Getenv("BPY_CACHE"), nil
-}
+func GetCacheClient() (*cache.Client, error) {
 
-func GetCacheClient() (*cache.Client, bool, error) {
-	addr, err := GetCacheDaemonAddress()
+	addr := "127.0.0.1:9001"
+
+	bpyDir, err := GetBuppyDir()
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
-
-	if addr == "" {
-		return nil, false, nil
-	}
+	chunkCache := filepath.Join(bpyDir, "bpychunkcache.db")
 
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
-		return nil, false, err
+		cmd := exec.Command(os.Args[0], "cache-daemon", "-nohup", "-idle-timeout=30", "-db="+chunkCache)
+		cmd.Dir = bpyDir
+		cmd.Start()
+		connected := false
+		for i := 0; i < 10; i++ {
+			conn, err = net.Dial("tcp", addr)
+			if err != nil {
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+			connected = true
+		}
+		if !connected {
+			return nil, err
+		}
 	}
 
 	cacheClient, err := cache.NewClient(conn)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 
-	return cacheClient, true, nil
+	return cacheClient, nil
 }
 
 func GetKey() (bpy.Key, error) {
@@ -202,14 +212,12 @@ func GetCStore(k *bpy.Key, remote *client.Client) (bpy.CStore, error) {
 		return nil, err
 	}
 
-	cacheClient, ok, err := GetCacheClient()
+	cacheClient, err := GetCacheClient()
 	if err != nil {
 		return nil, err
 	}
 
-	if ok {
-		store = cstore.NewCachedCStore(store, cacheClient)
-	}
+	store = cstore.NewCachedCStore(store, cacheClient)
 	return store, nil
 }
 

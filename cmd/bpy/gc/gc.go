@@ -30,7 +30,7 @@ func GC() {
 		common.Die("error stopping gc: %s\n", err.Error())
 	}
 
-	cache, _, err := common.GetCacheClient()
+	cache, err := common.GetCacheClient()
 	if err != nil {
 		common.Die("error getting cache connection: %s\n", err.Error())
 	}

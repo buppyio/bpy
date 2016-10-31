@@ -6,6 +6,8 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -56,9 +58,14 @@ func runForever(newCon, conOk, conClosed chan struct{}) {
 func CacheDaemon() {
 	dbArg := flag.String("db", "", "path to dbfile")
 	addrArg := flag.String("addr", "127.0.0.1:9001", "address to listen on")
+	nohupArg := flag.Bool("nohup", false, "ignore HUP signals")
 	sizeArg := flag.Int64("size", 1024*1024*1024, "max size of cache in bytes")
 	idleTimeoutArg := flag.Int64("idle-timeout", -1, "close if no connections after this many seconds")
 	flag.Parse()
+
+	if *nohupArg {
+		signal.Ignore(syscall.SIGHUP)
+	}
 
 	if *dbArg == "" {
 		log.Fatalf("please specify a db file")
