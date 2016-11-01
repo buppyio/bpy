@@ -2,6 +2,7 @@ package cachedaemon
 
 import (
 	"flag"
+	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/cstore/cache"
 	"log"
 	"net"
@@ -57,7 +58,7 @@ func runForever(newCon, conOk, conClosed chan struct{}) {
 
 func CacheDaemon() {
 	dbArg := flag.String("db", "", "path to dbfile")
-	addrArg := flag.String("addr", "127.0.0.1:9001", "address to listen on")
+	addrArg := flag.String("addr", common.DefaultCacheListenAddr, "address to listen on")
 	nohupArg := flag.Bool("nohup", false, "ignore HUP signals")
 	sizeArg := flag.Int64("size", 1024*1024*1024, "max size of cache in bytes")
 	idleTimeoutArg := flag.Int64("idle-timeout", -1, "close if no connections after this many seconds")

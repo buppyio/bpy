@@ -24,12 +24,17 @@ func prune() {
 
 	flag.Parse()
 
-	k, err := common.GetKey()
+	cfg, err := common.GetConfig()
+	if err != nil {
+		common.Die("error getting config: %s\n", err)
+	}
+
+	k, err := common.GetKey(cfg)
 	if err != nil {
 		common.Die("error getting bpy key data: %s\n", err.Error())
 	}
 
-	c, err := common.GetRemote(&k)
+	c, err := common.GetRemote(cfg, &k)
 	if err != nil {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
@@ -40,7 +45,7 @@ func prune() {
 		common.Die("error getting current gc generation: %s\n", err.Error())
 	}
 
-	store, err := common.GetCStore(&k, c)
+	store, err := common.GetCStore(cfg, &k, c)
 	if err != nil {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
@@ -138,18 +143,23 @@ func prune() {
 func list() {
 	flag.Parse()
 
-	k, err := common.GetKey()
+	cfg, err := common.GetConfig()
+	if err != nil {
+		common.Die("error getting config: %s\n", err)
+	}
+
+	k, err := common.GetKey(cfg)
 	if err != nil {
 		common.Die("error getting bpy key data: %s\n", err.Error())
 	}
 
-	c, err := common.GetRemote(&k)
+	c, err := common.GetRemote(cfg, &k)
 	if err != nil {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
 	defer c.Close()
 
-	store, err := common.GetCStore(&k, c)
+	store, err := common.GetCStore(cfg, &k, c)
 	if err != nil {
 		common.Die("error getting content store: %s\n", err.Error())
 	}

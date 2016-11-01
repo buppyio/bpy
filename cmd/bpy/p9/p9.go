@@ -12,18 +12,24 @@ import (
 
 func handleConnection(con net.Conn) {
 	defer con.Close()
-	k, err := common.GetKey()
+
+	cfg, err := common.GetConfig()
+	if err != nil {
+		common.Die("error getting config: %s\n", err)
+	}
+
+	k, err := common.GetKey(cfg)
 	if err != nil {
 		log.Fatalf("error getting key: %s\n", err.Error())
 	}
 
-	c, err := common.GetRemote(&k)
+	c, err := common.GetRemote(cfg, &k)
 	if err != nil {
 		log.Fatalf("error connecting to remote: %s", err.Error())
 	}
 	defer c.Close()
 
-	store, err := common.GetCStore(&k, c)
+	store, err := common.GetCStore(cfg, &k, c)
 	if err != nil {
 		log.Printf("error getting content store: %s", err.Error())
 		return

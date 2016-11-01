@@ -14,7 +14,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"os/user"
 	"path/filepath"
 	"strings"
 	"time"
@@ -70,40 +69,15 @@ func dialRemote(cmdstr string) (io.ReadWriteCloser, error) {
 	}, nil
 }
 
-func GetBuppyDir() (string, error) {
-	u, err := user.Current()
+func GetCacheClient(cfg *Config) (*cache.Client, error) {
+	conn, err := net.Dial("tcp", cfg.CacheListenAddr)
 	if err != nil {
-		return "", err
-	}
-	return filepath.Join(u.HomeDir, ".bpy"), nil
-}
-
-func GetIndexCacheDir() (string, error) {
-	d, err := GetBuppyDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(d, "cache"), nil
-}
-
-func GetCacheClient() (*cache.Client, error) {
-
-	addr := "127.0.0.1:9001"
-
-	bpyDir, err := GetBuppyDir()
-	if err != nil {
-		return nil, err
-	}
-	chunkCache := filepath.Join(bpyDir, "bpychunkcache.db")
-
-	conn, err := net.Dial("tcp", addr)
-	if err != nil {
-		cmd := exec.Command(os.Args[0], "cache-daemon", "-nohup", "-idle-timeout=30", "-db="+chunkCache)
-		cmd.Dir = bpyDir
+		cmd := exec.Command(os.Args[0], "cache-daemon", "-addr", cfg.CacheListenAddr, "-nohup", "-idle-timeout=30", "-db", cfg.CacheFile)
+		cmd.Dir = cfg.BuppyPath
 		cmd.Start()
 		connected := false
 		for i := 0; i < 10; i++ {
-			conn, err = net.Dial("tcp", addr)
+			conn, err = net.Dial("tcp", cfg.CacheListenAddr)
 			if err != nil {
 				time.Sleep(100 * time.Millisecond)
 				continue
@@ -123,13 +97,8 @@ func GetCacheClient() (*cache.Client, error) {
 	return cacheClient, nil
 }
 
-func GetKey() (bpy.Key, error) {
-	d, err := GetBuppyDir()
-	if err != nil {
-		return bpy.Key{}, err
-	}
-	keyfile := filepath.Join(d, "bpy.key")
-	f, err := os.Open(keyfile)
+func GetKey(cfg *Config) (bpy.Key, error) {
+	f, err := os.Open(cfg.KeyPath)
 	if err != nil {
 		return bpy.Key{}, err
 	}
@@ -137,9 +106,8 @@ func GetKey() (bpy.Key, error) {
 	return bpy.ReadKey(f)
 }
 
-func GetRemote(k *bpy.Key) (*client.Client, error) {
-	cmd := os.Getenv("BPY_REMOTE_CMD")
-	slv, err := dialRemote(cmd)
+func GetRemote(cfg *Config, k *bpy.Key) (*client.Client, error) {
+	slv, err := dialRemote(cfg.RemoteCommand)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +125,7 @@ func GetRemote(k *bpy.Key) (*client.Client, error) {
 			return nil, err
 		}
 
-		store, err := GetCStore(k, c)
+		store, err := GetCStore(cfg, k, c)
 		if err != nil {
 			c.Close()
 			return nil, fmt.Errorf("error getting store writer: %s", err.Error())
@@ -195,15 +163,11 @@ func GetRemote(k *bpy.Key) (*client.Client, error) {
 	return c, nil
 }
 
-func GetCStore(k *bpy.Key, remote *client.Client) (bpy.CStore, error) {
+func GetCStore(cfg *Config, k *bpy.Key, remote *client.Client) (bpy.CStore, error) {
 	var store bpy.CStore
 
-	idxCache, err := GetIndexCacheDir()
-	if err != nil {
-		return nil, err
-	}
-	curIdxCache := filepath.Join(idxCache, hex.EncodeToString(k.Id[:]))
-	err = os.MkdirAll(curIdxCache, IdxCachePermissions)
+	curIdxCache := filepath.Join(cfg.ICachePath, hex.EncodeToString(k.Id[:]))
+	err := os.MkdirAll(curIdxCache, IdxCachePermissions)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +176,7 @@ func GetCStore(k *bpy.Key, remote *client.Client) (bpy.CStore, error) {
 		return nil, err
 	}
 
-	cacheClient, err := GetCacheClient()
+	cacheClient, err := GetCacheClient(cfg)
 	if err != nil {
 		return nil, err
 	}

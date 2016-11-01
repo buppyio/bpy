@@ -28,17 +28,22 @@ func inspecthtree() {
 		common.Die("error parsing hash: %s\n", err.Error())
 	}
 
-	k, err := common.GetKey()
+	cfg, err := common.GetConfig()
+	if err != nil {
+		common.Die("error getting config: %s\n", err)
+	}
+
+	k, err := common.GetKey(cfg)
 	if err != nil {
 		common.Die("error getting bpy key data: %s\n", err.Error())
 	}
 
-	remote, err := common.GetRemote(&k)
+	remote, err := common.GetRemote(cfg, &k)
 	if err != nil {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
 
-	store, err := common.GetCStore(&k, remote)
+	store, err := common.GetCStore(cfg, &k, remote)
 	if err != nil {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
@@ -67,17 +72,22 @@ func inspecthtree() {
 }
 
 func writehtree() {
-	k, err := common.GetKey()
+	cfg, err := common.GetConfig()
+	if err != nil {
+		common.Die("error getting config: %s\n", err)
+	}
+
+	k, err := common.GetKey(cfg)
 	if err != nil {
 		common.Die("error getting bpy key data: %s\n", err.Error())
 	}
 
-	remote, err := common.GetRemote(&k)
+	remote, err := common.GetRemote(cfg, &k)
 	if err != nil {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
 
-	store, err := common.GetCStore(&k, remote)
+	store, err := common.GetCStore(cfg, &k, remote)
 	if err != nil {
 		common.Die("error getting content store: %s\n", err.Error())
 	}

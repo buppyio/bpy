@@ -32,12 +32,17 @@ func Put() {
 		destPath = flag.Args()[1]
 	}
 
-	k, err := common.GetKey()
+	cfg, err := common.GetConfig()
+	if err != nil {
+		common.Die("error getting config: %s\n", err)
+	}
+
+	k, err := common.GetKey(cfg)
 	if err != nil {
 		common.Die("error getting bpy key data: %s\n", err.Error())
 	}
 
-	c, err := common.GetRemote(&k)
+	c, err := common.GetRemote(cfg, &k)
 	if err != nil {
 		common.Die("error connecting to remote: %s\n", err.Error())
 	}
@@ -49,7 +54,7 @@ func Put() {
 	}
 
 	for {
-		store, err := common.GetCStore(&k, c)
+		store, err := common.GetCStore(cfg, &k, c)
 		if err != nil {
 			common.Die("error getting content store: %s\n", err.Error())
 		}
