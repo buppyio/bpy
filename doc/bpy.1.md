@@ -101,4 +101,4 @@ Create a zip archive from the contents of the specified folder
 
 # SEE ALSO
 
-**bpy_env(7)**
+**bpy_environment(7)**
