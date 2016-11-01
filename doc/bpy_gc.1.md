@@ -19,7 +19,7 @@ the new pack file is safely commited to disk storage, so disk usage may temporar
 the collection is completed.
 
 Because each pack file uses a unique IV key in its encryption, reachable data must be downloaded and reuploaded,
-this process can take some time when there are large amounts of packfiles that have unreachable data .A collection can be
+this process can take some time when there are large amounts of packfiles that have unreachable data. A collection can be
 canceled at any time and resuming will not need to reprocess all the same data because repacked files will be fully reachable.
 
 The possibly slow speed of GC can be partially mitigated by utilizing a local bpy cache to completely remove
