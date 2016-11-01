@@ -32,6 +32,10 @@ func Env() {
 	if err != nil {
 		common.Die(errMsg, err)
 	}
+	_, err = fmt.Printf("BPY_CACHE_SIZE=%d\n", cfg.CacheSize)
+	if err != nil {
+		common.Die(errMsg, err)
+	}
 	_, err = fmt.Printf("BPY_CACHE_LISTEN_ADDR=%s\n", cfg.CacheListenAddr)
 	if err != nil {
 		common.Die(errMsg, err)
