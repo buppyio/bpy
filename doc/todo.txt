@@ -10,6 +10,8 @@ Alpha:
 
 Bugs:
 
+Cleanup open file descriptors on server disconnect.
+
 Improvements:
 
 - make 9p dynamically update
@@ -23,4 +25,3 @@ Improvements:
 - Steal ideas like bloom filters, cstore is actually just an LSM.
 - Only fetch changed indexes instead of reloading entire index when a lookup fails.
 - Test every message type in proto packing/unpack tests
-

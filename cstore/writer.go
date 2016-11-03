@@ -163,7 +163,19 @@ func (w *Writer) Put(data []byte) ([32]byte, error) {
 func (w *Writer) Flush() error {
 	w.lock.Lock()
 	defer w.lock.Unlock()
-	return w.flushWorkingSet()
+	err := w.flushWorkingSet()
+	if err != nil {
+		return nil
+	}
+	err = w.rdr.Close()
+	if err != nil {
+		return err
+	}
+	w.rdr, err = NewReader(w.store, w.key, w.cachepath)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (w *Writer) Close() error {
