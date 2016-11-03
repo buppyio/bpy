@@ -181,5 +181,13 @@ func (w *Writer) Flush() error {
 func (w *Writer) Close() error {
 	w.lock.Lock()
 	defer w.lock.Unlock()
-	return w.flushWorkingSet()
+	err := w.flushWorkingSet()
+	if err != nil {
+		return nil
+	}
+	err = w.rdr.Close()
+	if err != nil {
+		return err
+	}
+	return nil
 }

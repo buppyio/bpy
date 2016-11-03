@@ -65,6 +65,11 @@ func GC(c *client.Client, store bpy.CStore, cacheClient *cache.Client, k *bpy.Ke
 		return err
 	}
 
+	err = store.Close()
+	if err != nil {
+		return err
+	}
+
 	err = gc.sweep()
 	if err != nil {
 		return err
