@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/buppyio/bpy/remote/client"
 	"github.com/buppyio/bpy/remote/server"
+	"github.com/buppyio/bpy/testhelp"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -12,29 +13,6 @@ import (
 	"reflect"
 	"testing"
 )
-
-type testPipe struct {
-	in  *io.PipeReader
-	out *io.PipeWriter
-}
-
-func (p *testPipe) Read(buf []byte) (int, error)  { return p.in.Read(buf) }
-func (p *testPipe) Write(buf []byte) (int, error) { return p.out.Write(buf) }
-func (p *testPipe) Close() error                  { p.in.Close(); p.out.Close(); return nil }
-
-func MakeConnection() (io.ReadWriteCloser, io.ReadWriteCloser) {
-	r1, w1 := io.Pipe()
-	r2, w2 := io.Pipe()
-	c1 := &testPipe{
-		in:  r2,
-		out: w1,
-	}
-	c2 := &testPipe{
-		in:  r1,
-		out: w2,
-	}
-	return c1, c2
-}
 
 func TestCStore(t *testing.T) {
 	r := rand.New(rand.NewSource(1234))
@@ -54,7 +32,7 @@ func TestCStore(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	clientcon, servercon := MakeConnection()
+	clientcon, servercon := testhelp.NewTestConnPair()
 	defer clientcon.Close()
 	defer servercon.Close()
 	go server.Serve(servercon, storepath)

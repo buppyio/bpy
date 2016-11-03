@@ -28,7 +28,7 @@ func TestMemCachedStore(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	con1, con2 := MakeConnection()
+	con1, con2 := testhelp.NewTestConnPair()
 	defer con1.Close()
 	defer con2.Close()
 

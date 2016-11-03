@@ -7,6 +7,7 @@ import (
 	"github.com/buppyio/bpy/remote"
 	"github.com/buppyio/bpy/remote/client"
 	"github.com/buppyio/bpy/remote/server"
+	"github.com/buppyio/bpy/testhelp"
 	"io"
 	"io/ioutil"
 	"os"
@@ -14,36 +15,13 @@ import (
 	"testing"
 )
 
-type TestConn struct {
-	pr *io.PipeReader
-	pw *io.PipeWriter
-}
-
-func (conn *TestConn) Write(buf []byte) (int, error) { return conn.pw.Write(buf) }
-func (conn *TestConn) Read(buf []byte) (int, error)  { return conn.pr.Read(buf) }
-func (conn *TestConn) Close() error                  { conn.pr.Close(); conn.pw.Close(); return nil }
-
-func newTestConnPair() (*TestConn, *TestConn) {
-	pr1, pw1 := io.Pipe()
-	pr2, pw2 := io.Pipe()
-	conn1 := &TestConn{
-		pr: pr1,
-		pw: pw2,
-	}
-	conn2 := &TestConn{
-		pr: pr2,
-		pw: pw1,
-	}
-	return conn1, conn2
-}
-
 func TestRemotePacks(t *testing.T) {
 	testPath, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(testPath)
-	cliConn, srvConn := newTestConnPair()
+	cliConn, srvConn := testhelp.NewTestConnPair()
 	go server.Serve(srvConn, testPath)
 	c, err := client.Attach(cliConn, "abc")
 	if err != nil {
@@ -107,7 +85,7 @@ func TestRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cliConn, srvConn := newTestConnPair()
+	cliConn, srvConn := testhelp.NewTestConnPair()
 	go server.Serve(srvConn, testPath)
 	c, err := client.Attach(cliConn, "abc")
 	if err != nil {
