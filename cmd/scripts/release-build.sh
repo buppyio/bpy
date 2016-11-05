@@ -13,18 +13,6 @@ cd $GOPATH/src/github.com/buppyio/bpy/
 CURTAG=`git tag`
 cd $WORKINGDIR
 
-if test -z $CURTAG
-then
-	echo "expected a tag"
-	exit 1
-fi
-
-if test $CURTAG != $BPYVERSION
-then
-	echo "the current version must match the current tag"
-	exit 1
-fi
-
 releasebuild () {
 	export GOOS=$1
 	export GOARCH=$2
