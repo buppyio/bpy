@@ -34,7 +34,7 @@ releasebuild () {
 	export ZIPPATH=$ARCHIVEDIR/bpy-$BPYVERSION-$GOOS-$GOARCH.zip
 	
 	mkdir -p $RELEASEDIR
-	go build -o $RELEASEDIR/bpy github.com/buppyio/bpy/cmd/bpy
+	go build -ldflags "-X main.Version=$BPYVERSION" -o $RELEASEDIR/bpy github.com/buppyio/bpy/cmd/bpy
 	
 	if test $GOOS = windows
 	then

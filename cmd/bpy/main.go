@@ -23,9 +23,15 @@ import (
 	"os"
 )
 
+var Version string
+
 func help() {
+	if Version != "" {
+		fmt.Printf("bpy version: %s\n", Version)
+		fmt.Println("")
+	}
 	fmt.Println("Please specify one of the following subcommands:")
-	fmt.Println("browse, cat, cache-daemon, cp, env, gc, get, hist, ls, mkdir, mv, new-key, put, rm, tar, zip, 9p")
+	fmt.Println("browse, cat, cp, env, gc, get, hist, ls, mkdir, mv, new-key, put, rm, tar, zip")
 	fmt.Println("")
 	fmt.Println("For more use -h on the sub commands.")
 	fmt.Println("Also check the docs at https://buppy.io/docs")
