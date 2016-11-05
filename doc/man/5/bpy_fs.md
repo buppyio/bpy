@@ -33,7 +33,7 @@ The directory entries are serialized as the following structure:
 +---------------+
 | DataDepth[1]  | The height of contents htree.
 +---------------+
-| Data[32]      | The hash pointing to the sub htree containing the file/directory contents.
+| Data[32]      | The htree hash containing the file/directory contents.
 +---------------+
 ```
 
