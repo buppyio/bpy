@@ -8,7 +8,7 @@ bpy zip - export a bpy folder to a zip archive
 
 # Synopsis
 
-The zuo command creates a zip archive out of the specified folder.
+The zip command creates a zip archive out of the specified folder.
 
 # Usage
 
