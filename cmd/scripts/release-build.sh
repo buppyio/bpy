@@ -19,7 +19,7 @@ then
 	exit 1
 fi
 
-if !test $CURTAG != $BPYVERSION
+if test $CURTAG != $BPYVERSION
 then
 	echo "the current version must match the current tag"
 	exit 1
