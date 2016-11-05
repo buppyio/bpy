@@ -27,7 +27,7 @@ The directory entries are serialized as the following structure:
 +---------------+
 | Size[8]       | Little endian size of the entry, 0 for directories.
 +---------------+
-| Mode[4]       | Little endian file flags, described [https://golang.org/pkg/os/#FileMode ](here).
+| Mode[4]       | Little endian file flags.
 +---------------+
 | ModTime[8]    | Little endian modification time.
 +---------------+
@@ -36,6 +36,8 @@ The directory entries are serialized as the following structure:
 | Data[32]      | The hash pointing to the sub htree containing the file/directory contents.
 +---------------+
 ```
+
+The mode flags are described in more detail at [https://golang.org/pkg/os/#FileMode](https://golang.org/pkg/os/#FileMode).
 
 # SEE ALSO
 
