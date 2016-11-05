@@ -16,13 +16,14 @@ cd $WORKINGDIR
 releasebuild () {
 	export GOOS=$1
 	export GOARCH=$2
-	export RELEASEDIR=bpy_release/bpy-$BPYVERSION-$GOOS-$GOARCH
-	export ARCHIVEDIR=bpy_release/archives
-	export TARPATH=$ARCHIVEDIR/bpy-$BPYVERSION-$GOOS-$GOARCH.tar.gz
-	export ZIPPATH=$ARCHIVEDIR/bpy-$BPYVERSION-$GOOS-$GOARCH.zip
+	RELEASEDIR=bpy_release/bpy-$BPYVERSION-$GOOS-$GOARCH
+	ARCHIVEDIR=bpy_release/archives
+	TARPATH=$ARCHIVEDIR/bpy-$BPYVERSION-$GOOS-$GOARCH.tar.gz
+	ZIPPATH=$ARCHIVEDIR/bpy-$BPYVERSION-$GOOS-$GOARCH.zip
+	BPYCOMMIT=`git rev-parse HEAD`
 	
 	mkdir -p $RELEASEDIR
-	go build -ldflags "-X main.Version=$BPYVERSION" -o $RELEASEDIR/bpy github.com/buppyio/bpy/cmd/bpy
+	go build -ldflags "-X github.com/buppyio/bpy/cmd/bpy/version.BpyVersion=$BPYVERSION -X github.com/buppyio/bpy/cmd/bpy/version.BpyCommit=$BPYCOMMIT" -o $RELEASEDIR/bpy github.com/buppyio/bpy/cmd/bpy
 	
 	if test $GOOS = windows
 	then

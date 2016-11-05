@@ -19,19 +19,14 @@ import (
 	"github.com/buppyio/bpy/cmd/bpy/remote"
 	"github.com/buppyio/bpy/cmd/bpy/rm"
 	"github.com/buppyio/bpy/cmd/bpy/tar"
+	"github.com/buppyio/bpy/cmd/bpy/version"
 	"github.com/buppyio/bpy/cmd/bpy/zip"
 	"os"
 )
 
-var Version string
-
 func help() {
-	if Version != "" {
-		fmt.Printf("bpy version: %s\n", Version)
-		fmt.Println("")
-	}
 	fmt.Println("Please specify one of the following subcommands:")
-	fmt.Println("browse, cat, cp, env, gc, get, hist, ls, mkdir, mv, new-key, put, rm, tar, zip")
+	fmt.Println("browse, cat, cp, env, gc, get, hist, ls, mkdir, mv, new-key, put, rm, tar, version, zip")
 	fmt.Println("")
 	fmt.Println("For more use -h on the sub commands.")
 	fmt.Println("Also check the docs at https://buppy.io/docs")
@@ -48,6 +43,8 @@ func main() {
 			cmd = cat.Cat
 		case "cache-daemon":
 			cmd = cachedaemon.CacheDaemon
+		case "dbg":
+			cmd = dbg
 		case "cp":
 			cmd = cp.Cp
 		case "env":
@@ -72,8 +69,8 @@ func main() {
 			cmd = rm.Rm
 		case "tar":
 			cmd = tar.Tar
-		case "dbg":
-			cmd = dbg
+		case "version":
+			cmd = version.Version
 		case "new-key":
 			cmd = newkey.NewKey
 		case "zip":
