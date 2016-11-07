@@ -175,7 +175,7 @@ func (d *Drive) StopGC() error {
 	return err
 }
 
-func (d *Drive) CasRoot(root string, newVersion int64, signature string, gcGeneration int64) (bool, error) {
+func (d *Drive) CasRoot(root string, newVersion uint64, signature string, gcGeneration uint64) (bool, error) {
 	db, err := openBoltDB(d.dbPath)
 	if err != nil {
 		return false, err
@@ -186,7 +186,7 @@ func (d *Drive) CasRoot(root string, newVersion int64, signature string, gcGener
 
 	err = db.Update(func(tx *bolt.Tx) error {
 		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
-		rootVersion, err := strconv.ParseInt(string(metaDataBucket.Get([]byte("rootversion"))), 10, 64)
+		rootVersion, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("rootversion"))), 10, 64)
 		if err != nil {
 			return err
 		}
@@ -196,7 +196,7 @@ func (d *Drive) CasRoot(root string, newVersion int64, signature string, gcGener
 			return nil
 		}
 
-		curGCGeneration, err := strconv.ParseInt(string(metaDataBucket.Get([]byte("rootversion"))), 10, 64)
+		curGCGeneration, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("rootversion"))), 10, 64)
 		if err != nil {
 			return err
 		}
@@ -256,7 +256,7 @@ func (d *Drive) GetRoot() (string, uint64, string, error) {
 	return root, rootVersion, signature, nil
 }
 
-func (d *Drive) AddPack(packName string, gcGeneration int64) error {
+func (d *Drive) AddPack(packName string, gcGeneration uint64) error {
 	db, err := openBoltDB(d.dbPath)
 	if err != nil {
 		return err
@@ -269,7 +269,7 @@ func (d *Drive) AddPack(packName string, gcGeneration int64) error {
 
 	err = db.Update(func(tx *bolt.Tx) error {
 		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
-		curGCGeneration, err := strconv.ParseInt(string(metaDataBucket.Get([]byte("rootversion"))), 10, 64)
+		curGCGeneration, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("rootversion"))), 10, 64)
 		if err != nil {
 			return err
 		}
@@ -296,7 +296,7 @@ func (d *Drive) AddPack(packName string, gcGeneration int64) error {
 	return nil
 }
 
-func (d *Drive) RemovePack(packName string, gcGeneration int64) error {
+func (d *Drive) RemovePack(packName string, gcGeneration uint64) error {
 	db, err := openBoltDB(d.dbPath)
 	if err != nil {
 		return err
@@ -305,7 +305,7 @@ func (d *Drive) RemovePack(packName string, gcGeneration int64) error {
 
 	err = db.Update(func(tx *bolt.Tx) error {
 		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
-		curGCGeneration, err := strconv.ParseInt(string(metaDataBucket.Get([]byte("rootversion"))), 10, 64)
+		curGCGeneration, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("rootversion"))), 10, 64)
 		if err != nil {
 			return err
 		}

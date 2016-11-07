@@ -90,8 +90,8 @@ func CasRoot(c *client.Client, k *bpy.Key, newHash [32]byte, newVersion uint64, 
 	return r.Ok, nil
 }
 
-func Remove(c *client.Client, path, gcId string) error {
-	_, err := c.TRemove(path, gcId)
+func Remove(c *client.Client, path string, gcGeneration uint64) error {
+	_, err := c.TRemove(path, gcGeneration)
 	return err
 }
 

@@ -154,9 +154,9 @@ type RPackError struct {
 }
 
 type TClosePack struct {
-	Mid uint16
-	Pid uint32
-	GCGeneration int64
+	Mid          uint16
+	Pid          uint32
+	GCGeneration uint64
 }
 
 type RClosePack struct {
@@ -173,9 +173,9 @@ type RCancelPack struct {
 }
 
 type TRemove struct {
-	Mid  uint16
-	Path string
-	GCID string
+	Mid          uint16
+	Path         string
+	GCGeneration uint64
 }
 
 type RRemove struct {

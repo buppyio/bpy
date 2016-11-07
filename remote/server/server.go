@@ -12,7 +12,6 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -44,11 +43,11 @@ type file interface {
 }
 
 type uploadState struct {
-	tmpPath string
-	path    string
+	tmpPath  string
+	path     string
 	packName string
-	err     error
-	file    *os.File
+	err      error
+	file     *os.File
 }
 
 type server struct {
@@ -156,10 +155,10 @@ func (srv *server) handleTNewPack(t *proto.TNewPack) proto.Message {
 		return makeError(t.Mid, fmt.Errorf("cannot create temporary packfile: %s", err.Error()))
 	}
 	srv.pids[t.Pid] = &uploadState{
-		tmpPath: tmpPath,
-		path:    name,
+		tmpPath:  tmpPath,
+		path:     name,
 		packName: t.Name,
-		file:    f,
+		file:     f,
 	}
 	return &proto.RNewPack{
 		Mid: t.Mid,
@@ -216,7 +215,7 @@ func (srv *server) handleTClosePack(t *proto.TClosePack) proto.Message {
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
-	
+
 	return &proto.RClosePack{
 		Mid: t.Mid,
 	}
@@ -243,7 +242,7 @@ func (srv *server) handleTCancelPack(t *proto.TCancelPack) proto.Message {
 
 func (srv *server) handleTGetRoot(t *proto.TGetRoot) proto.Message {
 	value, version, signature, err := srv.drive.GetRoot()
-	
+
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
@@ -258,92 +257,23 @@ func (srv *server) handleTGetRoot(t *proto.TGetRoot) proto.Message {
 }
 
 func (srv *server) handleTCasRoot(t *proto.TCasRoot) proto.Message {
-	db, err := openDB(srv.dbPath, srv.keyId)
-	if err != nil {
-		return makeError(t.Mid, err)
-	}
-	defer db.Close()
-
-	err = db.Update(func(tx *bolt.Tx) error {
-		state, err := getGCState(tx)
-		if err != nil {
-			return err
-		}
-		if t.Generation != state.Generation {
-			return ErrGCInProgress
-		}
-		b := tx.Bucket([]byte(MetaDataBucketName))
-
-		versionBytes := b.Get([]byte("rootversion"))
-
-		if versionBytes != nil {
-			oldVersion, err := strconv.ParseUint(string(versionBytes), 10, 64)
-			if err != nil {
-				return ErrServerError
-			}
-
-			if t.Version != oldVersion+1 {
-				return ErrStaleRootValue
-			}
-		}
-
-		err = b.Put([]byte("root"), []byte(t.Value))
-		if err != nil {
-			return ErrServerError
-		}
-		err = b.Put([]byte("rootversion"), []byte(fmt.Sprintf("%d", t.Version)))
-		if err != nil {
-			return ErrServerError
-		}
-		err = b.Put([]byte("rootsignature"), []byte(t.Signature))
-		if err != nil {
-			return ErrServerError
-		}
-
-		return nil
-	})
-
-	if err == ErrStaleRootValue {
-		return &proto.RCasRoot{
-			Mid: t.Mid,
-			Ok:  false,
-		}
-	}
+	ok, err := srv.drive.CasRoot(t.Value, t.Version, t.Signature, t.Generation)
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
 	return &proto.RCasRoot{
 		Mid: t.Mid,
-		Ok:  true,
+		Ok:  ok,
 	}
 }
 
 func (srv *server) handleTRemove(t *proto.TRemove) proto.Message {
-	db, err := openDB(srv.dbPath, srv.keyId)
-	if err != nil {
-		makeError(t.Mid, err)
-	}
-	defer db.Close()
-	err = db.View(func(tx *bolt.Tx) error {
-		state, err := getGCState(tx)
-		if err != nil {
-			return err
-		}
-		if t.GCID != state.ID {
-			return ErrBadGCID
-		}
-		return nil
-	})
-	if err != nil {
-		return makeError(t.Mid, err)
-	}
 	matched, err := regexp.MatchString("packs/[a-zA-Z0-9\\.]+", t.Path)
 	if err != nil || !matched {
 		return makeError(t.Mid, ErrBadRequest)
 	}
-	fpath := path.Join(srv.servePath, t.Path)
-	err = os.Remove(fpath)
-	if err != nil {
+	err = srv.drive.RemovePack(t.Path, t.GCGeneration)
+	if err != nil || !matched {
 		return makeError(t.Mid, err)
 	}
 	return &proto.RRemove{
@@ -464,14 +394,14 @@ func (srv *server) handleTAttach(t *proto.TAttach) proto.Message {
 	if err != nil || !matched {
 		return makeError(t.Mid, ErrBadRequest)
 	}
-	
+
 	ok, err := drive.Attach(t.KeyId)
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
-	
+
 	srv.keyId = t.KeyId
-	
+
 	packPath := filepath.Join(srv.servePath, "packs")
 	err = os.MkdirAll(packPath, 0777)
 	if err != nil {

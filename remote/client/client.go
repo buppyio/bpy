@@ -272,15 +272,15 @@ func (c *Client) TGetRoot() (*proto.RGetRoot, error) {
 	}
 }
 
-func (c *Client) TRemove(path, gcId string) (*proto.RRemove, error) {
+func (c *Client) TRemove(path string, gcGeneration uint64) (*proto.RRemove, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
 	}
 	resp, err := c.Call(&proto.TRemove{
-		Mid:  mid,
-		Path: path,
-		GCID: gcId,
+		Mid:          mid,
+		Path:         path,
+		GCGeneration: gcGeneration,
 	}, ch, mid)
 	if err != nil {
 		return nil, err
