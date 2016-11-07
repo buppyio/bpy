@@ -155,3 +155,89 @@ func TestCasRoot(t *testing.T) {
 		t.Fatal("unexpected root/version")
 	}
 }
+
+func TestAddPack(t *testing.T) {
+	testDir, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(testDir)
+	drive, err := Open(filepath.Join(testDir, "drive.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer drive.Close()
+
+	err = drive.AddPack("foobar", 5)
+	if err != ErrGCOccurred {
+		t.Fatal(err)
+	}
+
+	err = drive.AddPack("foobar", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = drive.AddPack("foobar", 0)
+	if err != ErrDuplicatePack {
+		t.Fatal("expected duplicate pack error, got:", err)
+	}
+
+	packs, err := drive.GetPacks()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(packs) != 1 || packs[0] != "foobar" {
+		t.Fatal("expected one pack called foobar")
+	}
+
+}
+
+func TestRemovePack(t *testing.T) {
+	testDir, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(testDir)
+	drive, err := Open(filepath.Join(testDir, "drive.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer drive.Close()
+
+	err = drive.AddPack("foobar", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = drive.AddPack("foobarbaz", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = drive.RemovePack("foobar", 1)
+	if err != ErrGCOccurred {
+		t.Fatal("expected GCOccurred error, got: ", err)
+	}
+
+	packs, err := drive.GetPacks()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(packs) != 2 {
+		t.Fatal("expected remove failed")
+	}
+
+	err = drive.RemovePack("foobar", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	packs, err = drive.GetPacks()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(packs) != 1 || packs[0] != "foobarbaz" {
+		t.Fatal("expected remove success")
+	}
+
+}

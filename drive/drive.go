@@ -13,6 +13,12 @@ const (
 	PacksBucketName    = "packs"
 )
 
+var (
+	ErrGCOccurred      = errors.New("concurrent garbage collection, operation failed")
+	ErrDuplicatePack   = errors.New("duplicate pack")
+	ErrInvalidPackName = errors.New("invalid pack name")
+)
+
 type Drive struct {
 	dbPath string
 }
@@ -238,14 +244,97 @@ func (d *Drive) GetRoot() (string, int64, error) {
 	return root, rootVersion, nil
 }
 
-func (d *Drive) AddPack(name string, gcGeneration int64) (bool, error) {
-	return false, errors.New("unimplemented")
+func (d *Drive) AddPack(packName string, gcGeneration int64) error {
+	db, err := openBoltDB(d.dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	if len(packName) > 1024 {
+		return errors.New("invalid pack name")
+	}
+
+	err = db.Update(func(tx *bolt.Tx) error {
+		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
+		curGCGeneration, err := strconv.ParseInt(string(metaDataBucket.Get([]byte("rootversion"))), 10, 64)
+		if err != nil {
+			return err
+		}
+		if gcGeneration != curGCGeneration {
+			return ErrGCOccurred
+		}
+
+		packsBucket := tx.Bucket([]byte(PacksBucketName))
+		if packsBucket.Get([]byte(packName)) != nil {
+			return ErrDuplicatePack
+		}
+
+		err = packsBucket.Put([]byte(packName), []byte(""))
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (d *Drive) RemovePack(name string, gcGeneration int64) (bool, error) {
-	return false, errors.New("unimplemented")
+func (d *Drive) RemovePack(packName string, gcGeneration int64) error {
+	db, err := openBoltDB(d.dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	err = db.Update(func(tx *bolt.Tx) error {
+		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
+		curGCGeneration, err := strconv.ParseInt(string(metaDataBucket.Get([]byte("rootversion"))), 10, 64)
+		if err != nil {
+			return err
+		}
+		if gcGeneration != curGCGeneration {
+			return ErrGCOccurred
+		}
+
+		packsBucket := tx.Bucket([]byte(PacksBucketName))
+		err = packsBucket.Delete([]byte(packName))
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	return err
 }
 
 func (d *Drive) GetPacks() ([]string, error) {
-	return nil, errors.New("unimplemented")
+	db, err := openBoltDB(d.dbPath)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	packs := make([]string, 0, 32)
+
+	err = db.Update(func(tx *bolt.Tx) error {
+		packsBucket := tx.Bucket([]byte(PacksBucketName))
+		err = packsBucket.ForEach(func(k, v []byte) error {
+			packs = append(packs, string(k))
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return packs, nil
 }
