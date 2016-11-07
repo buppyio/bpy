@@ -99,23 +99,15 @@ func TestCasRoot(t *testing.T) {
 	}
 	defer drive.Close()
 
-	root, version, err := drive.GetRoot()
+	root, version, sig, err := drive.GetRoot()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if root != "" || version != 0 {
-		t.Fatal("unexpected root/version")
+	if root != "" || sig != "" || version != 0 {
+		t.Fatal("unexpected root/version/sig")
 	}
 
-	ok, err := drive.CasRoot("foo", 2, 2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if ok {
-		t.Fatal("unexpected ok")
-	}
-
-	ok, err = drive.CasRoot("foo", 1, 2)
+	ok, err := drive.CasRoot("foo", 2, "sig", 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +115,7 @@ func TestCasRoot(t *testing.T) {
 		t.Fatal("unexpected ok")
 	}
 
-	ok, err = drive.CasRoot("foo", 2, 0)
+	ok, err = drive.CasRoot("foo", 1, "sig", 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,15 +123,23 @@ func TestCasRoot(t *testing.T) {
 		t.Fatal("unexpected ok")
 	}
 
-	root, version, err = drive.GetRoot()
+	ok, err = drive.CasRoot("foo", 2, "sig", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if root != "" || version != 0 {
-		t.Fatal("unexpected root/version")
+	if ok {
+		t.Fatal("unexpected ok")
 	}
 
-	ok, err = drive.CasRoot("foo", 1, 0)
+	root, version, sig, err = drive.GetRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if root != "" || sig != "" || version != 0 {
+		t.Fatal("unexpected root/version/sig")
+	}
+
+	ok, err = drive.CasRoot("foo", 1, "sig", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,12 +147,12 @@ func TestCasRoot(t *testing.T) {
 		t.Fatal("unexpected !ok")
 	}
 
-	root, version, err = drive.GetRoot()
+	root, version, sig, err = drive.GetRoot()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if root != "foo" || version != 1 {
-		t.Fatal("unexpected root/version")
+	if root != "foo" || version != 1 || sig != "sig" {
+		t.Fatal("unexpected root/version/sig")
 	}
 }
 

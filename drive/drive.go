@@ -58,6 +58,13 @@ func Open(dbPath string) (*Drive, error) {
 			}
 		}
 
+		if string(metaDataBucket.Get([]byte("rootsignature"))) == "" {
+			err = metaDataBucket.Put([]byte("rootsignature"), []byte(""))
+			if err != nil {
+				return err
+			}
+		}
+
 		return nil
 	})
 
@@ -168,7 +175,7 @@ func (d *Drive) StopGC() error {
 	return err
 }
 
-func (d *Drive) CasRoot(root string, newVersion, gcGeneration int64) (bool, error) {
+func (d *Drive) CasRoot(root string, newVersion int64, signature string, gcGeneration int64) (bool, error) {
 	db, err := openBoltDB(d.dbPath)
 	if err != nil {
 		return false, err
@@ -206,6 +213,10 @@ func (d *Drive) CasRoot(root string, newVersion, gcGeneration int64) (bool, erro
 		if err != nil {
 			return err
 		}
+		err = metaDataBucket.Put([]byte("rootsignature"), []byte(signature))
+		if err != nil {
+			return err
+		}
 
 		ok = true
 		return nil
@@ -218,30 +229,31 @@ func (d *Drive) CasRoot(root string, newVersion, gcGeneration int64) (bool, erro
 	return ok, nil
 }
 
-func (d *Drive) GetRoot() (string, int64, error) {
+func (d *Drive) GetRoot() (string, uint64, string, error) {
 	db, err := openBoltDB(d.dbPath)
 	if err != nil {
-		return "", -1, err
+		return "", 0, "", err
 	}
 	defer db.Close()
 
-	var root string
-	var rootVersion int64
+	var root, signature string
+	var rootVersion uint64
 
 	err = db.View(func(tx *bolt.Tx) error {
 		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
 		root = string(metaDataBucket.Get([]byte("rootval")))
-		rootVersion, err = strconv.ParseInt(string(metaDataBucket.Get([]byte("rootversion"))), 10, 64)
+		signature = string(metaDataBucket.Get([]byte("rootsignature")))
+		rootVersion, err = strconv.ParseUint(string(metaDataBucket.Get([]byte("rootversion"))), 10, 64)
 		if err != nil {
 			return err
 		}
 		return nil
 	})
 	if err != nil {
-		return "", -1, err
+		return "", 0, "", err
 	}
 
-	return root, rootVersion, nil
+	return root, rootVersion, signature, nil
 }
 
 func (d *Drive) AddPack(packName string, gcGeneration int64) error {

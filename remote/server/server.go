@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/boltdb/bolt"
+	"github.com/buppyio/bpy/drive"
 	"github.com/buppyio/bpy/remote/proto"
 	"io"
 	"io/ioutil"
@@ -45,13 +46,14 @@ type file interface {
 type uploadState struct {
 	tmpPath string
 	path    string
+	packName string
 	err     error
 	file    *os.File
 }
 
 type server struct {
 	servePath string
-	dbPath    string
+	drive     *drive.Drive
 	keyId     string
 	buf       []byte
 	fids      map[uint32]file
@@ -156,6 +158,7 @@ func (srv *server) handleTNewPack(t *proto.TNewPack) proto.Message {
 	srv.pids[t.Pid] = &uploadState{
 		tmpPath: tmpPath,
 		path:    name,
+		packName: t.Name,
 		file:    f,
 	}
 	return &proto.RNewPack{
@@ -209,6 +212,11 @@ func (srv *server) handleTClosePack(t *proto.TClosePack) proto.Message {
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
+	err = srv.drive.AddPack(state.packName, t.GCGeneration)
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+	
 	return &proto.RClosePack{
 		Mid: t.Mid,
 	}
@@ -234,34 +242,10 @@ func (srv *server) handleTCancelPack(t *proto.TCancelPack) proto.Message {
 }
 
 func (srv *server) handleTGetRoot(t *proto.TGetRoot) proto.Message {
-	db, err := openDB(srv.dbPath, srv.keyId)
+	value, version, signature, err := srv.drive.GetRoot()
+	
 	if err != nil {
 		return makeError(t.Mid, err)
-	}
-	defer db.Close()
-
-	var value string
-	var signature string
-	var versionString string
-
-	err = db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(MetaDataBucketName))
-		value = string(b.Get([]byte("root")))
-		versionString = string(b.Get([]byte("rootversion")))
-		signature = string(b.Get([]byte("rootsignature")))
-		return nil
-	})
-	if err != nil {
-		return makeError(t.Mid, err)
-	}
-
-	var version uint64
-
-	if versionString != "" {
-		version, err = strconv.ParseUint(versionString, 10, 64)
-		if err != nil {
-			return makeError(t.Mid, ErrServerError)
-		}
 	}
 
 	return &proto.RGetRoot{
@@ -269,7 +253,7 @@ func (srv *server) handleTGetRoot(t *proto.TGetRoot) proto.Message {
 		Value:     value,
 		Signature: signature,
 		Version:   version,
-		Ok:        versionString != "",
+		Ok:        value != "",
 	}
 }
 
@@ -480,38 +464,20 @@ func (srv *server) handleTAttach(t *proto.TAttach) proto.Message {
 	if err != nil || !matched {
 		return makeError(t.Mid, ErrBadRequest)
 	}
+	
+	ok, err := drive.Attach(t.KeyId)
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+	
 	srv.keyId = t.KeyId
-	db, err := openDB(srv.dbPath, srv.keyId)
-	if err != nil {
-		return makeError(t.Mid, err)
-	}
-	err = db.Update(func(tx *bolt.Tx) error {
-		keyIdBucket := tx.Bucket([]byte(MetaDataBucketName))
-		currentKeyId := keyIdBucket.Get([]byte("keyid"))
-		if currentKeyId != nil {
-			if string(currentKeyId) != srv.keyId {
-				return ErrWrongKeyId
-			}
-		} else {
-			err = keyIdBucket.Put([]byte("keyid"), []byte(srv.keyId))
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return makeError(t.Mid, err)
-	}
-	err = db.Close()
-	if err != nil {
-		return makeError(t.Mid, err)
-	}
+	
 	packPath := filepath.Join(srv.servePath, "packs")
 	err = os.MkdirAll(packPath, 0777)
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
+	// XXX This needs to do gc
 	err = cleanOldTempPacks(packPath)
 	if err != nil {
 		return makeError(t.Mid, err)

@@ -156,6 +156,7 @@ type RPackError struct {
 type TClosePack struct {
 	Mid uint16
 	Pid uint32
+	GCGeneration int64
 }
 
 type RClosePack struct {
