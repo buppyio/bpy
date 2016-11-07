@@ -111,10 +111,10 @@ func (d *Drive) Attach(keyId string) (bool, error) {
 	return ok, nil
 }
 
-func (d *Drive) GetGCGeneration() (int64, error) {
+func (d *Drive) GetGCGeneration() (uint64, error) {
 	db, err := openBoltDB(d.dbPath)
 	if err != nil {
-		return -1, err
+		return 0, err
 	}
 	defer db.Close()
 
@@ -127,21 +127,21 @@ func (d *Drive) GetGCGeneration() (int64, error) {
 	})
 
 	if err != nil {
-		return -1, err
+		return 0, err
 	}
 
-	gcGeneration, err := strconv.ParseInt(gcGenerationString, 10, 64)
+	gcGeneration, err := strconv.ParseUint(gcGenerationString, 10, 64)
 	if err != nil {
-		return -1, err
+		return 0, err
 	}
 
 	return gcGeneration, nil
 }
 
-func (d *Drive) StartGC() (int64, error) {
+func (d *Drive) StartGC() error {
 	db, err := openBoltDB(d.dbPath)
 	if err != nil {
-		return -1, err
+		return err
 	}
 	defer db.Close()
 
@@ -164,18 +164,23 @@ func (d *Drive) StartGC() (int64, error) {
 	})
 
 	if err != nil {
-		return -1, err
+		return err
 	}
 
-	return gcGeneration, nil
+	err = db.Close()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (d *Drive) StopGC() error {
-	_, err := d.StartGC()
+	err := d.StartGC()
 	return err
 }
 
-func (d *Drive) CasRoot(root string, newVersion uint64, signature string, gcGeneration uint64) (bool, error) {
+func (d *Drive) CasRoot(root string, version uint64, signature string, gcGeneration uint64) (bool, error) {
 	db, err := openBoltDB(d.dbPath)
 	if err != nil {
 		return false, err
@@ -191,10 +196,10 @@ func (d *Drive) CasRoot(root string, newVersion uint64, signature string, gcGene
 			return err
 		}
 
-		rootVersion += 1
-		if rootVersion != newVersion {
+		if rootVersion != version {
 			return nil
 		}
+		rootVersion += 1
 
 		curGCGeneration, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("rootversion"))), 10, 64)
 		if err != nil {
@@ -205,7 +210,7 @@ func (d *Drive) CasRoot(root string, newVersion uint64, signature string, gcGene
 			return nil
 		}
 
-		err = metaDataBucket.Put([]byte("rootversion"), []byte(fmt.Sprintf("%d", newVersion)))
+		err = metaDataBucket.Put([]byte("rootversion"), []byte(fmt.Sprintf("%d", rootVersion)))
 		if err != nil {
 			return err
 		}
@@ -222,6 +227,11 @@ func (d *Drive) CasRoot(root string, newVersion uint64, signature string, gcGene
 		return nil
 	})
 
+	if err != nil {
+		return false, err
+	}
+
+	err = db.Close()
 	if err != nil {
 		return false, err
 	}
@@ -293,6 +303,11 @@ func (d *Drive) AddPack(packName string, gcGeneration uint64) error {
 		return err
 	}
 
+	err = db.Close()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -320,7 +335,17 @@ func (d *Drive) RemovePack(packName string, gcGeneration uint64) error {
 		}
 		return nil
 	})
-	return err
+
+	if err != nil {
+		return err
+	}
+
+	err = db.Close()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (d *Drive) GetPacks() ([]string, error) {

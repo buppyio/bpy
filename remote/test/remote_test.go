@@ -120,7 +120,7 @@ func TestRoot(t *testing.T) {
 	if !reflect.DeepEqual(val, root0) {
 		t.Fatal("bad val")
 	}
-	if version != 0 {
+	if version != 1 {
 		t.Fatal("bad version")
 	}
 
@@ -142,7 +142,7 @@ func TestRoot(t *testing.T) {
 	if !reflect.DeepEqual(val, root0) {
 		t.Fatal("bad val")
 	}
-	if version != 0 {
+	if version != 1 {
 		t.Fatal("bad version")
 	}
 

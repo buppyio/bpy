@@ -3,7 +3,6 @@ package server
 import (
 	"errors"
 	"fmt"
-	"github.com/boltdb/bolt"
 	"github.com/buppyio/bpy/drive"
 	"github.com/buppyio/bpy/remote/proto"
 	"io"
@@ -282,23 +281,7 @@ func (srv *server) handleTRemove(t *proto.TRemove) proto.Message {
 }
 
 func (srv *server) handleTStartGC(t *proto.TStartGC) proto.Message {
-	db, err := openDB(srv.dbPath, srv.keyId)
-	if err != nil {
-		makeError(t.Mid, err)
-	}
-	defer db.Close()
-
-	err = db.Update(func(tx *bolt.Tx) error {
-		state, err := getGCState(tx)
-		if err != nil {
-			return err
-		}
-		if state.ID != "" {
-			return ErrGCInProgress
-		}
-		state.ID = t.GCID
-		return setGCState(tx, state)
-	})
+	err := srv.drive.StartGC()
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
@@ -308,21 +291,7 @@ func (srv *server) handleTStartGC(t *proto.TStartGC) proto.Message {
 }
 
 func (srv *server) handleTStopGC(t *proto.TStopGC) proto.Message {
-	db, err := openDB(srv.dbPath, srv.keyId)
-	if err != nil {
-		makeError(t.Mid, err)
-	}
-	defer db.Close()
-
-	err = db.Update(func(tx *bolt.Tx) error {
-		state, err := getGCState(tx)
-		if err != nil {
-			return err
-		}
-		state.Generation += 1
-		state.ID = ""
-		return setGCState(tx, state)
-	})
+	err := srv.drive.StopGC()
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
@@ -332,25 +301,8 @@ func (srv *server) handleTStopGC(t *proto.TStopGC) proto.Message {
 }
 
 func (srv *server) handleTGetGeneration(t *proto.TGetGeneration) proto.Message {
-	db, err := openDB(srv.dbPath, srv.keyId)
-	if err != nil {
-		makeError(t.Mid, err)
-	}
-	defer db.Close()
+	gen, err := srv.drive.GetGCGeneration()
 
-	var gen uint64
-
-	err = db.View(func(tx *bolt.Tx) error {
-		state, err := getGCState(tx)
-		if err != nil {
-			return err
-		}
-		if state.ID != "" {
-			return ErrGCInProgress
-		}
-		gen = state.Generation
-		return nil
-	})
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
@@ -395,9 +347,13 @@ func (srv *server) handleTAttach(t *proto.TAttach) proto.Message {
 		return makeError(t.Mid, ErrBadRequest)
 	}
 
-	ok, err := drive.Attach(t.KeyId)
+	ok, err := srv.drive.Attach(t.KeyId)
 	if err != nil {
 		return makeError(t.Mid, err)
+	}
+
+	if !ok {
+		return makeError(t.Mid, ErrWrongKeyId)
 	}
 
 	srv.keyId = t.KeyId
@@ -445,15 +401,19 @@ func Serve(conn ReadWriteCloser, root string) error {
 	defer conn.Close()
 
 	maxsz := uint32(1024 * 1024)
+	d, err := drive.Open(filepath.Join(root, "drive.db"))
+	if err != nil {
+		return err
+	}
 	srv := &server{
 		servePath: root,
-		dbPath:    filepath.Join(root, BpyDBName),
+		drive:     d,
 		buf:       make([]byte, maxsz, maxsz),
 		fids:      make(map[uint32]file),
 		pids:      make(map[uint32]*uploadState),
 	}
 
-	err := srv.awaitAttach(conn)
+	err = srv.awaitAttach(conn)
 	if err != nil {
 		return err
 	}

@@ -65,7 +65,12 @@ func TestGCGeneration(t *testing.T) {
 		t.Fatal("unexpected gcGeneration")
 	}
 
-	gen, err = drive.StartGC()
+	err = drive.StartGC()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gen, err = drive.GetGCGeneration()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +144,7 @@ func TestCasRoot(t *testing.T) {
 		t.Fatal("unexpected root/version/sig")
 	}
 
-	ok, err = drive.CasRoot("foo", 1, "sig", 0)
+	ok, err = drive.CasRoot("foo", 0, "sig", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +157,7 @@ func TestCasRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	if root != "foo" || version != 1 || sig != "sig" {
-		t.Fatal("unexpected root/version/sig")
+		t.Fatalf("unexpected root/version/sig=%s/%d/%s", root, version, sig)
 	}
 }
 
