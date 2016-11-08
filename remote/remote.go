@@ -87,6 +87,7 @@ func CasRoot(c *client.Client, k *bpy.Key, newHash [32]byte, newVersion uint64, 
 	if err != nil {
 		return false, err
 	}
+
 	return r.Ok, nil
 }
 

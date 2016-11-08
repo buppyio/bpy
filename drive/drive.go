@@ -196,12 +196,11 @@ func (d *Drive) CasRoot(root string, version uint64, signature string, gcGenerat
 			return err
 		}
 
-		if rootVersion != version {
+		if rootVersion+1 != version {
 			return nil
 		}
-		rootVersion += 1
 
-		curGCGeneration, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("rootversion"))), 10, 64)
+		curGCGeneration, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("gcgeneration"))), 10, 64)
 		if err != nil {
 			return err
 		}
@@ -210,7 +209,7 @@ func (d *Drive) CasRoot(root string, version uint64, signature string, gcGenerat
 			return nil
 		}
 
-		err = metaDataBucket.Put([]byte("rootversion"), []byte(fmt.Sprintf("%d", rootVersion)))
+		err = metaDataBucket.Put([]byte("rootversion"), []byte(fmt.Sprintf("%d", version)))
 		if err != nil {
 			return err
 		}
@@ -279,7 +278,7 @@ func (d *Drive) AddPack(packName string, gcGeneration uint64) error {
 
 	err = db.Update(func(tx *bolt.Tx) error {
 		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
-		curGCGeneration, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("rootversion"))), 10, 64)
+		curGCGeneration, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("gcgeneration"))), 10, 64)
 		if err != nil {
 			return err
 		}
@@ -320,7 +319,7 @@ func (d *Drive) RemovePack(packName string, gcGeneration uint64) error {
 
 	err = db.Update(func(tx *bolt.Tx) error {
 		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
-		curGCGeneration, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("rootversion"))), 10, 64)
+		curGCGeneration, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("gcgeneration"))), 10, 64)
 		if err != nil {
 			return err
 		}

@@ -144,7 +144,7 @@ func TestCasRoot(t *testing.T) {
 		t.Fatal("unexpected root/version/sig")
 	}
 
-	ok, err = drive.CasRoot("foo", 0, "sig", 0)
+	ok, err = drive.CasRoot("foo", 1, "sig", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
