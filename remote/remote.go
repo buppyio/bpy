@@ -1,14 +1,12 @@
 package remote
 
 import (
-	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/remote/client"
 	"github.com/buppyio/bpy/sig"
-	"io"
 	"io/ioutil"
 	"time"
 )
@@ -104,18 +102,12 @@ func GetGeneration(c *client.Client) (uint64, error) {
 	return r.Generation, nil
 }
 
-func StartGC(c *client.Client) (string, error) {
-	idBytes := [64]byte{}
-	_, err := io.ReadFull(rand.Reader, idBytes[:])
+func StartGC(c *client.Client) (uint64, error) {
+	r, err := c.TStartGC()
 	if err != nil {
-		return "", err
+		return 0, err
 	}
-	id := hex.EncodeToString(idBytes[:])
-	_, err = c.TStartGC(id)
-	if err != nil {
-		return "", err
-	}
-	return id, nil
+	return r.GCGeneration, nil
 }
 
 func StopGC(c *client.Client) error {

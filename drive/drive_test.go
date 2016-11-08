@@ -65,12 +65,7 @@ func TestGCGeneration(t *testing.T) {
 		t.Fatal("unexpected gcGeneration")
 	}
 
-	err = drive.StartGC()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	gen, err = drive.GetGCGeneration()
+	gen, err = drive.StartGC()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,17 +168,12 @@ func TestAddPack(t *testing.T) {
 	}
 	defer drive.Close()
 
-	err = drive.AddPack("foobar", 5)
-	if err != ErrGCOccurred {
-		t.Fatal(err)
-	}
-
-	err = drive.AddPack("foobar", 0)
+	err = drive.AddPack("foobar")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = drive.AddPack("foobar", 0)
+	err = drive.AddPack("foobar")
 	if err != ErrDuplicatePack {
 		t.Fatal("expected duplicate pack error, got:", err)
 	}
@@ -210,18 +200,18 @@ func TestRemovePack(t *testing.T) {
 	}
 	defer drive.Close()
 
-	err = drive.AddPack("foobar", 0)
+	err = drive.AddPack("foobar")
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = drive.AddPack("foobarbaz", 0)
+	err = drive.AddPack("foobarbaz")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = drive.RemovePack("foobar", 1)
-	if err != ErrGCOccurred {
-		t.Fatal("expected GCOccurred error, got: ", err)
+	err = drive.RemovePack("foobar", 0)
+	if err != ErrGCNotRunning {
+		t.Fatal("expected ErrGCNotRunning error, got: ", err)
 	}
 
 	packs, err := drive.GetPacks()
@@ -232,7 +222,17 @@ func TestRemovePack(t *testing.T) {
 		t.Fatal("expected remove failed")
 	}
 
-	err = drive.RemovePack("foobar", 0)
+	gcGeneration, err := drive.StartGC()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = drive.RemovePack("foobar", gcGeneration)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = drive.StopGC()
 	if err != nil {
 		t.Fatal(err)
 	}

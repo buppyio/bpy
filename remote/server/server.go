@@ -210,7 +210,7 @@ func (srv *server) handleTClosePack(t *proto.TClosePack) proto.Message {
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
-	err = srv.drive.AddPack(state.packName, t.GCGeneration)
+	err = srv.drive.AddPack(state.packName)
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
@@ -281,12 +281,13 @@ func (srv *server) handleTRemove(t *proto.TRemove) proto.Message {
 }
 
 func (srv *server) handleTStartGC(t *proto.TStartGC) proto.Message {
-	err := srv.drive.StartGC()
+	gcGeneration, err := srv.drive.StartGC()
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
 	return &proto.RStartGC{
-		Mid: t.Mid,
+		Mid:          t.Mid,
+		GCGeneration: gcGeneration,
 	}
 }
 

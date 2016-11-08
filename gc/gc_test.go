@@ -73,7 +73,7 @@ func TestGarbageCollection(t *testing.T) {
 		t.Fatalf("error flushing ref: %s\n", err)
 	}
 
-	ok, err := remote.CasRoot(c, &k, hash, 0, generation)
+	ok, err := remote.CasRoot(c, &k, hash, 1, generation)
 	if err != nil {
 		t.Fatalf("error swapping root: %s\n", err)
 	}

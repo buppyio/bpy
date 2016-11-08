@@ -442,14 +442,13 @@ func (c *Client) TGetGeneration() (*proto.RGetGeneration, error) {
 	}
 }
 
-func (c *Client) TStartGC(id string) (*proto.RStartGC, error) {
+func (c *Client) TStartGC() (*proto.RStartGC, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
 	}
 	resp, err := c.Call(&proto.TStartGC{
-		Mid:  mid,
-		GCID: id,
+		Mid: mid,
 	}, ch, mid)
 	if err != nil {
 		return nil, err

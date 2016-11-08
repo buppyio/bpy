@@ -15,6 +15,7 @@ const (
 
 var (
 	ErrGCOccurred      = errors.New("concurrent garbage collection, operation failed")
+	ErrGCNotRunning    = errors.New("garbage collection not running")
 	ErrDuplicatePack   = errors.New("duplicate pack")
 	ErrInvalidPackName = errors.New("invalid pack name")
 )
@@ -46,6 +47,13 @@ func Open(dbPath string) (*Drive, error) {
 
 		if string(metaDataBucket.Get([]byte("gcgeneration"))) == "" {
 			err = metaDataBucket.Put([]byte("gcgeneration"), []byte("0"))
+			if err != nil {
+				return err
+			}
+		}
+
+		if string(metaDataBucket.Get([]byte("gcrunning"))) == "" {
+			err = metaDataBucket.Put([]byte("gcrunning"), []byte("0"))
 			if err != nil {
 				return err
 			}
@@ -138,24 +146,71 @@ func (d *Drive) GetGCGeneration() (uint64, error) {
 	return gcGeneration, nil
 }
 
-func (d *Drive) StartGC() error {
+func (d *Drive) StartGC() (uint64, error) {
 	db, err := openBoltDB(d.dbPath)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer db.Close()
 
-	var gcGeneration int64
+	var gcGeneration uint64
 
 	err = db.Update(func(tx *bolt.Tx) error {
 		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
-		gcGeneration, err = strconv.ParseInt(string(metaDataBucket.Get([]byte("gcgeneration"))), 10, 64)
+		gcGeneration, err = strconv.ParseUint(string(metaDataBucket.Get([]byte("gcgeneration"))), 10, 64)
 		if err != nil {
 			return err
 		}
 
 		gcGeneration += 1
 		err = metaDataBucket.Put([]byte("gcgeneration"), []byte(fmt.Sprintf("%d", gcGeneration)))
+		if err != nil {
+			return err
+		}
+
+		err = metaDataBucket.Put([]byte("gcrunning"), []byte("1"))
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return 0, err
+	}
+
+	err = db.Close()
+	if err != nil {
+		return 0, err
+	}
+
+	return gcGeneration, nil
+}
+
+func (d *Drive) StopGC() error {
+	db, err := openBoltDB(d.dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	var gcGeneration uint64
+
+	err = db.Update(func(tx *bolt.Tx) error {
+		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
+		gcGeneration, err = strconv.ParseUint(string(metaDataBucket.Get([]byte("gcgeneration"))), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		gcGeneration += 1
+		err = metaDataBucket.Put([]byte("gcgeneration"), []byte(fmt.Sprintf("%d", gcGeneration)))
+		if err != nil {
+			return err
+		}
+
+		err = metaDataBucket.Put([]byte("gcrunning"), []byte("0"))
 		if err != nil {
 			return err
 		}
@@ -173,11 +228,6 @@ func (d *Drive) StartGC() error {
 	}
 
 	return nil
-}
-
-func (d *Drive) StopGC() error {
-	err := d.StartGC()
-	return err
 }
 
 func (d *Drive) CasRoot(root string, version uint64, signature string, gcGeneration uint64) (bool, error) {
@@ -265,7 +315,7 @@ func (d *Drive) GetRoot() (string, uint64, string, error) {
 	return root, rootVersion, signature, nil
 }
 
-func (d *Drive) AddPack(packName string, gcGeneration uint64) error {
+func (d *Drive) AddPack(packName string) error {
 	db, err := openBoltDB(d.dbPath)
 	if err != nil {
 		return err
@@ -277,15 +327,6 @@ func (d *Drive) AddPack(packName string, gcGeneration uint64) error {
 	}
 
 	err = db.Update(func(tx *bolt.Tx) error {
-		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
-		curGCGeneration, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("gcgeneration"))), 10, 64)
-		if err != nil {
-			return err
-		}
-		if gcGeneration != curGCGeneration {
-			return ErrGCOccurred
-		}
-
 		packsBucket := tx.Bucket([]byte(PacksBucketName))
 		if packsBucket.Get([]byte(packName)) != nil {
 			return ErrDuplicatePack
@@ -319,10 +360,16 @@ func (d *Drive) RemovePack(packName string, gcGeneration uint64) error {
 
 	err = db.Update(func(tx *bolt.Tx) error {
 		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
+
+		if string(metaDataBucket.Get([]byte("gcrunning"))) != "1" {
+			return ErrGCNotRunning
+		}
+
 		curGCGeneration, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("gcgeneration"))), 10, 64)
 		if err != nil {
 			return err
 		}
+
 		if gcGeneration != curGCGeneration {
 			return ErrGCOccurred
 		}
