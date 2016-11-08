@@ -1,12 +1,8 @@
 Alpha:
 
 - Make browse ui more polished
- - Center file browse?
- - Add some sort of divider for file listing table header?
- - Add a way to download directories as zip/tar.gz?
- - Add a logo somewhere?
 - Write comprehensive man pages
-- make cache automatic?
+- Make AddPack require a gc generation.
 
 Bugs:
 
