@@ -85,7 +85,7 @@ func (srv *server) handleTOpen(t *proto.TOpen) proto.Message {
 
 	if t.Name == "packs" {
 		srv.fids[t.Fid] = &packListingFile{
-			packDir: filepath.Join(srv.servePath, "packs"),
+			drive: srv.drive,
 		}
 		return &proto.ROpen{
 			Mid: t.Mid,
@@ -147,16 +147,17 @@ func (srv *server) handleTNewPack(t *proto.TNewPack) proto.Message {
 	if err != nil || !matched {
 		return makeError(t.Mid, ErrBadRequest)
 	}
-	name := path.Join(srv.servePath, t.Name)
-	tmpPath := name + ".tmp"
+	finalPath := path.Join(srv.servePath, t.Name)
+	tmpPath := finalPath + ".tmp"
+	packName := t.Name[len("packs/"):]
 	f, err := os.Create(tmpPath)
 	if err != nil {
 		return makeError(t.Mid, fmt.Errorf("cannot create temporary packfile: %s", err.Error()))
 	}
 	srv.pids[t.Pid] = &uploadState{
 		tmpPath:  tmpPath,
-		path:     name,
-		packName: t.Name,
+		path:     finalPath,
+		packName: packName,
 		file:     f,
 	}
 	return &proto.RNewPack{
@@ -210,7 +211,17 @@ func (srv *server) handleTClosePack(t *proto.TClosePack) proto.Message {
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
-	err = srv.drive.AddPack(state.packName)
+
+	stat, err := os.Stat(state.path)
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+
+	err = srv.drive.AddPack(drive.PackListing{
+		Name: state.packName,
+		Date: stat.ModTime(),
+		Size: uint64(stat.Size()),
+	})
 	if err != nil {
 		return makeError(t.Mid, err)
 	}

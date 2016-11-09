@@ -1,12 +1,19 @@
 package drive
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/boltdb/bolt"
 	"strconv"
 	"time"
 )
+
+type PackListing struct {
+	Name string
+	Size uint64
+	Date time.Time
+}
 
 const (
 	MetaDataBucketName = "metadata"
@@ -315,24 +322,29 @@ func (d *Drive) GetRoot() (string, uint64, string, error) {
 	return root, rootVersion, signature, nil
 }
 
-func (d *Drive) AddPack(packName string) error {
+func (d *Drive) AddPack(pack PackListing) error {
 	db, err := openBoltDB(d.dbPath)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	if len(packName) > 1024 {
+	if len(pack.Name) > 1024 {
 		return errors.New("invalid pack name")
+	}
+
+	packBytes, err := json.Marshal(pack)
+	if err != nil {
+		return err
 	}
 
 	err = db.Update(func(tx *bolt.Tx) error {
 		packsBucket := tx.Bucket([]byte(PacksBucketName))
-		if packsBucket.Get([]byte(packName)) != nil {
+		if packsBucket.Get([]byte(pack.Name)) != nil {
 			return ErrDuplicatePack
 		}
 
-		err = packsBucket.Put([]byte(packName), []byte(""))
+		err = packsBucket.Put([]byte(pack.Name), packBytes)
 		if err != nil {
 			return err
 		}
@@ -394,19 +406,23 @@ func (d *Drive) RemovePack(packName string, gcGeneration uint64) error {
 	return nil
 }
 
-func (d *Drive) GetPacks() ([]string, error) {
+func (d *Drive) GetPacks() ([]PackListing, error) {
 	db, err := openBoltDB(d.dbPath)
 	if err != nil {
 		return nil, err
 	}
 	defer db.Close()
 
-	packs := make([]string, 0, 32)
-
+	packs := make([]PackListing, 0, 32)
 	err = db.Update(func(tx *bolt.Tx) error {
 		packsBucket := tx.Bucket([]byte(PacksBucketName))
 		err = packsBucket.ForEach(func(k, v []byte) error {
-			packs = append(packs, string(k))
+			var pack PackListing
+			err := json.Unmarshal(v, &pack)
+			if err != nil {
+				return err
+			}
+			packs = append(packs, pack)
 			return nil
 		})
 		if err != nil {

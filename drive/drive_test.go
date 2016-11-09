@@ -168,12 +168,12 @@ func TestAddPack(t *testing.T) {
 	}
 	defer drive.Close()
 
-	err = drive.AddPack("foobar")
+	err = drive.AddPack(PackListing{Name: "foobar"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = drive.AddPack("foobar")
+	err = drive.AddPack(PackListing{Name: "foobar"})
 	if err != ErrDuplicatePack {
 		t.Fatal("expected duplicate pack error, got:", err)
 	}
@@ -182,7 +182,7 @@ func TestAddPack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(packs) != 1 || packs[0] != "foobar" {
+	if len(packs) != 1 || packs[0].Name != "foobar" {
 		t.Fatal("expected one pack called foobar")
 	}
 
@@ -200,11 +200,11 @@ func TestRemovePack(t *testing.T) {
 	}
 	defer drive.Close()
 
-	err = drive.AddPack("foobar")
+	err = drive.AddPack(PackListing{Name: "foobar"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = drive.AddPack("foobarbaz")
+	err = drive.AddPack(PackListing{Name: "foobarbaz"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -241,7 +241,7 @@ func TestRemovePack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(packs) != 1 || packs[0] != "foobarbaz" {
+	if len(packs) != 1 || packs[0].Name != "foobarbaz" {
 		t.Fatal("expected remove success")
 	}
 

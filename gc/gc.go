@@ -6,6 +6,7 @@ import (
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/bpack"
 	"github.com/buppyio/bpy/cstore/cache"
+	"github.com/buppyio/bpy/drive"
 	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/refs"
 	"github.com/buppyio/bpy/remote"
@@ -247,7 +248,7 @@ func (idx offsetSortedIdx) Len() int           { return len(idx) }
 func (idx offsetSortedIdx) Swap(i, j int)      { idx[i], idx[j] = idx[j], idx[i] }
 func (idx offsetSortedIdx) Less(i, j int) bool { return idx[i].Offset < idx[j].Offset }
 
-func (gc *gcState) sweepPack(pack remote.PackListing) error {
+func (gc *gcState) sweepPack(pack drive.PackListing) error {
 	packPath := path.Join("packs/", pack.Name)
 	f, err := gc.c.Open(packPath)
 	if err != nil {

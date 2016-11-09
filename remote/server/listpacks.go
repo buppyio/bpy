@@ -3,10 +3,8 @@ package server
 import (
 	"encoding/binary"
 	"errors"
-	"github.com/buppyio/bpy/remote"
+	"github.com/buppyio/bpy/drive"
 	"io"
-	"io/ioutil"
-	"strings"
 )
 
 var (
@@ -16,31 +14,13 @@ var (
 
 type packListingFile struct {
 	offset  uint64
-	packDir string
-	entries []remote.PackListing
-}
-
-func listPacks(dir string) ([]remote.PackListing, error) {
-	listing := make([]remote.PackListing, 0, 32)
-	stats, err := ioutil.ReadDir(dir)
-	if err != nil {
-		return listing, err
-	}
-	for _, stat := range stats {
-		if !strings.HasSuffix(stat.Name(), ".tmp") {
-			listing = append(listing, remote.PackListing{
-				Name: stat.Name(),
-				Size: uint64(stat.Size()),
-				Date: stat.ModTime(),
-			})
-		}
-	}
-	return listing, nil
+	drive   *drive.Drive
+	entries []drive.PackListing
 }
 
 func (pl *packListingFile) ReadAtOffset(buf []byte, offset uint64) (int, error) {
 	if offset == 0 {
-		listing, err := listPacks(pl.packDir)
+		listing, err := pl.drive.GetPacks()
 		if err != nil {
 			return 0, err
 		}
