@@ -15,6 +15,12 @@ type PackListing struct {
 	Date time.Time
 }
 
+type packState struct {
+	UploadComplete bool
+	GCGeneration   uint64
+	Listing        PackListing
+}
+
 const (
 	MetaDataBucketName = "metadata"
 	PacksBucketName    = "packs"
@@ -163,6 +169,7 @@ func (d *Drive) StartGC() (uint64, error) {
 	var gcGeneration uint64
 
 	err = db.Update(func(tx *bolt.Tx) error {
+		packsBucket := tx.Bucket([]byte(PacksBucketName))
 		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
 		gcGeneration, err = strconv.ParseUint(string(metaDataBucket.Get([]byte("gcgeneration"))), 10, 64)
 		if err != nil {
@@ -178,6 +185,30 @@ func (d *Drive) StartGC() (uint64, error) {
 		err = metaDataBucket.Put([]byte("gcrunning"), []byte("1"))
 		if err != nil {
 			return err
+		}
+
+		toDelete := [][]byte{}
+
+		err = packsBucket.ForEach(func(k, v []byte) error {
+			var state packState
+			err := json.Unmarshal(v, &state)
+			if err != nil {
+				return err
+			}
+			if !state.UploadComplete {
+				toDelete = append(toDelete, k)
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		for _, packName := range toDelete {
+			err := packsBucket.Delete(packName)
+			if err != nil {
+				return err
+			}
 		}
 
 		return nil
@@ -202,11 +233,10 @@ func (d *Drive) StopGC() error {
 	}
 	defer db.Close()
 
-	var gcGeneration uint64
-
 	err = db.Update(func(tx *bolt.Tx) error {
 		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
-		gcGeneration, err = strconv.ParseUint(string(metaDataBucket.Get([]byte("gcgeneration"))), 10, 64)
+
+		gcGeneration, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("gcgeneration"))), 10, 64)
 		if err != nil {
 			return err
 		}
@@ -322,32 +352,107 @@ func (d *Drive) GetRoot() (string, uint64, string, error) {
 	return root, rootVersion, signature, nil
 }
 
-func (d *Drive) AddPack(pack PackListing) error {
+func (d *Drive) StartUpload(packName string) error {
 	db, err := openBoltDB(d.dbPath)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	if len(pack.Name) > 1024 {
+	if len(packName) > 1024 {
 		return errors.New("invalid pack name")
 	}
 
-	packBytes, err := json.Marshal(pack)
+	err = db.Update(func(tx *bolt.Tx) error {
+		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
+		packsBucket := tx.Bucket([]byte(PacksBucketName))
+
+		if packsBucket.Get([]byte(packName)) != nil {
+			return ErrDuplicatePack
+		}
+
+		curGCGeneration, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("gcgeneration"))), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		stateBytes, err := json.Marshal(packState{
+			UploadComplete: false,
+			GCGeneration:   curGCGeneration,
+		})
+		if err != nil {
+			return err
+		}
+
+		err = packsBucket.Put([]byte(packName), stateBytes)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
 	if err != nil {
 		return err
 	}
 
+	err = db.Close()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (d *Drive) FinishUpload(packName string, createdAt time.Time, size uint64) error {
+	db, err := openBoltDB(d.dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	if len(packName) > 1024 {
+		return ErrInvalidPackName
+	}
+
 	err = db.Update(func(tx *bolt.Tx) error {
+		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
 		packsBucket := tx.Bucket([]byte(PacksBucketName))
-		if packsBucket.Get([]byte(pack.Name)) != nil {
-			return ErrDuplicatePack
+
+		oldStateBytes := packsBucket.Get([]byte(packName))
+		if oldStateBytes == nil {
+			return ErrGCOccurred
 		}
 
-		err = packsBucket.Put([]byte(pack.Name), packBytes)
+		var state packState
+
+		err := json.Unmarshal(oldStateBytes, &state)
 		if err != nil {
 			return err
 		}
+
+		curGCGeneration, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("gcgeneration"))), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		if curGCGeneration != state.GCGeneration {
+			return ErrGCOccurred
+		}
+
+		state.UploadComplete = true
+		state.Listing.Date = createdAt
+		state.Listing.Size = size
+
+		newStateBytes, err := json.Marshal(state)
+		if err != nil {
+			return err
+		}
+
+		err = packsBucket.Put([]byte(packName), newStateBytes)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 
@@ -413,16 +518,19 @@ func (d *Drive) GetPacks() ([]PackListing, error) {
 	}
 	defer db.Close()
 
-	packs := make([]PackListing, 0, 32)
-	err = db.Update(func(tx *bolt.Tx) error {
+	listing := make([]PackListing, 0, 32)
+	err = db.View(func(tx *bolt.Tx) error {
 		packsBucket := tx.Bucket([]byte(PacksBucketName))
 		err = packsBucket.ForEach(func(k, v []byte) error {
-			var pack PackListing
-			err := json.Unmarshal(v, &pack)
+			var state packState
+			err := json.Unmarshal(v, &state)
 			if err != nil {
 				return err
 			}
-			packs = append(packs, pack)
+			if state.UploadComplete {
+				state.Listing.Name = string(k)
+				listing = append(listing, state.Listing)
+			}
 			return nil
 		})
 		if err != nil {
@@ -435,5 +543,5 @@ func (d *Drive) GetPacks() ([]PackListing, error) {
 		return nil, err
 	}
 
-	return packs, nil
+	return listing, nil
 }

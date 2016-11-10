@@ -42,7 +42,6 @@ type file interface {
 }
 
 type uploadState struct {
-	tmpPath  string
 	path     string
 	packName string
 	err      error
@@ -148,14 +147,18 @@ func (srv *server) handleTNewPack(t *proto.TNewPack) proto.Message {
 		return makeError(t.Mid, ErrBadRequest)
 	}
 	finalPath := path.Join(srv.servePath, t.Name)
-	tmpPath := finalPath + ".tmp"
 	packName := t.Name[len("packs/"):]
-	f, err := os.Create(tmpPath)
+
+	err = srv.drive.StartUpload(packName)
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+
+	f, err := os.Create(finalPath)
 	if err != nil {
 		return makeError(t.Mid, fmt.Errorf("cannot create temporary packfile: %s", err.Error()))
 	}
 	srv.pids[t.Pid] = &uploadState{
-		tmpPath:  tmpPath,
 		path:     finalPath,
 		packName: packName,
 		file:     f,
@@ -207,21 +210,13 @@ func (srv *server) handleTClosePack(t *proto.TClosePack) proto.Message {
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
-	err = os.Rename(state.tmpPath, state.path)
-	if err != nil {
-		return makeError(t.Mid, err)
-	}
 
 	stat, err := os.Stat(state.path)
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
 
-	err = srv.drive.AddPack(drive.PackListing{
-		Name: state.packName,
-		Date: stat.ModTime(),
-		Size: uint64(stat.Size()),
-	})
+	err = srv.drive.FinishUpload(state.packName, stat.ModTime(), uint64(stat.Size()))
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
@@ -241,7 +236,7 @@ func (srv *server) handleTCancelPack(t *proto.TCancelPack) proto.Message {
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
-	err = os.Remove(state.tmpPath)
+	err = os.Remove(state.path)
 	if err != nil {
 		return makeError(t.Mid, err)
 	}

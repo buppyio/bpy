@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestAttach(t *testing.T) {
@@ -156,7 +157,7 @@ func TestCasRoot(t *testing.T) {
 	}
 }
 
-func TestAddPack(t *testing.T) {
+func TestUploadPack(t *testing.T) {
 	testDir, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatal(err)
@@ -168,12 +169,16 @@ func TestAddPack(t *testing.T) {
 	}
 	defer drive.Close()
 
-	err = drive.AddPack(PackListing{Name: "foobar"})
+	err = drive.StartUpload("foobar")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = drive.FinishUpload("foobar", time.Now(), 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = drive.AddPack(PackListing{Name: "foobar"})
+	err = drive.StartUpload("foobar")
 	if err != ErrDuplicatePack {
 		t.Fatal("expected duplicate pack error, got:", err)
 	}
@@ -200,11 +205,20 @@ func TestRemovePack(t *testing.T) {
 	}
 	defer drive.Close()
 
-	err = drive.AddPack(PackListing{Name: "foobar"})
+	err = drive.StartUpload("foobar")
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = drive.AddPack(PackListing{Name: "foobarbaz"})
+	err = drive.FinishUpload("foobar", time.Now(), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = drive.StartUpload("foobarbaz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = drive.FinishUpload("foobarbaz", time.Now(), 0)
 	if err != nil {
 		t.Fatal(err)
 	}
