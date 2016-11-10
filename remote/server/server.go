@@ -11,8 +11,6 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"strings"
-	"time"
 )
 
 var (
@@ -50,6 +48,7 @@ type uploadState struct {
 
 type server struct {
 	servePath string
+	packPath  string
 	drive     *drive.Drive
 	keyId     string
 	buf       []byte
@@ -297,11 +296,44 @@ func (srv *server) handleTStartGC(t *proto.TStartGC) proto.Message {
 	}
 }
 
+func cleanOrphanPacks(packs []drive.PackListing, packPath string) error {
+	packSet := make(map[string]struct{})
+	for _, pack := range packs {
+		packSet[pack.Name] = struct{}{}
+	}
+
+	dirEnts, err := ioutil.ReadDir(packPath)
+	if err != nil {
+		return err
+	}
+
+	for _, ent := range dirEnts {
+		_, ok := packSet[ent.Name()]
+		if ok {
+			continue
+		}
+		fullPath := filepath.Join(packPath, ent.Name())
+		_ = os.RemoveAll(fullPath)
+	}
+	return nil
+}
+
 func (srv *server) handleTStopGC(t *proto.TStopGC) proto.Message {
 	err := srv.drive.StopGC()
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
+
+	packs, err := srv.drive.GetPacks()
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+
+	err = cleanOrphanPacks(packs, srv.packPath)
+	if err != nil {
+		return makeError(t.Mid, err)
+	}
+
 	return &proto.RStopGC{
 		Mid: t.Mid,
 	}
@@ -317,27 +349,6 @@ func (srv *server) handleTGetGeneration(t *proto.TGetGeneration) proto.Message {
 		Mid:        t.Mid,
 		Generation: gen,
 	}
-}
-
-func cleanOldTempPacks(packPath string) error {
-	dirEnts, err := ioutil.ReadDir(packPath)
-	if err != nil {
-		return err
-	}
-	for _, ent := range dirEnts {
-		if !strings.HasSuffix(ent.Name(), ".tmp") {
-			continue
-		}
-		if !(time.Now().Sub(ent.ModTime()).Hours() > 7*24) {
-			continue
-		}
-		tmpFilePath := filepath.Join(packPath, ent.Name())
-		err = os.Remove(tmpFilePath)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (srv *server) handleTAttach(t *proto.TAttach) proto.Message {
@@ -365,16 +376,6 @@ func (srv *server) handleTAttach(t *proto.TAttach) proto.Message {
 
 	srv.keyId = t.KeyId
 
-	packPath := filepath.Join(srv.servePath, "packs")
-	err = os.MkdirAll(packPath, 0777)
-	if err != nil {
-		return makeError(t.Mid, err)
-	}
-	// XXX This needs to do gc
-	err = cleanOldTempPacks(packPath)
-	if err != nil {
-		return makeError(t.Mid, err)
-	}
 	return &proto.RAttach{
 		Mid:            t.Mid,
 		MaxMessageSize: maxsz,
@@ -414,10 +415,16 @@ func Serve(conn ReadWriteCloser, root string) error {
 	}
 	srv := &server{
 		servePath: root,
+		packPath:  filepath.Join(root, "packs"),
 		drive:     d,
 		buf:       make([]byte, maxsz, maxsz),
 		fids:      make(map[uint32]file),
 		pids:      make(map[uint32]*uploadState),
+	}
+
+	err = os.MkdirAll(srv.packPath, 0777)
+	if err != nil {
+		return err
 	}
 
 	err = srv.awaitAttach(conn)

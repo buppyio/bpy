@@ -412,10 +412,6 @@ func (d *Drive) FinishUpload(packName string, createdAt time.Time, size uint64) 
 	}
 	defer db.Close()
 
-	if len(packName) > 1024 {
-		return ErrInvalidPackName
-	}
-
 	err = db.Update(func(tx *bolt.Tx) error {
 		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
 		packsBucket := tx.Bucket([]byte(PacksBucketName))
