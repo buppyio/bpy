@@ -41,6 +41,19 @@ func openBoltDB(dbPath string) (*bolt.DB, error) {
 	return bolt.Open(dbPath, 0600, &bolt.Options{Timeout: 1 * time.Second})
 }
 
+func nextGCGeneration(metaDataBucket *bolt.Bucket) (uint64, error) {
+	gcGeneration, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("gcgeneration"))), 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	gcGeneration += 1
+	err = metaDataBucket.Put([]byte("gcgeneration"), []byte(fmt.Sprintf("%d", gcGeneration)))
+	if err != nil {
+		return 0, err
+	}
+	return gcGeneration, nil
+}
+
 func Open(dbPath string) (*Drive, error) {
 	db, err := openBoltDB(dbPath)
 	if err != nil {
@@ -171,13 +184,8 @@ func (d *Drive) StartGC() (uint64, error) {
 	err = db.Update(func(tx *bolt.Tx) error {
 		packsBucket := tx.Bucket([]byte(PacksBucketName))
 		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
-		gcGeneration, err = strconv.ParseUint(string(metaDataBucket.Get([]byte("gcgeneration"))), 10, 64)
-		if err != nil {
-			return err
-		}
 
-		gcGeneration += 1
-		err = metaDataBucket.Put([]byte("gcgeneration"), []byte(fmt.Sprintf("%d", gcGeneration)))
+		gcGeneration, err = nextGCGeneration(metaDataBucket)
 		if err != nil {
 			return err
 		}
@@ -236,13 +244,7 @@ func (d *Drive) StopGC() error {
 	err = db.Update(func(tx *bolt.Tx) error {
 		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
 
-		gcGeneration, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("gcgeneration"))), 10, 64)
-		if err != nil {
-			return err
-		}
-
-		gcGeneration += 1
-		err = metaDataBucket.Put([]byte("gcgeneration"), []byte(fmt.Sprintf("%d", gcGeneration)))
+		_, err = nextGCGeneration(metaDataBucket)
 		if err != nil {
 			return err
 		}
