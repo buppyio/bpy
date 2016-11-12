@@ -2,7 +2,6 @@ package cache
 
 import (
 	"net/rpc"
-	"os"
 )
 
 type TGet struct {
@@ -40,16 +39,12 @@ func (cs *CacheServer) Put(t TPut, r *RPut) error {
 	return cs.cache.Put(t.Hash, t.Val)
 }
 
-func NewServer(dbPath string, dbMode os.FileMode, maxSize uint64) (*rpc.Server, error) {
-	cache, err := NewCache(dbPath, dbMode, maxSize)
-	if err != nil {
-		return nil, err
-	}
+func NewServer(cache *Cache) (*rpc.Server, error) {
 	cacheServer := &CacheServer{
 		cache: cache,
 	}
 	server := rpc.NewServer()
-	err = server.Register(cacheServer)
+	err := server.Register(cacheServer)
 	if err != nil {
 		return nil, err
 	}

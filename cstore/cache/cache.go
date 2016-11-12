@@ -77,6 +77,9 @@ type Cache struct {
 	maxSize uint64
 	lruMap  map[[32]byte]*lruListEnt
 	lruList lruList
+
+	pendingPut map[[32]byte][]byte
+	pendingDel map[[32]byte]struct{}
 }
 
 func NewCache(dbpath string, mode os.FileMode, maxSize uint64) (*Cache, error) {
@@ -86,10 +89,12 @@ func NewCache(dbpath string, mode os.FileMode, maxSize uint64) (*Cache, error) {
 	}
 
 	cache := &Cache{
-		db:      db,
-		lruMap:  make(map[[32]byte]*lruListEnt),
-		size:    0,
-		maxSize: maxSize,
+		db:         db,
+		lruMap:     make(map[[32]byte]*lruListEnt),
+		size:       0,
+		maxSize:    maxSize,
+		pendingPut: make(map[[32]byte][]byte),
+		pendingDel: make(map[[32]byte]struct{}),
 	}
 	cache.lruList.Init()
 
@@ -135,7 +140,12 @@ func (c *Cache) Get(hash [32]byte) ([]byte, bool, error) {
 		return nil, false, nil
 	}
 	c.lruList.MoveToFront(elem)
-	var ret []byte
+
+	ret, ok := c.pendingPut[hash]
+	if ok {
+		return ret, true, nil
+	}
+
 	err := c.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("cache"))
 		v := b.Get(hash[:])
@@ -158,38 +168,70 @@ func (c *Cache) Put(hash [32]byte, val []byte) error {
 		return nil
 	}
 
-	err := c.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("cache"))
-		for c.size+uint64(len(val)) > c.maxSize {
-			if c.lruList.Len == 0 {
-				return errors.New("value too large for cache")
-			}
-			elem := c.lruList.Back()
-			err := b.Delete(elem.Hash[:])
-			if err != nil {
-				return err
-			}
-			c.lruList.Remove(elem)
-			c.size -= elem.Size
-			delete(c.lruMap, elem.Hash)
+	for c.size+uint64(len(val)) > c.maxSize {
+		if c.lruList.Len == 0 {
+			return errors.New("value too large for cache")
 		}
+		elem := c.lruList.Back()
+		c.lruList.Remove(elem)
+		c.size -= elem.Size
+		delete(c.lruMap, elem.Hash)
+		delete(c.pendingPut, elem.Hash)
+		c.pendingDel[elem.Hash] = struct{}{}
 
-		err := b.Put(hash[:], val)
+	}
+
+	c.size += uint64(len(val))
+	elem := c.lruList.PushFront(hash, uint64(len(val)))
+	c.lruMap[hash] = elem
+	c.pendingPut[hash] = val
+	delete(c.pendingDel, hash)
+
+	if len(c.pendingDel) > 1000 || len(c.pendingPut) > 1000 {
+		err := c.flushPending()
 		if err != nil {
 			return err
 		}
-		c.size += uint64(len(val))
-		elem := c.lruList.PushFront(hash, uint64(len(val)))
-		c.lruMap[hash] = elem
+	}
+
+	return nil
+}
+
+func (c *Cache) flushPending() error {
+
+	err := c.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("cache"))
+
+		for k, v := range c.pendingPut {
+			err := b.Put(k[:], v)
+			if err != nil {
+				return err
+			}
+		}
+
+		for k, _ := range c.pendingDel {
+			err := b.Delete(k[:])
+			if err != nil {
+				return err
+			}
+		}
+
 		return nil
 	})
 
 	if err != nil {
 		return err
 	}
+
+	c.pendingPut = make(map[[32]byte][]byte)
+	c.pendingDel = make(map[[32]byte]struct{})
 	return nil
 }
 
 func (c *Cache) Close() error {
+	err := c.flushPending()
+	if err != nil {
+		return err
+	}
 	return c.db.Close()
 }

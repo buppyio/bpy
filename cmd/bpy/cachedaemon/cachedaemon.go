@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func deadman(newCon, conOk, conClosed chan struct{}, idleTimeout time.Duration) {
+func deadman(cache *cache.Cache, newCon, conOk, conClosed chan struct{}, idleTimeout time.Duration) {
 	t := time.NewTimer(idleTimeout)
 	counter := uint64(0)
 
@@ -40,7 +40,7 @@ func deadman(newCon, conOk, conClosed chan struct{}, idleTimeout time.Duration) 
 	}
 
 timeout:
-
+	cache.Close()
 	log.Printf("exiting due expired idle timer")
 	os.Exit(0)
 }
@@ -72,7 +72,12 @@ func CacheDaemon() {
 		log.Fatalf("please specify a db file")
 	}
 
-	server, err := cache.NewServer(*dbArg, 0755, uint64(*sizeArg))
+	c, err := cache.NewCache(*dbArg, 0755, uint64(*sizeArg))
+	if err != nil {
+		log.Fatalf("error creating: %s", err.Error())
+	}
+
+	server, err := cache.NewServer(c)
 	if err != nil {
 		log.Fatalf("error creating cache server: %s", err.Error())
 	}
@@ -90,7 +95,7 @@ func CacheDaemon() {
 	if *idleTimeoutArg < 0 {
 		go runForever(newCon, conOk, conClosed)
 	} else {
-		go deadman(newCon, conOk, conClosed, time.Second*time.Duration(*idleTimeoutArg))
+		go deadman(c, newCon, conOk, conClosed, time.Second*time.Duration(*idleTimeoutArg))
 	}
 
 	for {
