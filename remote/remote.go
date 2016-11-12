@@ -72,7 +72,7 @@ func GetRoot(c *client.Client, k *bpy.Key) ([32]byte, string, bool, error) {
 	return h, r.Version, true, nil
 }
 
-func CasRoot(c *client.Client, k *bpy.Key, newHash [32]byte, newVersion string, generation uint64) (bool, error) {
+func CasRoot(c *client.Client, k *bpy.Key, newHash [32]byte, newVersion, generation string) (bool, error) {
 	newValue := hex.EncodeToString(newHash[:])
 	newSignature := sig.SignValue(k, newValue, newVersion)
 
@@ -84,23 +84,23 @@ func CasRoot(c *client.Client, k *bpy.Key, newHash [32]byte, newVersion string, 
 	return r.Ok, nil
 }
 
-func Remove(c *client.Client, path string, gcGeneration uint64) error {
+func Remove(c *client.Client, path, gcGeneration string) error {
 	_, err := c.TRemove(path, gcGeneration)
 	return err
 }
 
-func GetGeneration(c *client.Client) (uint64, error) {
+func GetGeneration(c *client.Client) (string, error) {
 	r, err := c.TGetGeneration()
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	return r.Generation, nil
 }
 
-func StartGC(c *client.Client) (uint64, error) {
+func StartGC(c *client.Client) (string, error) {
 	r, err := c.TStartGC()
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	return r.GCGeneration, nil
 }

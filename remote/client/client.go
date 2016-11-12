@@ -230,7 +230,7 @@ func (c *Client) WriteMessage(m proto.Message) error {
 	return proto.WriteMessage(c.conn, m, c.wBuf)
 }
 
-func (c *Client) TCasRoot(newValue, newVersion, signature string, generation uint64) (*proto.RCasRoot, error) {
+func (c *Client) TCasRoot(newValue, newVersion, signature, generation string) (*proto.RCasRoot, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
@@ -272,7 +272,7 @@ func (c *Client) TGetRoot() (*proto.RGetRoot, error) {
 	}
 }
 
-func (c *Client) TRemove(path string, gcGeneration uint64) (*proto.RRemove, error) {
+func (c *Client) TRemove(path, gcGeneration string) (*proto.RRemove, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err

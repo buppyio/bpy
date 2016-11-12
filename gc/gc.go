@@ -17,7 +17,7 @@ import (
 )
 
 type gcState struct {
-	gcGeneration uint64
+	gcGeneration string
 	k            *bpy.Key
 	c            *client.Client
 	store        bpy.CStore

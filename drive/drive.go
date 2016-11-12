@@ -3,10 +3,8 @@ package drive
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/buppyio/bpy"
-	"strconv"
 	"time"
 )
 
@@ -18,7 +16,7 @@ type PackListing struct {
 
 type packState struct {
 	UploadComplete bool
-	GCGeneration   uint64
+	GCGeneration   string
 	Listing        PackListing
 }
 
@@ -42,15 +40,11 @@ func openBoltDB(dbPath string) (*bolt.DB, error) {
 	return bolt.Open(dbPath, 0600, &bolt.Options{Timeout: 1 * time.Second})
 }
 
-func nextGCGeneration(metaDataBucket *bolt.Bucket) (uint64, error) {
-	gcGeneration, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("gcgeneration"))), 10, 64)
+func nextGCGeneration(metaDataBucket *bolt.Bucket) (string, error) {
+	gcGeneration := bpy.NextGCGeneration(string(metaDataBucket.Get([]byte("gcgeneration"))))
+	err := metaDataBucket.Put([]byte("gcgeneration"), []byte(gcGeneration))
 	if err != nil {
-		return 0, err
-	}
-	gcGeneration += 1
-	err = metaDataBucket.Put([]byte("gcgeneration"), []byte(fmt.Sprintf("%d", gcGeneration)))
-	if err != nil {
-		return 0, err
+		return "", err
 	}
 	return gcGeneration, nil
 }
@@ -73,7 +67,12 @@ func Open(dbPath string) (*Drive, error) {
 		}
 
 		if metaDataBucket.Get([]byte("gcgeneration")) == nil {
-			err = metaDataBucket.Put([]byte("gcgeneration"), []byte("0"))
+			gcGeneration, err := bpy.NewGCGeneration()
+			if err != nil {
+				return err
+			}
+
+			err = metaDataBucket.Put([]byte("gcgeneration"), []byte(gcGeneration))
 			if err != nil {
 				return err
 			}
@@ -151,41 +150,36 @@ func (d *Drive) Attach(keyId string) (bool, error) {
 	return ok, nil
 }
 
-func (d *Drive) GetGCGeneration() (uint64, error) {
+func (d *Drive) GetGCGeneration() (string, error) {
 	db, err := openBoltDB(d.dbPath)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	defer db.Close()
 
-	var gcGenerationString string
+	var gcGeneration string
 
 	err = db.View(func(tx *bolt.Tx) error {
 		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
-		gcGenerationString = string(metaDataBucket.Get([]byte("gcgeneration")))
+		gcGeneration = string(metaDataBucket.Get([]byte("gcgeneration")))
 		return nil
 	})
 
 	if err != nil {
-		return 0, err
-	}
-
-	gcGeneration, err := strconv.ParseUint(gcGenerationString, 10, 64)
-	if err != nil {
-		return 0, err
+		return "", err
 	}
 
 	return gcGeneration, nil
 }
 
-func (d *Drive) StartGC() (uint64, error) {
+func (d *Drive) StartGC() (string, error) {
 	db, err := openBoltDB(d.dbPath)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	defer db.Close()
 
-	var gcGeneration uint64
+	var gcGeneration string
 
 	err = db.Update(func(tx *bolt.Tx) error {
 		packsBucket := tx.Bucket([]byte(PacksBucketName))
@@ -229,12 +223,12 @@ func (d *Drive) StartGC() (uint64, error) {
 	})
 
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
 	err = db.Close()
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
 	return gcGeneration, nil
@@ -275,7 +269,7 @@ func (d *Drive) StopGC() error {
 	return nil
 }
 
-func (d *Drive) CasRoot(root, version, signature string, gcGeneration uint64) (bool, error) {
+func (d *Drive) CasRoot(root, version, signature, gcGeneration string) (bool, error) {
 	db, err := openBoltDB(d.dbPath)
 	if err != nil {
 		return false, err
@@ -292,10 +286,7 @@ func (d *Drive) CasRoot(root, version, signature string, gcGeneration uint64) (b
 			return nil
 		}
 
-		curGCGeneration, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("gcgeneration"))), 10, 64)
-		if err != nil {
-			return err
-		}
+		curGCGeneration := string(metaDataBucket.Get([]byte("gcgeneration")))
 
 		if curGCGeneration != gcGeneration {
 			return nil
@@ -375,10 +366,7 @@ func (d *Drive) StartUpload(packName string) error {
 			return ErrDuplicatePack
 		}
 
-		curGCGeneration, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("gcgeneration"))), 10, 64)
-		if err != nil {
-			return err
-		}
+		curGCGeneration := string(metaDataBucket.Get([]byte("gcgeneration")))
 
 		stateBytes, err := json.Marshal(packState{
 			UploadComplete: false,
@@ -430,10 +418,7 @@ func (d *Drive) FinishUpload(packName string, createdAt time.Time, size uint64) 
 			return err
 		}
 
-		curGCGeneration, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("gcgeneration"))), 10, 64)
-		if err != nil {
-			return err
-		}
+		curGCGeneration := string(metaDataBucket.Get([]byte("gcgeneration")))
 
 		if curGCGeneration != state.GCGeneration {
 			return ErrGCOccurred
@@ -468,7 +453,7 @@ func (d *Drive) FinishUpload(packName string, createdAt time.Time, size uint64) 
 	return nil
 }
 
-func (d *Drive) RemovePack(packName string, gcGeneration uint64) error {
+func (d *Drive) RemovePack(packName, gcGeneration string) error {
 	db, err := openBoltDB(d.dbPath)
 	if err != nil {
 		return err
@@ -482,10 +467,7 @@ func (d *Drive) RemovePack(packName string, gcGeneration uint64) error {
 			return ErrGCNotRunning
 		}
 
-		curGCGeneration, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("gcgeneration"))), 10, 64)
-		if err != nil {
-			return err
-		}
+		curGCGeneration := string(metaDataBucket.Get([]byte("gcgeneration")))
 
 		if gcGeneration != curGCGeneration {
 			return ErrGCOccurred

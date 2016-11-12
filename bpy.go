@@ -119,7 +119,21 @@ func NewRootVersion() (string, error) {
 	return hex.EncodeToString(r[:]), nil
 }
 
+func NewGCGeneration() (string, error) {
+	r := [sha256.Size]byte{}
+	_, err := io.ReadFull(rand.Reader, r[:])
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(r[:]), nil
+}
+
 func NextRootVersion(value string) string {
+	sum := sha256.Sum256([]byte(value))
+	return hex.EncodeToString(sum[:])
+}
+
+func NextGCGeneration(value string) string {
 	sum := sha256.Sum256([]byte(value))
 	return hex.EncodeToString(sum[:])
 }

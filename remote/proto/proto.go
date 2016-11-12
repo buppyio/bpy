@@ -82,7 +82,7 @@ type TCasRoot struct {
 	Version    string
 	Value      string
 	Signature  string
-	Generation uint64
+	Generation string
 }
 
 type RCasRoot struct {
@@ -174,7 +174,7 @@ type RCancelPack struct {
 type TRemove struct {
 	Mid          uint16
 	Path         string
-	GCGeneration uint64
+	GCGeneration string
 }
 
 type RRemove struct {
@@ -187,7 +187,7 @@ type TStartGC struct {
 
 type RStartGC struct {
 	Mid          uint16
-	GCGeneration uint64
+	GCGeneration string
 }
 
 type TStopGC struct {
@@ -204,7 +204,7 @@ type TGetGeneration struct {
 
 type RGetGeneration struct {
 	Mid        uint16
-	Generation uint64
+	Generation string
 }
 
 func ReadMessage(r io.Reader, buf []byte) (Message, error) {

@@ -58,21 +58,17 @@ func TestGCGeneration(t *testing.T) {
 	}
 	defer drive.Close()
 
-	gen, err := drive.GetGCGeneration()
+	gen1, err := drive.GetGCGeneration()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if gen != 0 {
-		t.Fatal("unexpected gcGeneration")
-	}
-
-	gen, err = drive.StartGC()
+	gen2, err := drive.StartGC()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if gen != 1 {
-		t.Fatal("unexpected gcGeneration")
+	if gen2 == gen1 {
+		t.Fatal("gcGeneration did not increment")
 	}
 
 	err = drive.StopGC()
@@ -80,11 +76,11 @@ func TestGCGeneration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	gen, err = drive.GetGCGeneration()
+	gen3, err := drive.GetGCGeneration()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if gen != 2 {
+	if gen3 == gen2 {
 		t.Fatal("unexpected gcGeneration")
 	}
 }
@@ -101,6 +97,11 @@ func TestCasRoot(t *testing.T) {
 	}
 	defer drive.Close()
 
+	gcGeneration, err := drive.GetGCGeneration()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	root, version, sig, err := drive.GetRoot()
 	if err != nil {
 		t.Fatal(err)
@@ -109,7 +110,7 @@ func TestCasRoot(t *testing.T) {
 		t.Fatal("unexpected root/sig")
 	}
 
-	ok, err := drive.CasRoot("foo", bpy.NextRootVersion(version), "sig", 2)
+	ok, err := drive.CasRoot("foo", bpy.NextRootVersion(version), "sig", "bad gen")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +118,7 @@ func TestCasRoot(t *testing.T) {
 		t.Fatal("unexpected ok")
 	}
 
-	ok, err = drive.CasRoot("foo", "", "sig", 0)
+	ok, err = drive.CasRoot("foo", "", "sig", gcGeneration)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +134,7 @@ func TestCasRoot(t *testing.T) {
 		t.Fatal("unexpected root/sig")
 	}
 
-	ok, err = drive.CasRoot("foo", bpy.NextRootVersion(version), "sig", 0)
+	ok, err = drive.CasRoot("foo", bpy.NextRootVersion(version), "sig", gcGeneration)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -198,6 +199,11 @@ func TestRemovePack(t *testing.T) {
 	}
 	defer drive.Close()
 
+	gcGeneration, err := drive.GetGCGeneration()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	err = drive.StartUpload("foobar")
 	if err != nil {
 		t.Fatal(err)
@@ -216,7 +222,7 @@ func TestRemovePack(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = drive.RemovePack("foobar", 0)
+	err = drive.RemovePack("foobar", gcGeneration)
 	if err != ErrGCNotRunning {
 		t.Fatal("expected ErrGCNotRunning error, got: ", err)
 	}
@@ -229,7 +235,7 @@ func TestRemovePack(t *testing.T) {
 		t.Fatal("expected remove failed")
 	}
 
-	gcGeneration, err := drive.StartGC()
+	gcGeneration, err = drive.StartGC()
 	if err != nil {
 		t.Fatal(err)
 	}
