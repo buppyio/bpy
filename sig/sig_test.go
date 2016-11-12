@@ -14,8 +14,8 @@ func TestSigs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ver1 := uint64(0)
-	ver2 := uint64(1)
+	ver1 := "ver1"
+	ver2 := "ver2"
 
 	val1 := "a"
 	val2 := "b"

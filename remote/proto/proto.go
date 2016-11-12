@@ -72,14 +72,14 @@ type TGetRoot struct {
 type RGetRoot struct {
 	Mid       uint16
 	Value     string
-	Version   uint64
+	Version   string
 	Signature string
 	Ok        bool
 }
 
 type TCasRoot struct {
 	Mid        uint16
-	Version    uint64
+	Version    string
 	Value      string
 	Signature  string
 	Generation uint64

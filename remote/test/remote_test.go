@@ -96,7 +96,7 @@ func TestRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, ok, err := remote.GetRoot(c, &key)
+	_, version, ok, err := remote.GetRoot(c, &key)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,8 @@ func TestRoot(t *testing.T) {
 	}
 
 	root0 := [32]byte{}
-	ok, err = remote.CasRoot(c, &key, root0, 1, generation)
+	version0 := bpy.NextRootVersion(version)
+	ok, err = remote.CasRoot(c, &key, root0, version0, generation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,14 +124,14 @@ func TestRoot(t *testing.T) {
 	if !reflect.DeepEqual(val, root0) {
 		t.Fatal("bad val")
 	}
-	if version != 1 {
+	if version != version0 {
 		t.Fatal("bad version")
 	}
 
 	root1 := [32]byte{}
 	root1[0] = 1
 
-	ok, err = remote.CasRoot(c, &key, root1, 1, generation)
+	ok, err = remote.CasRoot(c, &key, root1, version0, generation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,11 +149,12 @@ func TestRoot(t *testing.T) {
 	if !reflect.DeepEqual(val, root0) {
 		t.Fatal("bad val")
 	}
-	if version != 1 {
+	if version != version0 {
 		t.Fatal("bad version")
 	}
 
-	ok, err = remote.CasRoot(c, &key, root1, 2, generation)
+	version1 := bpy.NextRootVersion(version0)
+	ok, err = remote.CasRoot(c, &key, root1, version1, generation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +172,7 @@ func TestRoot(t *testing.T) {
 	if !reflect.DeepEqual(val, root1) {
 		t.Fatal("bad val")
 	}
-	if version != 2 {
+	if version != version1 {
 		t.Fatal("bad version")
 	}
 }

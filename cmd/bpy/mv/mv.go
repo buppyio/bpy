@@ -2,6 +2,7 @@ package mv
 
 import (
 	"flag"
+	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/refs"
@@ -78,7 +79,7 @@ func Mv() {
 			common.Die("error closing remote: %s\n", err.Error())
 		}
 
-		ok, err = remote.CasRoot(c, &k, newRefHash, rootVersion+1, generation)
+		ok, err = remote.CasRoot(c, &k, newRefHash, bpy.NextRootVersion(rootVersion), generation)
 		if err != nil {
 			common.Die("creating ref: %s\n", err.Error())
 		}

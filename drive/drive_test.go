@@ -1,6 +1,7 @@
 package drive
 
 import (
+	"github.com/buppyio/bpy"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -104,11 +105,11 @@ func TestCasRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if root != "" || sig != "" || version != 0 {
-		t.Fatal("unexpected root/version/sig")
+	if root != "" || sig != "" {
+		t.Fatal("unexpected root/sig")
 	}
 
-	ok, err := drive.CasRoot("foo", 2, "sig", 2)
+	ok, err := drive.CasRoot("foo", bpy.NextRootVersion(version), "sig", 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,15 +117,7 @@ func TestCasRoot(t *testing.T) {
 		t.Fatal("unexpected ok")
 	}
 
-	ok, err = drive.CasRoot("foo", 1, "sig", 2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if ok {
-		t.Fatal("unexpected ok")
-	}
-
-	ok, err = drive.CasRoot("foo", 2, "sig", 0)
+	ok, err = drive.CasRoot("foo", "", "sig", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,11 +129,11 @@ func TestCasRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if root != "" || sig != "" || version != 0 {
-		t.Fatal("unexpected root/version/sig")
+	if root != "" || sig != "" {
+		t.Fatal("unexpected root/sig")
 	}
 
-	ok, err = drive.CasRoot("foo", 1, "sig", 0)
+	ok, err = drive.CasRoot("foo", bpy.NextRootVersion(version), "sig", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,8 +145,8 @@ func TestCasRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if root != "foo" || version != 1 || sig != "sig" {
-		t.Fatalf("unexpected root/version/sig=%s/%d/%s", root, version, sig)
+	if root != "foo" || sig != "sig" {
+		t.Fatalf("unexpected root/sig=%s/%d/%s", root, sig)
 	}
 }
 

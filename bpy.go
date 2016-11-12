@@ -3,6 +3,7 @@ package bpy
 import (
 	"bufio"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -107,4 +108,18 @@ func (bwc *BufferedWriteCloser) Close() error {
 		return err
 	}
 	return bwc.W.Close()
+}
+
+func NewRootVersion() (string, error) {
+	r := [sha256.Size]byte{}
+	_, err := io.ReadFull(rand.Reader, r[:])
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(r[:]), nil
+}
+
+func NextRootVersion(value string) string {
+	sum := sha256.Sum256([]byte(value))
+	return hex.EncodeToString(sum[:])
 }

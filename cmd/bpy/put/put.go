@@ -2,6 +2,7 @@ package put
 
 import (
 	"flag"
+	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/fs/fsutil"
@@ -94,7 +95,7 @@ func Put() {
 			common.Die("error closing remote: %s\n", err.Error())
 		}
 
-		ok, err = remote.CasRoot(c, &k, newRefHash, rootVersion+1, generation)
+		ok, err = remote.CasRoot(c, &k, newRefHash, bpy.NextRootVersion(rootVersion), generation)
 		if err != nil {
 			common.Die("error swapping root: %s\n", err.Error())
 		}

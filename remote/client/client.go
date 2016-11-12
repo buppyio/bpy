@@ -230,7 +230,7 @@ func (c *Client) WriteMessage(m proto.Message) error {
 	return proto.WriteMessage(c.conn, m, c.wBuf)
 }
 
-func (c *Client) TCasRoot(newValue string, newVersion uint64, signature string, generation uint64) (*proto.RCasRoot, error) {
+func (c *Client) TCasRoot(newValue, newVersion, signature string, generation uint64) (*proto.RCasRoot, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err

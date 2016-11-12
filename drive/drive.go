@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/boltdb/bolt"
+	"github.com/buppyio/bpy"
 	"strconv"
 	"time"
 )
@@ -71,28 +72,33 @@ func Open(dbPath string) (*Drive, error) {
 			return err
 		}
 
-		if string(metaDataBucket.Get([]byte("gcgeneration"))) == "" {
+		if metaDataBucket.Get([]byte("gcgeneration")) == nil {
 			err = metaDataBucket.Put([]byte("gcgeneration"), []byte("0"))
 			if err != nil {
 				return err
 			}
 		}
 
-		if string(metaDataBucket.Get([]byte("gcrunning"))) == "" {
+		if metaDataBucket.Get([]byte("gcrunning")) == nil {
 			err = metaDataBucket.Put([]byte("gcrunning"), []byte("0"))
 			if err != nil {
 				return err
 			}
 		}
 
-		if string(metaDataBucket.Get([]byte("rootversion"))) == "" {
-			err = metaDataBucket.Put([]byte("rootversion"), []byte("0"))
+		if metaDataBucket.Get([]byte("rootversion")) == nil {
+			ver, err := bpy.NewRootVersion()
+			if err != nil {
+				return err
+			}
+
+			err = metaDataBucket.Put([]byte("rootversion"), []byte(ver))
 			if err != nil {
 				return err
 			}
 		}
 
-		if string(metaDataBucket.Get([]byte("rootsignature"))) == "" {
+		if metaDataBucket.Get([]byte("rootsignature")) == nil {
 			err = metaDataBucket.Put([]byte("rootsignature"), []byte(""))
 			if err != nil {
 				return err
@@ -269,7 +275,7 @@ func (d *Drive) StopGC() error {
 	return nil
 }
 
-func (d *Drive) CasRoot(root string, version uint64, signature string, gcGeneration uint64) (bool, error) {
+func (d *Drive) CasRoot(root, version, signature string, gcGeneration uint64) (bool, error) {
 	db, err := openBoltDB(d.dbPath)
 	if err != nil {
 		return false, err
@@ -280,12 +286,9 @@ func (d *Drive) CasRoot(root string, version uint64, signature string, gcGenerat
 
 	err = db.Update(func(tx *bolt.Tx) error {
 		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
-		rootVersion, err := strconv.ParseUint(string(metaDataBucket.Get([]byte("rootversion"))), 10, 64)
-		if err != nil {
-			return err
-		}
+		rootVersion := string(metaDataBucket.Get([]byte("rootversion")))
 
-		if rootVersion+1 != version {
+		if bpy.NextRootVersion(rootVersion) != version {
 			return nil
 		}
 
@@ -298,7 +301,7 @@ func (d *Drive) CasRoot(root string, version uint64, signature string, gcGenerat
 			return nil
 		}
 
-		err = metaDataBucket.Put([]byte("rootversion"), []byte(fmt.Sprintf("%d", version)))
+		err = metaDataBucket.Put([]byte("rootversion"), []byte(version))
 		if err != nil {
 			return err
 		}
@@ -327,28 +330,27 @@ func (d *Drive) CasRoot(root string, version uint64, signature string, gcGenerat
 	return ok, nil
 }
 
-func (d *Drive) GetRoot() (string, uint64, string, error) {
+func (d *Drive) GetRoot() (string, string, string, error) {
 	db, err := openBoltDB(d.dbPath)
 	if err != nil {
-		return "", 0, "", err
+		return "", "", "", err
 	}
 	defer db.Close()
 
-	var root, signature string
-	var rootVersion uint64
+	var root, rootVersion, signature string
 
 	err = db.View(func(tx *bolt.Tx) error {
 		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
 		root = string(metaDataBucket.Get([]byte("rootval")))
 		signature = string(metaDataBucket.Get([]byte("rootsignature")))
-		rootVersion, err = strconv.ParseUint(string(metaDataBucket.Get([]byte("rootversion"))), 10, 64)
+		rootVersion = string(metaDataBucket.Get([]byte("rootversion")))
 		if err != nil {
 			return err
 		}
 		return nil
 	})
 	if err != nil {
-		return "", 0, "", err
+		return "", "", "", err
 	}
 
 	return root, rootVersion, signature, nil

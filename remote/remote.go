@@ -49,30 +49,30 @@ func ListPacks(c *client.Client) ([]drive.PackListing, error) {
 	return listing, nil
 }
 
-func GetRoot(c *client.Client, k *bpy.Key) ([32]byte, uint64, bool, error) {
+func GetRoot(c *client.Client, k *bpy.Key) ([32]byte, string, bool, error) {
 	r, err := c.TGetRoot()
 	if err != nil {
-		return [32]byte{}, 0, false, err
+		return [32]byte{}, "", false, err
 	}
 
 	if !r.Ok {
-		return [32]byte{}, 0, false, nil
+		return [32]byte{}, r.Version, false, nil
 	}
 	signature := sig.SignValue(k, r.Value, r.Version)
 	if err != nil {
-		return [32]byte{}, 0, false, err
+		return [32]byte{}, "", false, err
 	}
 	if signature != r.Signature {
-		return [32]byte{}, 0, false, ErrRootSignatureFailed
+		return [32]byte{}, "", false, ErrRootSignatureFailed
 	}
 	h, err := bpy.ParseHash(r.Value)
 	if err != nil {
-		return [32]byte{}, 0, false, err
+		return [32]byte{}, "", false, err
 	}
 	return h, r.Version, true, nil
 }
 
-func CasRoot(c *client.Client, k *bpy.Key, newHash [32]byte, newVersion uint64, generation uint64) (bool, error) {
+func CasRoot(c *client.Client, k *bpy.Key, newHash [32]byte, newVersion string, generation uint64) (bool, error) {
 	newValue := hex.EncodeToString(newHash[:])
 	newSignature := sig.SignValue(k, newValue, newVersion)
 

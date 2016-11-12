@@ -46,6 +46,11 @@ func TestGarbageCollection(t *testing.T) {
 		t.Fatalf("error getting current gc generation: %s\n", err.Error())
 	}
 
+	_, version, _, err := remote.GetRoot(c, &k)
+	if err != nil {
+		t.Fatalf("error getting root: %s\n", err)
+	}
+
 	store, err := cstore.NewWriter(c, k.CipherKey, cachePath)
 	if err != nil {
 		t.Fatalf("error creating cstore: %s\n", err.Error())
@@ -73,7 +78,7 @@ func TestGarbageCollection(t *testing.T) {
 		t.Fatalf("error flushing ref: %s\n", err)
 	}
 
-	ok, err := remote.CasRoot(c, &k, hash, 1, generation)
+	ok, err := remote.CasRoot(c, &k, hash, bpy.NextRootVersion(version), generation)
 	if err != nil {
 		t.Fatalf("error swapping root: %s\n", err)
 	}

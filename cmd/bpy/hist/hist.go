@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
+	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/refs"
 	"github.com/buppyio/bpy/remote"
@@ -68,7 +69,7 @@ func prune() {
 		newRef.HasPrev = false
 
 		newRefHash, err := refs.PutRef(store, newRef)
-		ok, err = remote.CasRoot(c, &k, newRefHash, rootVersion+1, generation)
+		ok, err = remote.CasRoot(c, &k, newRefHash, bpy.NextRootVersion(rootVersion), generation)
 		if err != nil {
 			common.Die("error swapping root: %s\n", err.Error())
 		}
@@ -126,7 +127,7 @@ func prune() {
 		common.Die("error storing ref: %s\n", err.Error())
 	}
 
-	ok, err = remote.CasRoot(c, &k, newRefHash, rootVersion+1, generation)
+	ok, err = remote.CasRoot(c, &k, newRefHash, bpy.NextRootVersion(rootVersion), generation)
 	if err != nil {
 		common.Die("error swapping root: %s\n", err.Error())
 	}

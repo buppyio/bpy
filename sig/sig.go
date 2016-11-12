@@ -8,7 +8,7 @@ import (
 	"github.com/buppyio/bpy"
 )
 
-func SignValue(k *bpy.Key, value string, version uint64) string {
+func SignValue(k *bpy.Key, value, version string) string {
 	toSign := fmt.Sprintf("%s:%s", value, version)
 	mac := hmac.New(sha256.New, k.HmacKey[:])
 	mac.Write([]byte(toSign))
