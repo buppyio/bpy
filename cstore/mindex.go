@@ -38,7 +38,6 @@ func cleanOldIndexes(packs []drive.PackListing, cachepath string) error {
 	indexSet := make(map[string]struct{})
 	for _, pack := range packs {
 		indexSet[pack.Name+".index"] = struct{}{}
-		log.Printf("remote: %v", pack.Name)
 	}
 
 	dirEnts, err := ioutil.ReadDir(cachepath)
