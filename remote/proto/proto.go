@@ -365,7 +365,7 @@ func GetMessageType(m Message) byte {
 	case *RGetEpoch:
 		return RGETEPOCH
 	}
-	panic(fmt.Sprintf("GetMessageType: internal error (%)", m))
+	panic(fmt.Sprintf("GetMessageType: internal error (%s)", m))
 }
 
 func GetMessageId(m Message) uint16 {

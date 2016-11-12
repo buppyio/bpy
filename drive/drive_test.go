@@ -147,7 +147,7 @@ func TestCasRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	if root != "foo" || sig != "sig" {
-		t.Fatalf("unexpected root/sig=%s/%d/%s", root, sig)
+		t.Fatalf("unexpected root/sig=%s/%s", root, sig)
 	}
 }
 
