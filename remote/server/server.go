@@ -11,6 +11,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"strings"
 )
 
 var (
@@ -308,12 +309,16 @@ func cleanOrphanPacks(packs []drive.PackListing, packPath string) error {
 	}
 
 	for _, ent := range dirEnts {
+		if !strings.HasSuffix(ent.Name(), ".ebpack") {
+			continue
+		}
+
 		_, ok := packSet[ent.Name()]
 		if ok {
 			continue
 		}
 		fullPath := filepath.Join(packPath, ent.Name())
-		_ = os.RemoveAll(fullPath)
+		_ = os.Remove(fullPath)
 	}
 	return nil
 }

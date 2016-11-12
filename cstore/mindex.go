@@ -3,11 +3,14 @@ package cstore
 import (
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/bpack"
+	"github.com/buppyio/bpy/drive"
 	"github.com/buppyio/bpy/remote"
 	"github.com/buppyio/bpy/remote/client"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 )
 
 type packInfo struct {
@@ -31,11 +34,43 @@ func searchMetaIndex(midx metaIndex, hash [32]byte) (*packInfo, bpack.IndexEnt, 
 	return nil, bpack.IndexEnt{}, false
 }
 
+func cleanOldIndexes(packs []drive.PackListing, cachepath string) error {
+	indexSet := make(map[string]struct{})
+	for _, pack := range packs {
+		indexSet[pack.Name+".index"] = struct{}{}
+		log.Printf("remote: %v", pack.Name)
+	}
+
+	dirEnts, err := ioutil.ReadDir(cachepath)
+	if err != nil {
+		return err
+	}
+
+	for _, ent := range dirEnts {
+		if !strings.HasSuffix(ent.Name(), ".index") {
+			continue
+		}
+		_, ok := indexSet[ent.Name()]
+		if ok {
+			continue
+		}
+		fullPath := filepath.Join(cachepath, ent.Name())
+		_ = os.Remove(fullPath)
+	}
+	return nil
+}
+
 func readAndCacheMetaIndex(store *client.Client, key [32]byte, cachepath string) (metaIndex, error) {
 	listing, err := remote.ListPacks(store)
 	if err != nil {
 		return nil, err
 	}
+
+	err = cleanOldIndexes(listing, cachepath)
+	if err != nil {
+		return nil, err
+	}
+
 	midx := make(metaIndex)
 	for _, pack := range listing {
 		idx, err := getAndCacheIndex(store, key, pack.Name, pack.Size, cachepath)
