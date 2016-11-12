@@ -187,7 +187,7 @@ func (c *Cache) Put(hash [32]byte, val []byte) error {
 	c.pendingPut[hash] = val
 	delete(c.pendingDel, hash)
 
-	if len(c.pendingDel) > 1000 || len(c.pendingPut) > 1000 {
+	if len(c.pendingDel) > 10000 || len(c.pendingPut) > 10000 {
 		err := c.flushPending()
 		if err != nil {
 			return err

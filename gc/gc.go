@@ -215,6 +215,7 @@ func (gc *gcState) closeCurrentWriterAndDeleteOldPacks() error {
 	gc.newPack = nil
 	gc.newPackSize = 0
 	for _, toDelete := range gc.canDelete {
+		// log.Printf("deleting: %v", toDelete)
 		err := remote.Remove(gc.c, toDelete, gc.epoch)
 		if err != nil {
 			return err
@@ -301,6 +302,20 @@ func (gc *gcState) sweepPack(pack drive.PackListing) error {
 	for i := 0; i < len(idx); i++ {
 		var hash [32]byte
 		copy(hash[:], idx[i].Key)
+
+		_, isReachable := gc.visited[hash]
+		if !isReachable {
+			continue
+		}
+		_, alreadyMoved := gc.moved[hash]
+		if alreadyMoved {
+			continue
+		}
+
+		if !isReachable {
+			break
+		}
+
 		if gc.cache != nil {
 			val, ok, err := gc.cache.GetRaw(hash)
 			if err != nil {

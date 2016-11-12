@@ -276,8 +276,8 @@ func (srv *server) handleTRemove(t *proto.TRemove) proto.Message {
 	if err != nil || !matched {
 		return makeError(t.Mid, ErrBadRequest)
 	}
-	err = srv.drive.RemovePack(t.Path, t.Epoch)
-	if err != nil || !matched {
+	err = srv.drive.RemovePack(t.Path[len("packs/"):], t.Epoch)
+	if err != nil {
 		return makeError(t.Mid, err)
 	}
 	return &proto.RRemove{
