@@ -23,7 +23,13 @@ func TestMemCachedStore(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	cacheDBPath := filepath.Join(tempDir, "cache.db")
-	server, err := cache.NewServer(cacheDBPath, 0777, 100)
+
+	c, err := cache.NewCache(cacheDBPath, 0777, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	server, err := cache.NewServer(c)
 	if err != nil {
 		t.Fatal(err)
 	}
