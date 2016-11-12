@@ -429,7 +429,7 @@ func GetMessageId(m Message) uint16 {
 	case *RGetEpoch:
 		return m.Mid
 	}
-	panic("GetMessageId: internal error")
+	panic(fmt.Sprintf("GetMessageId: internal error (%s)", m))
 }
 
 func unpackFields(m Message, buf []byte) error {
