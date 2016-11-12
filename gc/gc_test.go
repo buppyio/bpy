@@ -41,9 +41,9 @@ func TestGarbageCollection(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	generation, err := remote.GetGeneration(c)
+	epoch, err := remote.GetEpoch(c)
 	if err != nil {
-		t.Fatalf("error getting current gc generation: %s\n", err.Error())
+		t.Fatalf("error getting current epoch: %s\n", err.Error())
 	}
 
 	_, version, _, err := remote.GetRoot(c, &k)
@@ -78,7 +78,7 @@ func TestGarbageCollection(t *testing.T) {
 		t.Fatalf("error flushing ref: %s\n", err)
 	}
 
-	ok, err := remote.CasRoot(c, &k, hash, bpy.NextRootVersion(version), generation)
+	ok, err := remote.CasRoot(c, &k, hash, bpy.NextRootVersion(version), epoch)
 	if err != nil {
 		t.Fatalf("error swapping root: %s\n", err)
 	}

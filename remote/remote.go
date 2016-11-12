@@ -72,11 +72,11 @@ func GetRoot(c *client.Client, k *bpy.Key) ([32]byte, string, bool, error) {
 	return h, r.Version, true, nil
 }
 
-func CasRoot(c *client.Client, k *bpy.Key, newHash [32]byte, newVersion, generation string) (bool, error) {
+func CasRoot(c *client.Client, k *bpy.Key, newHash [32]byte, newVersion, epoch string) (bool, error) {
 	newValue := hex.EncodeToString(newHash[:])
 	newSignature := sig.SignValue(k, newValue, newVersion)
 
-	r, err := c.TCasRoot(newValue, newVersion, newSignature, generation)
+	r, err := c.TCasRoot(newValue, newVersion, newSignature, epoch)
 	if err != nil {
 		return false, err
 	}
@@ -84,17 +84,17 @@ func CasRoot(c *client.Client, k *bpy.Key, newHash [32]byte, newVersion, generat
 	return r.Ok, nil
 }
 
-func Remove(c *client.Client, path, gcGeneration string) error {
-	_, err := c.TRemove(path, gcGeneration)
+func Remove(c *client.Client, path, epoch string) error {
+	_, err := c.TRemove(path, epoch)
 	return err
 }
 
-func GetGeneration(c *client.Client) (string, error) {
-	r, err := c.TGetGeneration()
+func GetEpoch(c *client.Client) (string, error) {
+	r, err := c.TGetEpoch()
 	if err != nil {
 		return "", err
 	}
-	return r.Generation, nil
+	return r.Epoch, nil
 }
 
 func StartGC(c *client.Client) (string, error) {
@@ -102,7 +102,7 @@ func StartGC(c *client.Client) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return r.GCGeneration, nil
+	return r.Epoch, nil
 }
 
 func StopGC(c *client.Client) error {

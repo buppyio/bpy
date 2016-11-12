@@ -261,7 +261,7 @@ func (srv *server) handleTGetRoot(t *proto.TGetRoot) proto.Message {
 }
 
 func (srv *server) handleTCasRoot(t *proto.TCasRoot) proto.Message {
-	ok, err := srv.drive.CasRoot(t.Value, t.Version, t.Signature, t.Generation)
+	ok, err := srv.drive.CasRoot(t.Value, t.Version, t.Signature, t.Epoch)
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
@@ -276,7 +276,7 @@ func (srv *server) handleTRemove(t *proto.TRemove) proto.Message {
 	if err != nil || !matched {
 		return makeError(t.Mid, ErrBadRequest)
 	}
-	err = srv.drive.RemovePack(t.Path, t.GCGeneration)
+	err = srv.drive.RemovePack(t.Path, t.Epoch)
 	if err != nil || !matched {
 		return makeError(t.Mid, err)
 	}
@@ -286,13 +286,13 @@ func (srv *server) handleTRemove(t *proto.TRemove) proto.Message {
 }
 
 func (srv *server) handleTStartGC(t *proto.TStartGC) proto.Message {
-	gcGeneration, err := srv.drive.StartGC()
+	epoch, err := srv.drive.StartGC()
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
 	return &proto.RStartGC{
-		Mid:          t.Mid,
-		GCGeneration: gcGeneration,
+		Mid:   t.Mid,
+		Epoch: epoch,
 	}
 }
 
@@ -339,15 +339,15 @@ func (srv *server) handleTStopGC(t *proto.TStopGC) proto.Message {
 	}
 }
 
-func (srv *server) handleTGetGeneration(t *proto.TGetGeneration) proto.Message {
-	gen, err := srv.drive.GetGCGeneration()
+func (srv *server) handleTGetEpoch(t *proto.TGetEpoch) proto.Message {
+	epoch, err := srv.drive.GetEpoch()
 
 	if err != nil {
 		return makeError(t.Mid, err)
 	}
-	return &proto.RGetGeneration{
-		Mid:        t.Mid,
-		Generation: gen,
+	return &proto.RGetEpoch{
+		Mid:   t.Mid,
+		Epoch: epoch,
 	}
 }
 
@@ -465,8 +465,8 @@ func Serve(conn ReadWriteCloser, root string) error {
 			r = srv.handleTStartGC(t)
 		case *proto.TStopGC:
 			r = srv.handleTStopGC(t)
-		case *proto.TGetGeneration:
-			r = srv.handleTGetGeneration(t)
+		case *proto.TGetEpoch:
+			r = srv.handleTGetEpoch(t)
 		default:
 			return ErrBadRequest
 		}

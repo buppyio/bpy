@@ -17,12 +17,12 @@ import (
 )
 
 type gcState struct {
-	gcGeneration string
-	k            *bpy.Key
-	c            *client.Client
-	store        bpy.CStore
-	cache        *cache.Client
-	visited      map[[32]byte]struct{}
+	epoch   string
+	k       *bpy.Key
+	c       *client.Client
+	store   bpy.CStore
+	cache   *cache.Client
+	visited map[[32]byte]struct{}
 
 	// Sweeping state
 	newPackSize uint64
@@ -32,7 +32,7 @@ type gcState struct {
 }
 
 func GC(c *client.Client, store bpy.CStore, cacheClient *cache.Client, k *bpy.Key) error {
-	gcGeneration, err := remote.StartGC(c)
+	epoch, err := remote.StartGC(c)
 	if err != nil {
 		return err
 	}
@@ -41,16 +41,16 @@ func GC(c *client.Client, store bpy.CStore, cacheClient *cache.Client, k *bpy.Ke
 	defer remote.StopGC(c)
 
 	gc := &gcState{
-		cache:        cacheClient,
-		gcGeneration: gcGeneration,
-		k:            k,
-		c:            c,
-		store:        store,
-		visited:      make(map[[32]byte]struct{}),
-		moved:        make(map[[32]byte]struct{}),
-		newPack:      nil,
-		newPackSize:  0,
-		canDelete:    []string{},
+		cache:       cacheClient,
+		epoch:       epoch,
+		k:           k,
+		c:           c,
+		store:       store,
+		visited:     make(map[[32]byte]struct{}),
+		moved:       make(map[[32]byte]struct{}),
+		newPack:     nil,
+		newPackSize: 0,
+		canDelete:   []string{},
 	}
 
 	hash, _, ok, err := remote.GetRoot(gc.c, gc.k)
@@ -215,7 +215,7 @@ func (gc *gcState) closeCurrentWriterAndDeleteOldPacks() error {
 	gc.newPack = nil
 	gc.newPackSize = 0
 	for _, toDelete := range gc.canDelete {
-		err := remote.Remove(gc.c, toDelete, gc.gcGeneration)
+		err := remote.Remove(gc.c, toDelete, gc.epoch)
 		if err != nil {
 			return err
 		}

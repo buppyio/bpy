@@ -230,17 +230,17 @@ func (c *Client) WriteMessage(m proto.Message) error {
 	return proto.WriteMessage(c.conn, m, c.wBuf)
 }
 
-func (c *Client) TCasRoot(newValue, newVersion, signature, generation string) (*proto.RCasRoot, error) {
+func (c *Client) TCasRoot(newValue, newVersion, signature, epoch string) (*proto.RCasRoot, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
 	}
 	resp, err := c.Call(&proto.TCasRoot{
-		Mid:        mid,
-		Value:      newValue,
-		Version:    newVersion,
-		Signature:  signature,
-		Generation: generation,
+		Mid:       mid,
+		Value:     newValue,
+		Version:   newVersion,
+		Signature: signature,
+		Epoch:     epoch,
 	}, ch, mid)
 	if err != nil {
 		return nil, err
@@ -272,15 +272,15 @@ func (c *Client) TGetRoot() (*proto.RGetRoot, error) {
 	}
 }
 
-func (c *Client) TRemove(path, gcGeneration string) (*proto.RRemove, error) {
+func (c *Client) TRemove(path, epoch string) (*proto.RRemove, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
 	}
 	resp, err := c.Call(&proto.TRemove{
-		Mid:          mid,
-		Path:         path,
-		GCGeneration: gcGeneration,
+		Mid:   mid,
+		Path:  path,
+		Epoch: epoch,
 	}, ch, mid)
 	if err != nil {
 		return nil, err
@@ -423,19 +423,19 @@ func (c *Client) TCancelPack(pid uint32) (*proto.RCancelPack, error) {
 	}
 }
 
-func (c *Client) TGetGeneration() (*proto.RGetGeneration, error) {
+func (c *Client) TGetEpoch() (*proto.RGetEpoch, error) {
 	ch, mid, err := c.newCall()
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.Call(&proto.TGetGeneration{
+	resp, err := c.Call(&proto.TGetEpoch{
 		Mid: mid,
 	}, ch, mid)
 	if err != nil {
 		return nil, err
 	}
 	switch resp := resp.(type) {
-	case *proto.RGetGeneration:
+	case *proto.RGetEpoch:
 		return resp, nil
 	default:
 		return nil, ErrBadResponse

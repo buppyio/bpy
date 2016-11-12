@@ -35,9 +35,9 @@ func Mv() {
 	}
 	defer c.Close()
 
-	generation, err := remote.GetGeneration(c)
+	epoch, err := remote.GetEpoch(c)
 	if err != nil {
-		common.Die("error getting current gc generation: %s\n", err.Error())
+		common.Die("error getting current epoch: %s\n", err.Error())
 	}
 
 	for {
@@ -79,7 +79,7 @@ func Mv() {
 			common.Die("error closing remote: %s\n", err.Error())
 		}
 
-		ok, err = remote.CasRoot(c, &k, newRefHash, bpy.NextRootVersion(rootVersion), generation)
+		ok, err = remote.CasRoot(c, &k, newRefHash, bpy.NextRootVersion(rootVersion), epoch)
 		if err != nil {
 			common.Die("creating ref: %s\n", err.Error())
 		}

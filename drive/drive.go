@@ -16,7 +16,7 @@ type PackListing struct {
 
 type packState struct {
 	UploadComplete bool
-	GCGeneration   string
+	Epoch          string
 	Listing        PackListing
 }
 
@@ -40,13 +40,13 @@ func openBoltDB(dbPath string) (*bolt.DB, error) {
 	return bolt.Open(dbPath, 0600, &bolt.Options{Timeout: 1 * time.Second})
 }
 
-func nextGCGeneration(metaDataBucket *bolt.Bucket) (string, error) {
-	gcGeneration := bpy.NextGCGeneration(string(metaDataBucket.Get([]byte("gcgeneration"))))
-	err := metaDataBucket.Put([]byte("gcgeneration"), []byte(gcGeneration))
+func nextEpoch(metaDataBucket *bolt.Bucket) (string, error) {
+	epoch := bpy.NextEpoch(string(metaDataBucket.Get([]byte("epoch"))))
+	err := metaDataBucket.Put([]byte("epoch"), []byte(epoch))
 	if err != nil {
 		return "", err
 	}
-	return gcGeneration, nil
+	return epoch, nil
 }
 
 func Open(dbPath string) (*Drive, error) {
@@ -66,13 +66,13 @@ func Open(dbPath string) (*Drive, error) {
 			return err
 		}
 
-		if metaDataBucket.Get([]byte("gcgeneration")) == nil {
-			gcGeneration, err := bpy.NewGCGeneration()
+		if metaDataBucket.Get([]byte("epoch")) == nil {
+			epoch, err := bpy.NewEpoch()
 			if err != nil {
 				return err
 			}
 
-			err = metaDataBucket.Put([]byte("gcgeneration"), []byte(gcGeneration))
+			err = metaDataBucket.Put([]byte("epoch"), []byte(epoch))
 			if err != nil {
 				return err
 			}
@@ -150,18 +150,18 @@ func (d *Drive) Attach(keyId string) (bool, error) {
 	return ok, nil
 }
 
-func (d *Drive) GetGCGeneration() (string, error) {
+func (d *Drive) GetEpoch() (string, error) {
 	db, err := openBoltDB(d.dbPath)
 	if err != nil {
 		return "", err
 	}
 	defer db.Close()
 
-	var gcGeneration string
+	var epoch string
 
 	err = db.View(func(tx *bolt.Tx) error {
 		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
-		gcGeneration = string(metaDataBucket.Get([]byte("gcgeneration")))
+		epoch = string(metaDataBucket.Get([]byte("epoch")))
 		return nil
 	})
 
@@ -169,7 +169,7 @@ func (d *Drive) GetGCGeneration() (string, error) {
 		return "", err
 	}
 
-	return gcGeneration, nil
+	return epoch, nil
 }
 
 func (d *Drive) StartGC() (string, error) {
@@ -179,13 +179,13 @@ func (d *Drive) StartGC() (string, error) {
 	}
 	defer db.Close()
 
-	var gcGeneration string
+	var epoch string
 
 	err = db.Update(func(tx *bolt.Tx) error {
 		packsBucket := tx.Bucket([]byte(PacksBucketName))
 		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
 
-		gcGeneration, err = nextGCGeneration(metaDataBucket)
+		epoch, err = nextEpoch(metaDataBucket)
 		if err != nil {
 			return err
 		}
@@ -231,7 +231,7 @@ func (d *Drive) StartGC() (string, error) {
 		return "", err
 	}
 
-	return gcGeneration, nil
+	return epoch, nil
 }
 
 func (d *Drive) StopGC() error {
@@ -244,7 +244,7 @@ func (d *Drive) StopGC() error {
 	err = db.Update(func(tx *bolt.Tx) error {
 		metaDataBucket := tx.Bucket([]byte(MetaDataBucketName))
 
-		_, err = nextGCGeneration(metaDataBucket)
+		_, err = nextEpoch(metaDataBucket)
 		if err != nil {
 			return err
 		}
@@ -269,7 +269,7 @@ func (d *Drive) StopGC() error {
 	return nil
 }
 
-func (d *Drive) CasRoot(root, version, signature, gcGeneration string) (bool, error) {
+func (d *Drive) CasRoot(root, version, signature, epoch string) (bool, error) {
 	db, err := openBoltDB(d.dbPath)
 	if err != nil {
 		return false, err
@@ -286,9 +286,9 @@ func (d *Drive) CasRoot(root, version, signature, gcGeneration string) (bool, er
 			return nil
 		}
 
-		curGCGeneration := string(metaDataBucket.Get([]byte("gcgeneration")))
+		curEpoch := string(metaDataBucket.Get([]byte("epoch")))
 
-		if curGCGeneration != gcGeneration {
+		if curEpoch != epoch {
 			return nil
 		}
 
@@ -366,11 +366,11 @@ func (d *Drive) StartUpload(packName string) error {
 			return ErrDuplicatePack
 		}
 
-		curGCGeneration := string(metaDataBucket.Get([]byte("gcgeneration")))
+		curEpoch := string(metaDataBucket.Get([]byte("epoch")))
 
 		stateBytes, err := json.Marshal(packState{
 			UploadComplete: false,
-			GCGeneration:   curGCGeneration,
+			Epoch:          curEpoch,
 		})
 		if err != nil {
 			return err
@@ -418,9 +418,9 @@ func (d *Drive) FinishUpload(packName string, createdAt time.Time, size uint64) 
 			return err
 		}
 
-		curGCGeneration := string(metaDataBucket.Get([]byte("gcgeneration")))
+		curEpoch := string(metaDataBucket.Get([]byte("epoch")))
 
-		if curGCGeneration != state.GCGeneration {
+		if curEpoch != state.Epoch {
 			return ErrGCOccurred
 		}
 
@@ -453,7 +453,7 @@ func (d *Drive) FinishUpload(packName string, createdAt time.Time, size uint64) 
 	return nil
 }
 
-func (d *Drive) RemovePack(packName, gcGeneration string) error {
+func (d *Drive) RemovePack(packName, epoch string) error {
 	db, err := openBoltDB(d.dbPath)
 	if err != nil {
 		return err
@@ -467,9 +467,9 @@ func (d *Drive) RemovePack(packName, gcGeneration string) error {
 			return ErrGCNotRunning
 		}
 
-		curGCGeneration := string(metaDataBucket.Get([]byte("gcgeneration")))
+		curEpoch := string(metaDataBucket.Get([]byte("epoch")))
 
-		if gcGeneration != curGCGeneration {
+		if epoch != curEpoch {
 			return ErrGCOccurred
 		}
 

@@ -91,7 +91,7 @@ func TestRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	generation, err := remote.GetGeneration(c)
+	epoch, err := remote.GetEpoch(c)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestRoot(t *testing.T) {
 
 	root0 := [32]byte{}
 	version0 := bpy.NextRootVersion(version)
-	ok, err = remote.CasRoot(c, &key, root0, version0, generation)
+	ok, err = remote.CasRoot(c, &key, root0, version0, epoch)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +131,7 @@ func TestRoot(t *testing.T) {
 	root1 := [32]byte{}
 	root1[0] = 1
 
-	ok, err = remote.CasRoot(c, &key, root1, version0, generation)
+	ok, err = remote.CasRoot(c, &key, root1, version0, epoch)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +154,7 @@ func TestRoot(t *testing.T) {
 	}
 
 	version1 := bpy.NextRootVersion(version0)
-	ok, err = remote.CasRoot(c, &key, root1, version1, generation)
+	ok, err = remote.CasRoot(c, &key, root1, version1, epoch)
 	if err != nil {
 		t.Fatal(err)
 	}

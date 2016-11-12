@@ -38,8 +38,8 @@ const (
 	RSTARTGC
 	TSTOPGC
 	RSTOPGC
-	TGETGENERATION
-	RGETGENERATION
+	TGETEPOCH
+	RGETEPOCH
 )
 
 const (
@@ -78,11 +78,11 @@ type RGetRoot struct {
 }
 
 type TCasRoot struct {
-	Mid        uint16
-	Version    string
-	Value      string
-	Signature  string
-	Generation string
+	Mid       uint16
+	Version   string
+	Value     string
+	Signature string
+	Epoch     string
 }
 
 type RCasRoot struct {
@@ -172,9 +172,9 @@ type RCancelPack struct {
 }
 
 type TRemove struct {
-	Mid          uint16
-	Path         string
-	GCGeneration string
+	Mid   uint16
+	Path  string
+	Epoch string
 }
 
 type RRemove struct {
@@ -186,8 +186,8 @@ type TStartGC struct {
 }
 
 type RStartGC struct {
-	Mid          uint16
-	GCGeneration string
+	Mid   uint16
+	Epoch string
 }
 
 type TStopGC struct {
@@ -198,13 +198,13 @@ type RStopGC struct {
 	Mid uint16
 }
 
-type TGetGeneration struct {
+type TGetEpoch struct {
 	Mid uint16
 }
 
-type RGetGeneration struct {
-	Mid        uint16
-	Generation string
+type RGetEpoch struct {
+	Mid   uint16
+	Epoch string
 }
 
 func ReadMessage(r io.Reader, buf []byte) (Message, error) {
@@ -294,10 +294,10 @@ func UnpackMessage(buf []byte) (Message, error) {
 		m = &TStopGC{}
 	case RSTOPGC:
 		m = &RStopGC{}
-	case TGETGENERATION:
-		m = &TGetGeneration{}
-	case RGETGENERATION:
-		m = &RGetGeneration{}
+	case TGETEPOCH:
+		m = &TGetEpoch{}
+	case RGETEPOCH:
+		m = &RGetEpoch{}
 	default:
 		return nil, ErrMsgCorrupt
 	}
@@ -360,10 +360,10 @@ func GetMessageType(m Message) byte {
 		return TSTOPGC
 	case *RStopGC:
 		return RSTOPGC
-	case *TGetGeneration:
-		return TGETGENERATION
-	case *RGetGeneration:
-		return RGETGENERATION
+	case *TGetEpoch:
+		return TGETEPOCH
+	case *RGetEpoch:
+		return RGETEPOCH
 	}
 	panic(fmt.Sprintf("GetMessageType: internal error (%)", m))
 }
@@ -424,9 +424,9 @@ func GetMessageId(m Message) uint16 {
 		return m.Mid
 	case *RStopGC:
 		return m.Mid
-	case *TGetGeneration:
+	case *TGetEpoch:
 		return m.Mid
-	case *RGetGeneration:
+	case *RGetEpoch:
 		return m.Mid
 	}
 	panic("GetMessageId: internal error")

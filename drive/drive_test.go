@@ -46,7 +46,7 @@ func TestAttach(t *testing.T) {
 	}
 }
 
-func TestGCGeneration(t *testing.T) {
+func TestEpoch(t *testing.T) {
 	testDir, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatal(err)
@@ -58,17 +58,17 @@ func TestGCGeneration(t *testing.T) {
 	}
 	defer drive.Close()
 
-	gen1, err := drive.GetGCGeneration()
+	epoch1, err := drive.GetEpoch()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	gen2, err := drive.StartGC()
+	epoch2, err := drive.StartGC()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if gen2 == gen1 {
-		t.Fatal("gcGeneration did not increment")
+	if epoch2 == epoch1 {
+		t.Fatal("epoch did not increment")
 	}
 
 	err = drive.StopGC()
@@ -76,12 +76,12 @@ func TestGCGeneration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	gen3, err := drive.GetGCGeneration()
+	epoch3, err := drive.GetEpoch()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if gen3 == gen2 {
-		t.Fatal("unexpected gcGeneration")
+	if epoch3 == epoch2 {
+		t.Fatal("unexpected epoch")
 	}
 }
 
@@ -97,7 +97,7 @@ func TestCasRoot(t *testing.T) {
 	}
 	defer drive.Close()
 
-	gcGeneration, err := drive.GetGCGeneration()
+	epoch, err := drive.GetEpoch()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +110,7 @@ func TestCasRoot(t *testing.T) {
 		t.Fatal("unexpected root/sig")
 	}
 
-	ok, err := drive.CasRoot("foo", bpy.NextRootVersion(version), "sig", "bad gen")
+	ok, err := drive.CasRoot("foo", bpy.NextRootVersion(version), "sig", "bad epoch")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestCasRoot(t *testing.T) {
 		t.Fatal("unexpected ok")
 	}
 
-	ok, err = drive.CasRoot("foo", "", "sig", gcGeneration)
+	ok, err = drive.CasRoot("foo", "", "sig", epoch)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestCasRoot(t *testing.T) {
 		t.Fatal("unexpected root/sig")
 	}
 
-	ok, err = drive.CasRoot("foo", bpy.NextRootVersion(version), "sig", gcGeneration)
+	ok, err = drive.CasRoot("foo", bpy.NextRootVersion(version), "sig", epoch)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,7 +199,7 @@ func TestRemovePack(t *testing.T) {
 	}
 	defer drive.Close()
 
-	gcGeneration, err := drive.GetGCGeneration()
+	epoch, err := drive.GetEpoch()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +222,7 @@ func TestRemovePack(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = drive.RemovePack("foobar", gcGeneration)
+	err = drive.RemovePack("foobar", epoch)
 	if err != ErrGCNotRunning {
 		t.Fatal("expected ErrGCNotRunning error, got: ", err)
 	}
@@ -235,12 +235,12 @@ func TestRemovePack(t *testing.T) {
 		t.Fatal("expected remove failed")
 	}
 
-	gcGeneration, err = drive.StartGC()
+	epoch, err = drive.StartGC()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = drive.RemovePack("foobar", gcGeneration)
+	err = drive.RemovePack("foobar", epoch)
 	if err != nil {
 		t.Fatal(err)
 	}
