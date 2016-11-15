@@ -14,7 +14,6 @@ import (
 	"github.com/buppyio/bpy/cmd/bpy/mkdir"
 	"github.com/buppyio/bpy/cmd/bpy/mv"
 	"github.com/buppyio/bpy/cmd/bpy/newkey"
-	"github.com/buppyio/bpy/cmd/bpy/p9"
 	"github.com/buppyio/bpy/cmd/bpy/put"
 	"github.com/buppyio/bpy/cmd/bpy/rm"
 	"github.com/buppyio/bpy/cmd/bpy/tar"
@@ -72,8 +71,6 @@ func main() {
 			cmd = newkey.NewKey
 		case "zip":
 			cmd = zip.Zip
-		case "9p":
-			cmd = p9.P9
 		default:
 			cmd = help
 		}
