@@ -5,11 +5,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"github.com/buppyio/bpy"
-	"github.com/buppyio/bpy/drive"
 	"github.com/buppyio/bpy/remote/client"
 	"github.com/buppyio/bpy/sig"
 	"io/ioutil"
-	"time"
 )
 
 var (
@@ -20,7 +18,12 @@ var (
 	ErrRootSignatureFailed = errors.New("root signature failed! corruption or tampering detected!")
 )
 
-func ListPacks(c *client.Client) ([]drive.PackListing, error) {
+type PackListing struct {
+	Name string
+	Size uint64
+}
+
+func ListPacks(c *client.Client) ([]PackListing, error) {
 	f, err := c.Open("packs")
 	if err != nil {
 		return nil, err
@@ -30,21 +33,20 @@ func ListPacks(c *client.Client) ([]drive.PackListing, error) {
 	if err != nil {
 		return nil, err
 	}
-	listing := []drive.PackListing{}
+	listing := []PackListing{}
 	for len(data) != 0 {
 		if len(data) < 2 {
 			return nil, ErrCorruptPackListing
 		}
 		namesz := int(binary.BigEndian.Uint16(data[0:2]))
-		if len(data) < namesz+18 {
+		if len(data) < namesz+10 {
 			return nil, ErrCorruptPackListing
 		}
-		listing = append(listing, drive.PackListing{
+		listing = append(listing, PackListing{
 			Name: string(data[2 : 2+namesz]),
 			Size: binary.BigEndian.Uint64(data[2+namesz : 10+namesz]),
-			Date: time.Unix(int64(binary.BigEndian.Uint64(data[10+namesz:18+namesz])), 0),
 		})
-		data = data[18+namesz:]
+		data = data[10+namesz:]
 	}
 	return listing, nil
 }

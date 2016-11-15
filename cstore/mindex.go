@@ -3,7 +3,6 @@ package cstore
 import (
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/bpack"
-	"github.com/buppyio/bpy/drive"
 	"github.com/buppyio/bpy/remote"
 	"github.com/buppyio/bpy/remote/client"
 	"io/ioutil"
@@ -34,7 +33,7 @@ func searchMetaIndex(midx metaIndex, hash [32]byte) (*packInfo, bpack.IndexEnt, 
 	return nil, bpack.IndexEnt{}, false
 }
 
-func cleanOldIndexes(packs []drive.PackListing, cachepath string) error {
+func cleanOldIndexes(packs []remote.PackListing, cachepath string) error {
 	indexSet := make(map[string]struct{})
 	for _, pack := range packs {
 		indexSet[pack.Name+".index"] = struct{}{}
