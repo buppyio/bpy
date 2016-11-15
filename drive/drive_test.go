@@ -167,6 +167,23 @@ func TestUploadPack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	packs, err := drive.GetCompletePacks()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(packs) != 0 {
+		t.Fatal("expected 0 complete packs")
+	}
+
+	packs, err = drive.GetAllPacks()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(packs) != 1 || packs[0].Name != "foobar" {
+		t.Fatal("expected one pack called foobar")
+	}
+
 	err = drive.FinishUpload("foobar", time.Now(), 0)
 	if err != nil {
 		t.Fatal(err)
@@ -177,7 +194,7 @@ func TestUploadPack(t *testing.T) {
 		t.Fatal("expected duplicate pack error, got:", err)
 	}
 
-	packs, err := drive.GetPacks()
+	packs, err = drive.GetCompletePacks()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,7 +244,7 @@ func TestRemovePack(t *testing.T) {
 		t.Fatal("expected ErrGCNotRunning error, got: ", err)
 	}
 
-	packs, err := drive.GetPacks()
+	packs, err := drive.GetAllPacks()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -250,7 +267,7 @@ func TestRemovePack(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	packs, err = drive.GetPacks()
+	packs, err = drive.GetAllPacks()
 	if err != nil {
 		t.Fatal(err)
 	}

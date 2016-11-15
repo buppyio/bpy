@@ -329,7 +329,7 @@ func (srv *server) handleTStopGC(t *proto.TStopGC) proto.Message {
 		return makeError(t.Mid, err)
 	}
 
-	packs, err := srv.drive.GetPacks()
+	packs, err := srv.drive.GetAllPacks()
 	if err != nil {
 		return makeError(t.Mid, err)
 	}

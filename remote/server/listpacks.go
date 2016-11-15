@@ -20,7 +20,7 @@ type packListingFile struct {
 
 func (pl *packListingFile) ReadAtOffset(buf []byte, offset uint64) (int, error) {
 	if offset == 0 {
-		listing, err := pl.drive.GetPacks()
+		listing, err := pl.drive.GetCompletePacks()
 		if err != nil {
 			return 0, err
 		}

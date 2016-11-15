@@ -493,7 +493,15 @@ func (d *Drive) RemovePack(packName, epoch string) error {
 	return nil
 }
 
-func (d *Drive) GetPacks() ([]PackListing, error) {
+func (d *Drive) GetCompletePacks() ([]PackListing, error) {
+	return d.getPacks(false)
+}
+
+func (d *Drive) GetAllPacks() ([]PackListing, error) {
+	return d.getPacks(true)
+}
+
+func (d *Drive) getPacks(allowPartial bool) ([]PackListing, error) {
 	db, err := openBoltDB(d.dbPath)
 	if err != nil {
 		return nil, err
@@ -509,7 +517,7 @@ func (d *Drive) GetPacks() ([]PackListing, error) {
 			if err != nil {
 				return err
 			}
-			if state.UploadComplete {
+			if state.UploadComplete || allowPartial {
 				state.Listing.Name = string(k)
 				listing = append(listing, state.Listing)
 			}
