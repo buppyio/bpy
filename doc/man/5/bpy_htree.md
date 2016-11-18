@@ -21,7 +21,7 @@ The htree data structure is important to bpy as it enables the following propert
 - Provide relatively efficient random access to the data stream while walking chunk contents,
   this allows 'seeking' when data streams are being accessed.
 - Given two trees with identicle sub trees, all data can be cheaply deduplicated on disk by checking
-  if the sub tree address is present in any bpy_(e)bpack(5) file.
+  if the sub tree address is present in any bpy_ebpack(5) file.
 - Provides compression for runs of values in data.
 
 The following diagram shows what a 3 node htree will look like stored on disk in a bpack file:
