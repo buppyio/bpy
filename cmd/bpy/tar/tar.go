@@ -13,9 +13,8 @@ import (
 func Tar() {
 	flag.Parse()
 
-	tarPath := "/"
+	tarPath := ""
 	switch flag.NArg() {
-	case 0:
 	case 1:
 		tarPath = flag.Args()[0]
 	default:

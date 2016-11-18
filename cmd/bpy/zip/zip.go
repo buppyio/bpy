@@ -13,9 +13,8 @@ import (
 func Zip() {
 	flag.Parse()
 
-	zipPath := "/"
+	zipPath := ""
 	switch flag.NArg() {
-	case 0:
 	case 1:
 		zipPath = flag.Args()[0]
 	default:
