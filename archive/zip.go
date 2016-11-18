@@ -40,11 +40,12 @@ func writeZip(store bpy.CStore, curpath string, dirHash [32]byte, out *zip.Write
 			return err
 		}
 		hdr.Name = path.Join(curpath, ent.EntName)
-		outfile, err := out.CreateHeader(hdr)
+		hdr.Method = zip.Deflate
+		outFile, err := out.CreateHeader(hdr)
 		if err != nil {
 			return err
 		}
-		_, err = io.Copy(outfile, f)
+		_, err = io.Copy(outFile, f)
 		if err != nil {
 			return err
 		}

@@ -311,10 +311,6 @@ func (gc *gcState) sweepPack(pack remote.PackListing) error {
 			continue
 		}
 
-		if !isReachable {
-			break
-		}
-
 		if gc.cache != nil {
 			val, ok, err := gc.cache.GetRaw(hash)
 			if err != nil {

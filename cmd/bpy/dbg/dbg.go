@@ -1,4 +1,4 @@
-package main
+package dbg
 
 import (
 	"encoding/binary"
@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cmd/bpy/common"
+	"github.com/buppyio/bpy/cmd/bpy/dbg/listpacks"
 	"github.com/buppyio/bpy/htree"
 	"io"
 	"os"
@@ -14,7 +15,7 @@ import (
 
 func dbghelp() {
 	fmt.Println("Please specify one of the following subcommands:")
-	fmt.Println("inspect-htree, write-htree")
+	fmt.Println("inspect-htree, write-htree, list-packs")
 	os.Exit(1)
 }
 
@@ -111,7 +112,7 @@ func writehtree() {
 	}
 }
 
-func dbg() {
+func Dbg() {
 	cmd := dbghelp
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
@@ -119,6 +120,8 @@ func dbg() {
 			cmd = inspecthtree
 		case "write-htree":
 			cmd = writehtree
+		case "list-packs":
+			cmd = listpacks.ListPacks
 		default:
 		}
 		copy(os.Args[1:], os.Args[2:])

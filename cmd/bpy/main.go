@@ -6,6 +6,7 @@ import (
 	"github.com/buppyio/bpy/cmd/bpy/cachedaemon"
 	"github.com/buppyio/bpy/cmd/bpy/cat"
 	"github.com/buppyio/bpy/cmd/bpy/cp"
+	"github.com/buppyio/bpy/cmd/bpy/dbg"
 	"github.com/buppyio/bpy/cmd/bpy/env"
 	"github.com/buppyio/bpy/cmd/bpy/gc"
 	"github.com/buppyio/bpy/cmd/bpy/get"
@@ -42,7 +43,7 @@ func main() {
 		case "cache-daemon":
 			cmd = cachedaemon.CacheDaemon
 		case "dbg":
-			cmd = dbg
+			cmd = dbg.Dbg
 		case "cp":
 			cmd = cp.Cp
 		case "env":

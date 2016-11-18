@@ -11,8 +11,16 @@ import (
 )
 
 func Zip() {
-	srcArg := flag.String("src", "", "path to directory to ref")
 	flag.Parse()
+
+	zipPath := "/"
+	switch flag.NArg() {
+	case 0:
+	case 1:
+		zipPath = flag.Args()[0]
+	default:
+		common.Die("please specify a single source directory\n")
+	}
 
 	cfg, err := common.GetConfig()
 	if err != nil {
@@ -48,12 +56,12 @@ func Zip() {
 		common.Die("error fetching ref: %s\n", err.Error())
 	}
 
-	dirEnt, err := fs.Walk(store, ref.Root, *srcArg)
+	dirEnt, err := fs.Walk(store, ref.Root, zipPath)
 	if err != nil {
 		common.Die("error getting src folder: %s\n", err.Error())
 	}
 	if !dirEnt.IsDir() {
-		common.Die("'%s' is not a directory\n", *srcArg)
+		common.Die("'%s' is not a directory\n", zipPath)
 	}
 
 	err = archive.Zip(store, dirEnt.HTree.Data, os.Stdout)
