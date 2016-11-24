@@ -1,12 +1,16 @@
 package gc
 
 import (
+	"flag"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/gc"
 	"github.com/buppyio/bpy/remote"
 )
 
 func GC() {
+	cancel := flag.Bool("cancel", false, "cancel any active garbage collection without starting a new one")
+
+	flag.Parse()
 	cfg, err := common.GetConfig()
 	if err != nil {
 		common.Die("error getting config: %s\n", err)
@@ -32,6 +36,9 @@ func GC() {
 	err = remote.StopGC(c)
 	if err != nil {
 		common.Die("error stopping gc: %s\n", err.Error())
+	}
+	if *cancel {
+		return
 	}
 
 	cache, err := common.GetCacheClient(cfg)

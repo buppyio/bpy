@@ -10,7 +10,7 @@ import (
 	"github.com/buppyio/bpy/refs"
 	"github.com/buppyio/bpy/remote"
 	"github.com/buppyio/bpy/remote/client"
-	// "log"
+	"log"
 	"path"
 	"sort"
 )
@@ -35,9 +35,6 @@ func GC(c *client.Client, store bpy.CStore, cacheClient *cache.Client, k *bpy.Ke
 	if err != nil {
 		return err
 	}
-
-	// Doing this twice shouldn't hurt if theres a premature error.
-	defer remote.StopGC(c)
 
 	gc := &gcState{
 		cache:       cacheClient,
@@ -70,6 +67,7 @@ func GC(c *client.Client, store bpy.CStore, cacheClient *cache.Client, k *bpy.Ke
 		return err
 	}
 
+	log.Printf("sweeping...")
 	err = gc.sweep()
 	if err != nil {
 		return err
@@ -230,6 +228,7 @@ func (gc *gcState) sweep() error {
 		return err
 	}
 	for _, pack := range packs {
+		log.Printf("sweeping %s", pack.Name)
 		err = gc.sweepPack(pack)
 		if err != nil {
 			return err

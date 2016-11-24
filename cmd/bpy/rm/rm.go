@@ -34,12 +34,12 @@ func Rm() {
 		common.Die("error getting current epoch: %s\n", err.Error())
 	}
 
-	for {
-		store, err := common.GetCStore(cfg, &k, c)
-		if err != nil {
-			common.Die("error getting content store: %s\n", err.Error())
-		}
+	store, err := common.GetCStore(cfg, &k, c)
+	if err != nil {
+		common.Die("error getting content store: %s\n", err.Error())
+	}
 
+	for {
 		rootHash, rootVersion, ok, err := remote.GetRoot(c, &k)
 		if err != nil {
 			common.Die("error fetching root hash: %s\n", err.Error())
@@ -82,6 +82,5 @@ func Rm() {
 		if ok {
 			break
 		}
-
 	}
 }
