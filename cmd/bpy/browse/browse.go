@@ -5,58 +5,18 @@ import (
 	"flag"
 	"fmt"
 	"github.com/buppyio/bpy"
+	"github.com/buppyio/bpy/cmd/bpy/browse/static"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/refs"
 	"github.com/buppyio/bpy/remote"
 	"github.com/buppyio/bpy/remote/client"
 	"github.com/pkg/browser"
-	"html"
 	"log"
 	"net/http"
 	"os"
-	"path"
 	"time"
 )
-
-var head = []byte(`<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-<meta http-equiv="Content-Language" content="en" />
-<title>bpy - file browser</title>
-<style>
-body {
-	font-family: monospace;
-	color: #000;
-	background-color: #fff;
-}
-
-table thead td {
-	font-weight: bold;
-}
-
-table td {
-	padding: 0 0.4em;
-}
-
-#content table td {
-	white-space: nowrap;
-	vertical-align: top;
-}
-
-#files tr:hover td {
-	background-color: #eee;
-}
-
-</style>
-</head>
-<body>
-`)
-
-var tail = []byte(`</body>
-</html>
-`)
 
 type rootHandler struct {
 	c     *client.Client
@@ -65,7 +25,7 @@ type rootHandler struct {
 }
 
 func (h *rootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	walkPath := r.URL.Path
+	walkPath := r.URL.Path[1:]
 	rootHash, _, ok, err := remote.GetRoot(h.c, h.k)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -97,39 +57,13 @@ func (h *rootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write(head)
-	w.Write([]byte("<div id=\"content\">\n"))
-	w.Write([]byte("<table id=\"files\">\n"))
-	w.Write([]byte("<thead><tr><td>Mode</td><td>Name</td><td>Size</td></tr></thead>\n"))
-
-	writeEnt := func(dirEnt fs.DirEnt) {
-		mode := html.EscapeString(dirEnt.Mode().String())
-		name := html.EscapeString(dirEnt.Name())
-		size := html.EscapeString(fmt.Sprintf("%d", dirEnt.Size()))
-		link := ""
-		if dirEnt.IsDir() {
-			size = "-"
-			link = path.Join(walkPath, name)
-		} else {
-			link = path.Join(path.Join("/raw/", walkPath), name)
-		}
-		link = html.EscapeString(link)
-		fmt.Fprintf(w, "<tr><td>%s</td><td><a href=\"%s\"'>%s</a></td><td>%s</td></tr>", mode, link, name, size)
-	}
-
-	for _, dirEnt := range dirEnts {
-		if dirEnt.IsDir() {
-			writeEnt(dirEnt)
-		}
-	}
-	for _, dirEnt := range dirEnts {
-		if dirEnt.Mode().IsRegular() {
-			writeEnt(dirEnt)
-		}
-	}
-	w.Write([]byte("</table>\n"))
-	w.Write([]byte("</div>\n"))
-	w.Write(tail)
+	_ = browseTemplate.Execute(w, struct {
+		Path    string
+		DirEnts fs.DirEnts
+	}{
+		Path:    walkPath,
+		DirEnts: dirEnts,
+	})
 }
 
 type httpFs struct {
@@ -139,7 +73,6 @@ type httpFs struct {
 }
 
 func (httpFs *httpFs) Open(fullPath string) (http.File, error) {
-	fullPath = fullPath[4:]
 	log.Printf("open: %s", fullPath)
 	rootHash, _, ok, err := remote.GetRoot(httpFs.c, httpFs.k)
 	if err != nil {
@@ -250,6 +183,8 @@ func (d *httpDir) Readdir(count int) ([]os.FileInfo, error) {
 }
 
 func Browse() {
+	static.LoadFiles()
+
 	addrArg := flag.String("addr", "127.0.0.1:8000", "address to listen on ")
 	flag.Parse()
 
@@ -274,23 +209,27 @@ func Browse() {
 		common.Die("error getting content store: %s\n", err.Error())
 	}
 
-	http.Handle("/", &rootHandler{
-		c:     c,
-		k:     &k,
-		store: store,
-	})
+	http.Handle("/", http.RedirectHandler("/browse/", http.StatusSeeOther))
 
-	http.Handle("/raw/", http.FileServer(&httpFs{
+	http.Handle("/browse/", http.StripPrefix("/browse", &rootHandler{
 		c:     c,
 		k:     &k,
 		store: store,
 	}))
 
+	http.Handle("/raw/", http.StripPrefix("/raw", http.FileServer(&httpFs{
+		c:     c,
+		k:     &k,
+		store: store,
+	})))
+
+	http.Handle("/static/", http.StripPrefix("/static", http.FileServer(static.Files)))
+
 	url := "http://" + *addrArg
 	log.Printf("serving on %s\n", url)
 
 	go func() {
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(200 * time.Millisecond)
 		browser.OpenURL(url)
 	}()
 

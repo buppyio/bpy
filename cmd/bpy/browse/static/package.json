@@ -1,0 +1,26 @@
+{
+  "name": "buppy-browse",
+  "version": "0.0.0",
+  "description": "bpy browse resources",
+
+  "scripts": {
+    "build": "gulp"
+  },
+
+  "devDependencies": {
+    "bootstrap": "^3.3.7",
+    "gulp": "^3.9.1",
+    "gulp-less": "^3.3.0",
+    "gulp-autoprefixer": "^3.1.1",
+    "gulp-clean-css": "^2.0.13"
+  },
+
+  "license": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/buppyio/bpy"
+  },
+  "bugs": {
+    "url": "https://github.com/buppyio/bpy/issues"
+  }
+}

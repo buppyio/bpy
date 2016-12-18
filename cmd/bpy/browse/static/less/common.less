@@ -1,0 +1,37 @@
+@import (reference) 'bootstrap-custom.less';
+
+::selection {
+  background: @brand-primary;
+  color: #ffffff;
+}
+
+
+// Enable sticking to the bottom of body.
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+
+// Footer reserves space and sticks to bottom of body.
+@footer-height: 60px;
+
+.footer-reservation {
+  height: @footer-height * 1.5;
+
+  @media (min-width: @screen-sm-min) {
+    height: @footer-height * 3;
+  }
+}
+
+footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+
+  height: @footer-height;
+  padding-top: @footer-height / 3;
+
+  background-color: @gray-lighter;
+}

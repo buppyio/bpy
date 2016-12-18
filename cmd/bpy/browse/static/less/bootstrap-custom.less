@@ -1,0 +1,73 @@
+@import "../node_modules/bootstrap/less/bootstrap.less";
+
+// Multi-component variables.
+@brand-primary: #ff6600;
+@brand-secondary: #363c52;
+@gray-light: lighten(@gray-base, 66.7%);
+
+
+// Code blocks.
+@code-color: #333333;
+@pre-color: @code-color;
+
+@pre-bg: #e6e6e6;
+@code-bg: #e6e6e6;
+
+pre {
+  border: 0;
+}
+
+
+// Headings.
+h1, .h1 {
+  line-height: 40px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+
+  color: @brand-primary;
+  border-bottom: 2px solid @gray-lighter;
+}
+
+h2, .h2 {
+  font-size:  24px;
+}
+
+h3, .h3 {
+  font-size:  20px;
+}
+
+
+// Lists.
+ol > li {
+  margin-top: 20px;
+}
+
+
+// Navbar.
+@navbar-default-bg: @brand-secondary;
+
+@navbar-default-link-color: #ffffff;
+@navbar-default-link-hover-color: @brand-primary;
+
+@navbar-default-brand-hover-color: @navbar-default-link-hover-color;
+
+@navbar-default-toggle-border-color: transparent;
+@navbar-default-toggle-hover-bg: @brand-primary;
+@navbar-default-toggle-icon-bar-bg: #ffffff;
+
+.navbar-brand b {
+  color: @brand-primary;
+}
+
+.navbar, .navbar-fixed-top .navbar-collapse {
+  box-shadow: none;
+  border: none;
+}
+
+.navbar-fixed-top .navbar-collapse {
+  max-height: calc(100vh ~"-" @navbar-height);
+}
+
+.navbar-fixed-top + * {
+  margin-top: @navbar-height + 20px;
+}
