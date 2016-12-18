@@ -20,7 +20,9 @@ const browseTemplateStr string = `
 		{{range .DirEnts}}
 		<li>
 		{{if .IsDir}}
-			<a href="/browse/{{$path}}{{.Name}}/">{{.Name}}/</a> <a href="/zip/{{$path}}{{.Name}}/">(zip)</a>
+			<a href="/browse/{{$path}}{{.Name}}/">{{.Name}}/</a>
+			<a href="/zip/{{$path}}{{.Name}}/">(zip)</a>
+			<a href="/targz/{{$path}}{{.Name}}/">(.tar.gz)</a>
 		{{else}}
 			<a href="/raw/{{$path}}{{.Name}}">{{.Name}}</a>
 		{{end}}
