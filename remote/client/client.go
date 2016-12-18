@@ -7,12 +7,6 @@ import (
 	"sync"
 )
 
-type ReadWriteCloser interface {
-	io.Reader
-	io.Writer
-	io.Closer
-}
-
 var (
 	ErrClientClosed = errors.New("client closed")
 	ErrTooManyCalls = errors.New("too many calls in progress")
@@ -24,7 +18,7 @@ var (
 )
 
 type Client struct {
-	conn ReadWriteCloser
+	conn io.ReadWriteCloser
 
 	maxMessageSizeLock sync.RWMutex
 	maxMessageSize     uint32
@@ -89,7 +83,7 @@ func readMessages(c *Client) {
 	c.Close()
 }
 
-func Attach(conn ReadWriteCloser, keyId string) (*Client, error) {
+func Attach(conn io.ReadWriteCloser, keyId string) (*Client, error) {
 	maxsz := uint32(1024 * 1024)
 	c := &Client{
 		conn:  conn,
