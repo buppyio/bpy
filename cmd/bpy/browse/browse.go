@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/buppyio/bpy"
+	"github.com/buppyio/bpy/archive"
 	"github.com/buppyio/bpy/cmd/bpy/browse/static"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/fs"
@@ -13,8 +14,10 @@ import (
 	"github.com/buppyio/bpy/remote/client"
 	"github.com/pkg/browser"
 	"log"
+	"mime"
 	"net/http"
 	"os"
+	"path"
 	"time"
 )
 
@@ -64,6 +67,62 @@ func (h *rootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Path:    walkPath,
 		DirEnts: dirEnts,
 	})
+}
+
+type zipHandler struct {
+	c     *client.Client
+	k     *bpy.Key
+	store bpy.CStore
+}
+
+func (h *zipHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	walkPath := r.URL.Path[1:]
+	rootHash, _, ok, err := remote.GetRoot(h.c, h.k)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "error: %s", err.Error())
+		return
+	}
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprintf(w, "root missing\n")
+		return
+	}
+
+	ref, err := refs.GetRef(h.store, rootHash)
+	if err != nil {
+		common.Die("error fetching ref: %s\n", err.Error())
+	}
+
+	ent, err := fs.Walk(h.store, ref.Root, walkPath)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "error: %s", err.Error())
+		return
+	}
+
+	if !ent.IsDir() {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "error: not a directory")
+		return
+	}
+
+	base := path.Base(walkPath)
+	zipName := ""
+	switch base {
+	case ".":
+		fallthrough
+	case "/":
+		zipName = "root.zip"
+	default:
+		zipName = base + ".zip"
+	}
+	log.Printf("%s", zipName)
+
+	w.Header().Set("Content-Type", mime.TypeByExtension(".zip"))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", zipName))
+
+	archive.Zip(h.store, ent.HTree.Data, w)
 }
 
 type httpFs struct {
@@ -212,6 +271,12 @@ func Browse() {
 	http.Handle("/", http.RedirectHandler("/browse/", http.StatusSeeOther))
 
 	http.Handle("/browse/", http.StripPrefix("/browse", &rootHandler{
+		c:     c,
+		k:     &k,
+		store: store,
+	}))
+
+	http.Handle("/zip/", http.StripPrefix("/zip", &zipHandler{
 		c:     c,
 		k:     &k,
 		store: store,
