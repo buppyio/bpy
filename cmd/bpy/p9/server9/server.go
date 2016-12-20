@@ -55,6 +55,57 @@ type Server struct {
 	fids           map[proto9.Fid]Handle
 }
 
+func Walk(f File, names []string) (File, []proto9.Qid, error) {
+	var werr error
+	wqids := make([]proto9.Qid, 0, len(names))
+
+	i := 0
+	name := ""
+	for i, name = range names {
+		if name == "." || name == "" || strings.Index(name, "/") != -1 {
+			return nil, nil, ErrBadPath
+		}
+		if name == ".." {
+			parent, err := f.Parent()
+			if err != nil {
+				return nil, nil, err
+			}
+			qid, err := parent.Qid()
+			if err != nil {
+				return nil, nil, err
+			}
+			f = parent
+			wqids = append(wqids, qid)
+			continue
+		}
+		qid, err := f.Qid()
+		if err != nil {
+			return nil, nil, err
+		}
+		if !qid.IsDir() {
+			werr = ErrNotDir
+			goto walkerr
+		}
+		child, err := f.Child(name)
+		if err != nil {
+			if err == ErrNotExist {
+				werr = ErrNotExist
+				goto walkerr
+			}
+			return nil, nil, err
+		}
+		f = child
+		wqids = append(wqids, qid)
+	}
+	return f, wqids, nil
+
+walkerr:
+	if i == 0 {
+		return nil, nil, werr
+	}
+	return nil, wqids, nil
+}
+
 type AttachFunc func(string) (File, error)
 
 func NewServer(maxMessageSize uint32, f AttachFunc) *Server {
