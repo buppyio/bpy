@@ -2,13 +2,16 @@ package p9
 
 import (
 	"github.com/buppyio/bpy"
-	"github.com/buppyio/bpy/refs"
-	"github.com/buppyio/bpy/remote"
+	//"github.com/buppyio/bpy/refs"
+	//"github.com/buppyio/bpy/remote"
+	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/remote/client"
-	// "github.com/buppyio/bpy/cmd/bpy/p9/server9"
+
 	"errors"
-	"fmt"
-	"time"
+	"github.com/buppyio/bpy/cmd/bpy/p9/proto9"
+	"github.com/buppyio/bpy/cmd/bpy/p9/server9"
+	//"fmt"
+	//"time"
 	//	"fmt"
 	//	"io"
 	//	"os"
@@ -21,19 +24,60 @@ var (
 	ErrReadOnly = errors.New("read only")
 )
 
-type fs struct {
-	key    bpy.Key
-	store  bpy.CStore
-	client *client.Client
+type fs9 struct {
+	key         bpy.Key
+	store       bpy.CStore
+	client      *client.Client
+	pathCounter int64
+	version     int64
+}
+
+func (fs *fs9) GetQidPath(hash [32]byte, fspath string) int64 {
+	fs.pathCounter++
+	return fs.pathCounter
+}
+
+func (fs *fs9) GetVersion(hash [32]byte, fspath string) int64 {
+	return fs.version
 }
 
 type root struct {
-	fs         *fs
-	version    int64
-	rootDir    [32]byte
-	lastUpdate time.Time
+	fs   *fs9
+	file *file
 }
 
+func (f *root) Parent() (server9.File, error) {
+	return nil, nil
+}
+
+func (f *root) Child(name string) (server9.File, error) {
+	return nil, errors.New("unimplemented")
+}
+
+func (f *root) Qid() (proto9.Qid, error) {
+	return proto9.Qid{}, errors.New("unimplemented")
+}
+
+func (f *root) Stat() (proto9.Stat, error) {
+	return proto9.Stat{}, errors.New("unimplemented")
+}
+
+func (f *root) NewHandle() (server9.Handle, error) {
+	return nil, errors.New("unimplemented")
+}
+
+type file struct {
+	fs       *fs9
+	parent   *file
+	path     string
+	hash     [32]byte
+	qid      proto9.Qid
+	stat     proto9.Stat
+	ent      fs.DirEnt
+	children []*file
+}
+
+/*
 func (f *root) update() error {
 	root, _, ok, err := remote.GetRoot(f.fs.client, &f.fs.key)
 	if err != nil {
@@ -57,6 +101,7 @@ func (f *root) update() error {
 
 	return nil
 }
+*/
 
 /*
 var pathMutex sync.Mutex
