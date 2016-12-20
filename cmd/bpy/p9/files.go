@@ -1,8 +1,14 @@
 package p9
 
 import (
-	//	"github.com/buppyio/bpy/cmd/bpy/p9/proto9"
+	"github.com/buppyio/bpy"
+	"github.com/buppyio/bpy/refs"
+	"github.com/buppyio/bpy/remote"
+	"github.com/buppyio/bpy/remote/client"
+	// "github.com/buppyio/bpy/cmd/bpy/p9/server9"
 	"errors"
+	"fmt"
+	"time"
 	//	"fmt"
 	//	"io"
 	//	"os"
@@ -15,6 +21,43 @@ var (
 	ErrReadOnly = errors.New("read only")
 )
 
+type fs struct {
+	key    bpy.Key
+	store  bpy.CStore
+	client *client.Client
+}
+
+type root struct {
+	fs         *fs
+	version    int64
+	rootDir    [32]byte
+	lastUpdate time.Time
+}
+
+func (f *root) update() error {
+	root, _, ok, err := remote.GetRoot(f.fs.client, &f.fs.key)
+	if err != nil {
+		return fmt.Errorf("error getting root: %s", err)
+	}
+	if !ok {
+		return fmt.Errorf("root missing\n")
+	}
+
+	ref, err := refs.GetRef(f.fs.store, root)
+	if err != nil {
+		return fmt.Errorf("error updating root: %s", err)
+	}
+
+	if ref.Root == f.rootDir {
+		return nil
+	}
+
+	f.version++
+	f.rootDir = ref.Root
+
+	return nil
+}
+
 /*
 var pathMutex sync.Mutex
 var pathCount uint64
@@ -25,6 +68,14 @@ func nextPath() uint64 {
 	pathCount++
 	pathMutex.Unlock()
 	return r
+}
+
+type state struct {
+	srv    *Server
+	parent *file
+	path   string
+	qid    proto9.Qid
+	dirEnt fs.DirEnt
 }
 
 type file struct {
