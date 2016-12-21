@@ -1,19 +1,19 @@
 package p9
 
 import (
-	"github.com/buppyio/bpy"
-	//"github.com/buppyio/bpy/refs"
-	//"github.com/buppyio/bpy/remote"
 	"errors"
 	"fmt"
+	"github.com/buppyio/bpy"
 	"github.com/buppyio/bpy/cmd/bpy/p9/proto9"
 	"github.com/buppyio/bpy/cmd/bpy/p9/server9"
 	"github.com/buppyio/bpy/fs"
 	"github.com/buppyio/bpy/htree"
+	"github.com/buppyio/bpy/refs"
+	"github.com/buppyio/bpy/remote"
 	"github.com/buppyio/bpy/remote/client"
-	"path"
-	//"time"
 	"io"
+	"path"
+	"time"
 )
 
 var (
@@ -27,6 +27,7 @@ type fs9 struct {
 	pathCounter uint64
 	version     uint32
 	file        *file
+	lastUpdated time.Time
 }
 
 func (fs *fs9) CreateFile(ent fs.DirEnt, parent server9.File, fspath string) (*file, error) {
@@ -70,9 +71,13 @@ func (fs *fs9) CreateFile(ent fs.DirEnt, parent server9.File, fspath string) (*f
 	return f, nil
 }
 
-/*
-func (f *root) update() error {
-	root, _, ok, err := remote.GetRoot(f.fs.client, &f.fs.key)
+func (r *fs9) update() error {
+
+	if r.file != nil && time.Since(r.lastUpdated) < 30*time.Second {
+		return nil
+	}
+
+	root, _, ok, err := remote.GetRoot(r.client, &r.key)
 	if err != nil {
 		return fmt.Errorf("error getting root: %s", err)
 	}
@@ -80,31 +85,56 @@ func (f *root) update() error {
 		return fmt.Errorf("root missing\n")
 	}
 
-	ref, err := refs.GetRef(f.fs.store, root)
+	ref, err := refs.GetRef(r.store, root)
 	if err != nil {
-		return fmt.Errorf("error updating root: %s", err)
+		return fmt.Errorf("error getting ref: %s", err)
 	}
 
-	if ref.Root == f.rootDir {
+	if r.file != nil && ref.Root == r.file.ent.HTree.Data {
 		return nil
 	}
 
-	f.version++
-	f.rootDir = ref.Root
+	dirEnts, err := fs.ReadDir(r.store, ref.Root)
+	if err != nil {
+		return fmt.Errorf("error reading root: %s", err)
+	}
+
+	f, err := r.CreateFile(dirEnts[0], nil, "/")
+	if err != nil {
+		return fmt.Errorf("error creating root file: %s", err)
+	}
+	r.file = f
+
+	r.lastUpdated = time.Now()
+	r.version++
 
 	return nil
 }
-*/
 
 func (r *fs9) Parent() (server9.File, error) {
+	err := r.update()
+	if err != nil {
+		return nil, err
+	}
+
 	return nil, nil
 }
 
 func (r *fs9) Child(name string) (server9.File, error) {
+	err := r.update()
+	if err != nil {
+		return nil, err
+	}
+
 	return r.file.Child(name)
 }
 
 func (r *fs9) Qid() (proto9.Qid, error) {
+	err := r.update()
+	if err != nil {
+		return proto9.Qid{}, err
+	}
+
 	return proto9.Qid{
 		Type:    proto9.QTDIR,
 		Path:    0,
@@ -113,6 +143,11 @@ func (r *fs9) Qid() (proto9.Qid, error) {
 }
 
 func (r *fs9) Stat() (proto9.Stat, error) {
+	err := r.update()
+	if err != nil {
+		return proto9.Stat{}, err
+	}
+
 	qid, err := r.file.Qid()
 	if err != nil {
 		return proto9.Stat{}, err
@@ -125,9 +160,14 @@ func (r *fs9) Stat() (proto9.Stat, error) {
 	return st, nil
 }
 
-func (f *fs9) NewHandle() (server9.Handle, error) {
+func (r *fs9) NewHandle() (server9.Handle, error) {
+	err := r.update()
+	if err != nil {
+		return nil, err
+	}
+
 	return &rootHandle{
-		fs: f,
+		fs: r,
 	}, nil
 }
 
@@ -138,6 +178,11 @@ type rootHandle struct {
 }
 
 func (h *rootHandle) GetFile() (server9.File, error) {
+	err := h.fs.update()
+	if err != nil {
+		return nil, err
+	}
+
 	return h.fs.file, nil
 }
 
@@ -146,14 +191,28 @@ func (h *rootHandle) GetIounit(maxMessageSize uint32) uint32 {
 }
 
 func (h *rootHandle) Twalk(msg *proto9.Twalk) (server9.File, []proto9.Qid, error) {
+	err := h.fs.update()
+	if err != nil {
+		return nil, nil, err
+	}
 	return server9.Walk(h.fs.file, msg.Names)
 }
 
 func (h *rootHandle) Topen(msg *proto9.Topen) (proto9.Qid, error) {
+	err := h.fs.update()
+	if err != nil {
+		return proto9.Qid{}, err
+	}
+
 	return h.fs.file.qid, nil
 }
 
 func (h *rootHandle) Tread(msg *proto9.Tread, buf []byte) (uint32, error) {
+	err := h.fs.update()
+	if err != nil {
+		return 0, err
+	}
+
 	if msg.Offset == 0 {
 		children, err := h.fs.file.getChildren()
 		if err != nil {
@@ -204,6 +263,11 @@ func (h *rootHandle) Tremove(msg *proto9.Tremove) error {
 }
 
 func (h *rootHandle) Tstat(msg *proto9.Tstat) (proto9.Stat, error) {
+	err := h.fs.update()
+	if err != nil {
+		return proto9.Stat{}, err
+	}
+
 	return h.fs.Stat()
 }
 

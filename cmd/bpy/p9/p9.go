@@ -2,12 +2,8 @@ package p9
 
 import (
 	"flag"
-	"fmt"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/cmd/bpy/p9/server9"
-	"github.com/buppyio/bpy/fs"
-	"github.com/buppyio/bpy/refs"
-	"github.com/buppyio/bpy/remote"
 	"log"
 	"net"
 )
@@ -36,24 +32,6 @@ func handleConnection(con net.Conn) {
 	}
 	defer store.Close()
 
-	root, _, ok, err := remote.GetRoot(c, &k)
-	if err != nil {
-		common.Die("error getting root: %s", err)
-	}
-	if !ok {
-		common.Die("root missing\n")
-	}
-
-	ref, err := refs.GetRef(store, root)
-	if err != nil {
-		common.Die("error getting ref: %s", err)
-	}
-
-	dirEnts, err := fs.ReadDir(store, ref.Root)
-	if err != nil {
-		common.Die("error reading root: %s", err)
-	}
-
 	attachFunc := func(name string) (server9.File, error) {
 
 		fs := &fs9{
@@ -61,12 +39,6 @@ func handleConnection(con net.Conn) {
 			store:  store,
 			client: c,
 		}
-
-		f, err := fs.CreateFile(dirEnts[0], nil, "/")
-		if err != nil {
-			return nil, fmt.Errorf("error creating root file: %s", err)
-		}
-		fs.file = f
 
 		return fs, nil
 	}
