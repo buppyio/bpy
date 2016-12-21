@@ -8,12 +8,13 @@ import (
 	"github.com/buppyio/bpy/remote/client"
 
 	"errors"
+	"fmt"
 	"github.com/buppyio/bpy/cmd/bpy/p9/proto9"
 	"github.com/buppyio/bpy/cmd/bpy/p9/server9"
-	//"fmt"
+	"path"
 	//"time"
 	//	"fmt"
-	//	"io"
+	"io"
 	//	"os"
 	//	"path"
 	//	"strings"
@@ -28,53 +29,55 @@ type fs9 struct {
 	key         bpy.Key
 	store       bpy.CStore
 	client      *client.Client
-	pathCounter int64
-	version     int64
+	pathCounter uint64
+	version     uint32
 }
 
-func (fs *fs9) GetQidPath(hash [32]byte, fspath string) int64 {
+func (fs *fs9) CreateFile(root *file, ent fs.DirEnt, parent *file, fspath string) (*file, error) {
+
 	fs.pathCounter++
-	return fs.pathCounter
-}
 
-func (fs *fs9) GetVersion(hash [32]byte, fspath string) int64 {
-	return fs.version
+	mode := proto9.FileMode(ent.Mode() & 0777)
+	qtype := proto9.QTFILE
+
+	if ent.Mode().IsDir() {
+		mode |= proto9.DMDIR
+		qtype = proto9.QTDIR
+	}
+
+	qid := proto9.Qid{
+		Type:    qtype,
+		Path:    fs.pathCounter,
+		Version: fs.version,
+	}
+
+	f := &file{
+		fs:     fs,
+		root:   root,
+		parent: parent,
+		path:   fspath,
+		qid:    qid,
+		stat: proto9.Stat{
+			Mode:   mode,
+			Atime:  0,
+			Mtime:  0,
+			Name:   ent.Name(),
+			Qid:    qid,
+			Length: uint64(ent.Size()),
+			UID:    "nobody",
+			GID:    "nobody",
+			MUID:   "nobody",
+		},
+		ent:      ent,
+		children: nil,
+	}
+
+	return f, nil
 }
 
 type root struct {
 	fs   *fs9
 	file *file
-}
-
-func (f *root) Parent() (server9.File, error) {
-	return nil, nil
-}
-
-func (f *root) Child(name string) (server9.File, error) {
-	return nil, errors.New("unimplemented")
-}
-
-func (f *root) Qid() (proto9.Qid, error) {
-	return proto9.Qid{}, errors.New("unimplemented")
-}
-
-func (f *root) Stat() (proto9.Stat, error) {
-	return proto9.Stat{}, errors.New("unimplemented")
-}
-
-func (f *root) NewHandle() (server9.Handle, error) {
-	return nil, errors.New("unimplemented")
-}
-
-type file struct {
-	fs       *fs9
-	parent   *file
-	path     string
-	hash     [32]byte
-	qid      proto9.Qid
-	stat     proto9.Stat
-	ent      fs.DirEnt
-	children []*file
 }
 
 /*
@@ -103,59 +106,93 @@ func (f *root) update() error {
 }
 */
 
-/*
-var pathMutex sync.Mutex
-var pathCount uint64
-
-func nextPath() uint64 {
-	pathMutex.Lock()
-	r := pathCount
-	pathCount++
-	pathMutex.Unlock()
-	return r
+func (r *root) Parent() (server9.File, error) {
+	return nil, nil
 }
 
-type state struct {
-	srv    *Server
-	parent *file
-	path   string
-	qid    proto9.Qid
-	dirEnt fs.DirEnt
+func (r *root) Child(name string) (server9.File, error) {
+	return r.file.Child(name)
+}
+
+func (r *root) Qid() (proto9.Qid, error) {
+	return proto9.Qid{
+		Type:    proto9.QTDIR,
+		Path:    0,
+		Version: r.fs.version,
+	}, nil
+}
+
+func (r *root) Stat() (proto9.Stat, error) {
+	qid, err := r.file.Qid()
+	if err != nil {
+		return proto9.Stat{}, err
+	}
+	st, err := r.file.Stat()
+	if err != nil {
+		return proto9.Stat{}, err
+	}
+	st.Qid = qid
+	return st, nil
+}
+
+func (f *root) NewHandle() (server9.Handle, error) {
+	return nil, errors.New("unimplemented")
 }
 
 type file struct {
-	srv    *Server
-	parent *file
-	path   string
-	qid    proto9.Qid
-	dirEnt fs.DirEnt
+	fs       *fs9
+	root     *file
+	parent   *file
+	path     string
+	qid      proto9.Qid
+	stat     proto9.Stat
+	ent      fs.DirEnt
+	children []*file
 }
 
-func (f *file) Parent() (File, error) {
+func (f *file) getChildren() ([]*file, error) {
+	if !f.ent.IsDir() {
+		return nil, server9.ErrNotDir
+	}
+
+	ents, err := fs.ReadDir(f.fs.store, f.ent.HTree.Data)
+	if err != nil {
+		return nil, err
+	}
+	ents = ents[1:]
+	children := []*file{}
+
+	for _, ent := range ents {
+		child, err := f.fs.CreateFile(f.root, ent, f, path.Join(f.path, ent.EntName))
+		if err != nil {
+			return nil, err
+		}
+		children = append(children, child)
+	}
+
+	return children, nil
+}
+
+func (f *file) Parent() (server9.File, error) {
 	return f.parent, nil
 }
 
-func (f *file) Child(name string) (File, error) {
-	if !f.dirEnt.IsDir() {
+func (f *file) Child(name string) (server9.File, error) {
+	if !f.ent.IsDir() {
 		return nil, fmt.Errorf("%s is not a dir", f.path)
 	}
 
-	dirEnts, err := fs.ReadDir(f.srv.memCachedStore, f.dirEnt.Data)
+	children, err := f.getChildren()
 	if err != nil {
 		return nil, err
 	}
 
-	for i := 0; i < len(dirEnts); i++ {
-		if dirEnts[i].EntName == name {
-			return &file{
-				srv:    f.srv,
-				parent: f,
-				qid:    makeQid(dirEnts[i].IsDir()),
-				path:   path.Join(f.path, name),
-				dirEnt: dirEnts[i],
-			}, nil
+	for i := 0; i < len(children); i++ {
+		if children[i].ent.EntName == name {
+			return children[i], nil
 		}
 	}
+
 	return nil, fmt.Errorf("%s does not exist", path.Join(f.path, name))
 }
 
@@ -164,11 +201,11 @@ func (f *file) Qid() (proto9.Qid, error) {
 }
 
 func (f *file) Stat() (proto9.Stat, error) {
-	return osToProto9Stat(f.qid, &f.dirEnt), nil
+	return f.stat, nil
 }
 
-func (f *file) NewHandle() (Handle, error) {
-	if f.dirEnt.IsDir() {
+func (f *file) NewHandle() (server9.Handle, error) {
+	if f.ent.IsDir() {
 		return &dirHandle{
 			file: f,
 		}, nil
@@ -184,54 +221,36 @@ type dirHandle struct {
 	stats  []proto9.Stat
 }
 
-func (d *dirHandle) GetFile() (File, error) {
+func (d *dirHandle) GetFile() (server9.File, error) {
 	return d.file, nil
 }
 
 func (d *dirHandle) GetIounit(maxMessageSize uint32) uint32 {
-	return 0
+	return maxMessageSize - proto9.WriteOverhead
 }
 
-func (d *dirHandle) Twalk(msg *proto9.Twalk) (File, []proto9.Qid, error) {
-	return walk(d.file, msg.Names)
+func (d *dirHandle) Twalk(msg *proto9.Twalk) (server9.File, []proto9.Qid, error) {
+	return server9.Walk(d.file, msg.Names)
 }
 
 func (d *dirHandle) Topen(msg *proto9.Topen) (proto9.Qid, error) {
 	return d.file.qid, nil
 }
 
-func osToProto9Stat(qid proto9.Qid, ent os.FileInfo) proto9.Stat {
-	mode := proto9.FileMode(ent.Mode() & 0777)
-	if ent.Mode().IsDir() {
-		mode |= proto9.DMDIR
-	}
-	return proto9.Stat{
-		Mode:   mode,
-		Atime:  0,
-		Mtime:  0,
-		Name:   ent.Name(),
-		Qid:    qid,
-		Length: uint64(ent.Size()),
-		UID:    "nobody",
-		GID:    "nobody",
-		MUID:   "nobody",
-	}
-}
-
 func (d *dirHandle) Tread(msg *proto9.Tread, buf []byte) (uint32, error) {
 	if msg.Offset == 0 {
-		dirEnts, err := fs.ReadDir(d.file.srv.memCachedStore, d.file.dirEnt.Data)
+		children, err := d.file.getChildren()
 		if err != nil {
 			return 0, err
 		}
-		d.stats = make([]proto9.Stat, len(dirEnts), len(dirEnts))
-		for i, dirEnt := range dirEnts {
-			d.stats[i] = osToProto9Stat(makeQid(dirEnt.IsDir()), &dirEnt)
+		d.stats = make([]proto9.Stat, len(children), len(children))
+		for i, child := range children {
+			d.stats[i] = child.stat
 		}
 	}
 
 	if msg.Offset != d.offset {
-		return 0, ErrBadRead
+		return 0, server9.ErrBadRead
 	}
 	n := uint32(0)
 	for len(d.stats) != 0 {
@@ -255,7 +274,7 @@ func (d *dirHandle) Twrite(msg *proto9.Twrite) (uint32, error) {
 	return 0, ErrReadOnly
 }
 
-func (d *dirHandle) Tcreate(msg *proto9.Tcreate) (Handle, error) {
+func (d *dirHandle) Tcreate(msg *proto9.Tcreate) (server9.Handle, error) {
 	return nil, ErrReadOnly
 }
 
@@ -280,15 +299,16 @@ type fileHandle struct {
 	rdr  *fs.FileReader
 }
 
-func (f *fileHandle) GetFile() (File, error) {
+func (f *fileHandle) GetFile() (server9.File, error) {
 	return f.file, nil
 }
+
 func (f *fileHandle) GetIounit(maxMessageSize uint32) uint32 {
-	return 0
+	return maxMessageSize - proto9.WriteOverhead
 }
 
-func (f *fileHandle) Twalk(msg *proto9.Twalk) (File, []proto9.Qid, error) {
-	return walk(f.file, msg.Names)
+func (f *fileHandle) Twalk(msg *proto9.Twalk) (server9.File, []proto9.Qid, error) {
+	return server9.Walk(f.file, msg.Names)
 }
 
 func (f *fileHandle) Topen(msg *proto9.Topen) (proto9.Qid, error) {
@@ -297,7 +317,7 @@ func (f *fileHandle) Topen(msg *proto9.Topen) (proto9.Qid, error) {
 		f.rdr = nil
 	}
 	var err error
-	f.rdr, err = fs.Open(f.file.srv.store, f.file.srv.root, f.file.path)
+	f.rdr, err = fs.Open(f.file.fs.store, f.file.root.ent.HTree.Data, f.file.path)
 	return f.file.qid, err
 }
 
@@ -319,7 +339,7 @@ func (f *fileHandle) Twrite(msg *proto9.Twrite) (uint32, error) {
 	return 0, ErrReadOnly
 }
 
-func (f *fileHandle) Tcreate(msg *proto9.Tcreate) (Handle, error) {
+func (f *fileHandle) Tcreate(msg *proto9.Tcreate) (server9.Handle, error) {
 	return nil, ErrReadOnly
 }
 
@@ -342,4 +362,3 @@ func (f *fileHandle) Clunk() error {
 	}
 	return nil
 }
-*/
