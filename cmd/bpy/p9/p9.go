@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/cmd/bpy/p9/server9"
+	"github.com/buppyio/bpy/fs"
+	"github.com/buppyio/bpy/refs"
+	"github.com/buppyio/bpy/remote"
 	"log"
 	"net"
 )
 
-func handleConnection(con net.Conn, tag string) {
+func handleConnection(con net.Conn) {
 	defer con.Close()
 	cfg, err := common.GetConfig()
 	if err != nil {
@@ -33,21 +36,47 @@ func handleConnection(con net.Conn, tag string) {
 	}
 	defer store.Close()
 
+	root, _, ok, err := remote.GetRoot(c, &k)
+	if err != nil {
+		common.Die("error getting root: %s", err)
+	}
+	if !ok {
+		common.Die("root missing\n")
+	}
+
+	ref, err := refs.GetRef(store, root)
+	if err != nil {
+		common.Die("error getting ref: %s", err)
+	}
+
+	dirEnts, err := fs.ReadDir(store, ref.Root)
+	if err != nil {
+		common.Die("error reading root: %s", err)
+	}
+
 	attachFunc := func(name string) (server9.File, error) {
-		return nil, fmt.Errorf("unimplemented")
+
+		fs := &fs9{
+			key:    k,
+			store:  store,
+			client: c,
+		}
+
+		f, err := fs.CreateFile(dirEnts[0], nil, "/")
+		if err != nil {
+			return nil, fmt.Errorf("error creating root file: %s", err)
+		}
+		fs.file = f
+
+		return fs, nil
 	}
 	srv := server9.NewServer(1024*1024, attachFunc)
 	srv.Serve(con)
 }
 
 func P9() {
-	tagArg := flag.String("tag", "default", "tag of directory to list")
-	addrArg := flag.String("addr", "127.0.0.1:9001", "address to listen on ")
+	addrArg := flag.String("addr", "127.0.0.1:9001", "address to listen on")
 	flag.Parse()
-
-	if *tagArg == "" {
-		log.Fatalf("please specify a tag to browse\n")
-	}
 
 	log.Printf("listening on: %s", *addrArg)
 	listener, err := net.Listen("tcp", *addrArg)
@@ -59,6 +88,6 @@ func P9() {
 		if err != nil {
 			log.Fatalf("error accepting connection: %s", err.Error())
 		}
-		go handleConnection(con, *tagArg)
+		go handleConnection(con)
 	}
 }

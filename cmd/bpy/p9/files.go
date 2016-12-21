@@ -4,13 +4,13 @@ import (
 	"github.com/buppyio/bpy"
 	//"github.com/buppyio/bpy/refs"
 	//"github.com/buppyio/bpy/remote"
-	"github.com/buppyio/bpy/fs"
-	"github.com/buppyio/bpy/remote/client"
-
 	"errors"
 	"fmt"
 	"github.com/buppyio/bpy/cmd/bpy/p9/proto9"
 	"github.com/buppyio/bpy/cmd/bpy/p9/server9"
+	"github.com/buppyio/bpy/fs"
+	"github.com/buppyio/bpy/htree"
+	"github.com/buppyio/bpy/remote/client"
 	"path"
 	//"time"
 	"io"
@@ -26,9 +26,10 @@ type fs9 struct {
 	client      *client.Client
 	pathCounter uint64
 	version     uint32
+	file        *file
 }
 
-func (fs *fs9) CreateFile(root *file, ent fs.DirEnt, parent *file, fspath string) (*file, error) {
+func (fs *fs9) CreateFile(ent fs.DirEnt, parent server9.File, fspath string) (*file, error) {
 
 	fs.pathCounter++
 
@@ -48,7 +49,6 @@ func (fs *fs9) CreateFile(root *file, ent fs.DirEnt, parent *file, fspath string
 
 	f := &file{
 		fs:     fs,
-		root:   root,
 		parent: parent,
 		path:   fspath,
 		qid:    qid,
@@ -68,11 +68,6 @@ func (fs *fs9) CreateFile(root *file, ent fs.DirEnt, parent *file, fspath string
 	}
 
 	return f, nil
-}
-
-type root struct {
-	fs   *fs9
-	file *file
 }
 
 /*
@@ -101,23 +96,23 @@ func (f *root) update() error {
 }
 */
 
-func (r *root) Parent() (server9.File, error) {
+func (r *fs9) Parent() (server9.File, error) {
 	return nil, nil
 }
 
-func (r *root) Child(name string) (server9.File, error) {
+func (r *fs9) Child(name string) (server9.File, error) {
 	return r.file.Child(name)
 }
 
-func (r *root) Qid() (proto9.Qid, error) {
+func (r *fs9) Qid() (proto9.Qid, error) {
 	return proto9.Qid{
 		Type:    proto9.QTDIR,
 		Path:    0,
-		Version: r.fs.version,
+		Version: r.version,
 	}, nil
 }
 
-func (r *root) Stat() (proto9.Stat, error) {
+func (r *fs9) Stat() (proto9.Stat, error) {
 	qid, err := r.file.Qid()
 	if err != nil {
 		return proto9.Stat{}, err
@@ -130,14 +125,95 @@ func (r *root) Stat() (proto9.Stat, error) {
 	return st, nil
 }
 
-func (f *root) NewHandle() (server9.Handle, error) {
-	return nil, errors.New("unimplemented")
+func (f *fs9) NewHandle() (server9.Handle, error) {
+	return &rootHandle{
+		fs: f,
+	}, nil
+}
+
+type rootHandle struct {
+	fs     *fs9
+	offset uint64
+	stats  []proto9.Stat
+}
+
+func (h *rootHandle) GetFile() (server9.File, error) {
+	return h.fs.file, nil
+}
+
+func (h *rootHandle) GetIounit(maxMessageSize uint32) uint32 {
+	return maxMessageSize - proto9.WriteOverhead
+}
+
+func (h *rootHandle) Twalk(msg *proto9.Twalk) (server9.File, []proto9.Qid, error) {
+	return server9.Walk(h.fs.file, msg.Names)
+}
+
+func (h *rootHandle) Topen(msg *proto9.Topen) (proto9.Qid, error) {
+	return h.fs.file.qid, nil
+}
+
+func (h *rootHandle) Tread(msg *proto9.Tread, buf []byte) (uint32, error) {
+	if msg.Offset == 0 {
+		children, err := h.fs.file.getChildren()
+		if err != nil {
+			return 0, err
+		}
+		h.stats = make([]proto9.Stat, len(children), len(children))
+		for i, child := range children {
+			h.stats[i] = child.stat
+		}
+	}
+
+	if msg.Offset != h.offset {
+		return 0, server9.ErrBadRead
+	}
+
+	n := uint32(0)
+	for len(h.stats) != 0 {
+		curstat := h.stats[0]
+		statlen := uint32(proto9.StatLen(&curstat))
+		if uint64(statlen+n) > uint64(len(buf)) {
+			if n == 0 {
+				return 0, proto9.ErrBuffTooSmall
+			}
+			break
+		}
+		proto9.PackStat(buf[n:n+statlen], &curstat)
+		n += statlen
+		h.stats = h.stats[1:]
+	}
+	h.offset += uint64(n)
+	return n, nil
+}
+
+func (h *rootHandle) Twrite(msg *proto9.Twrite) (uint32, error) {
+	return 0, ErrReadOnly
+}
+
+func (h *rootHandle) Tcreate(msg *proto9.Tcreate) (server9.Handle, error) {
+	return nil, ErrReadOnly
+}
+
+func (h *rootHandle) Twstat(msg *proto9.Twstat) error {
+	return ErrReadOnly
+}
+
+func (h *rootHandle) Tremove(msg *proto9.Tremove) error {
+	return ErrReadOnly
+}
+
+func (h *rootHandle) Tstat(msg *proto9.Tstat) (proto9.Stat, error) {
+	return h.fs.Stat()
+}
+
+func (h *rootHandle) Clunk() error {
+	return nil
 }
 
 type file struct {
 	fs       *fs9
-	root     *file
-	parent   *file
+	parent   server9.File
 	path     string
 	qid      proto9.Qid
 	stat     proto9.Stat
@@ -158,7 +234,7 @@ func (f *file) getChildren() ([]*file, error) {
 	children := []*file{}
 
 	for _, ent := range ents {
-		child, err := f.fs.CreateFile(f.root, ent, f, path.Join(f.path, ent.EntName))
+		child, err := f.fs.CreateFile(ent, f, path.Join(f.path, ent.EntName))
 		if err != nil {
 			return nil, err
 		}
@@ -291,7 +367,7 @@ func (d *dirHandle) Clunk() error {
 
 type fileHandle struct {
 	file *file
-	rdr  *fs.FileReader
+	rdr  *htree.Reader
 }
 
 func (f *fileHandle) GetFile() (server9.File, error) {
@@ -308,11 +384,10 @@ func (f *fileHandle) Twalk(msg *proto9.Twalk) (server9.File, []proto9.Qid, error
 
 func (f *fileHandle) Topen(msg *proto9.Topen) (proto9.Qid, error) {
 	if f.rdr != nil {
-		f.rdr.Close()
 		f.rdr = nil
 	}
 	var err error
-	f.rdr, err = fs.Open(f.file.fs.store, f.file.root.ent.HTree.Data, f.file.path)
+	f.rdr, err = htree.NewReader(f.file.fs.store, f.file.ent.HTree.Data)
 	return f.file.qid, err
 }
 
@@ -352,7 +427,6 @@ func (f *fileHandle) Tstat(msg *proto9.Tstat) (proto9.Stat, error) {
 
 func (f *fileHandle) Clunk() error {
 	if f.rdr != nil {
-		f.rdr.Close()
 		f.rdr = nil
 	}
 	return nil
