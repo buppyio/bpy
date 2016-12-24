@@ -1,0 +1,134 @@
+@import (reference) 'bootstrap-custom.less';
+
+h1 {
+  margin: 0;
+  padding: 0;
+
+  line-height: 4 * 15px;
+  font-size: 18pt;
+
+  color: @gray-dark;
+}
+
+.navbar-fixed-top + * {
+  margin-top: @navbar-height;
+}
+
+.folder-actions {
+  float: right;
+
+  margin-top: 10px;
+}
+
+td > a > .glyphicon {
+  padding: 0px 15px;
+}
+
+.breadcrumb {
+  padding: 15px 0px;
+  margin: 0 0 0 -15px;
+  background-color: transparent;
+}
+
+ol > li {
+  margin: 0;
+}
+
+// TODO move to common stylesheet.
+.btn-borderless {
+  color: inherit;
+  background-color: transparent;
+
+
+  &:hover {
+    color: @brand-primary;
+    background-color: @gray-lighter;
+  }
+}
+
+.text-monospace {
+  font-family: @font-family-monospace;
+}
+
+// Custom row and link hover behaviour.
+td > a {
+  display: block;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  color: @gray-base;
+
+  &:hover {
+    color: @brand-primary;
+  }
+
+  &:focus, &:hover {
+    text-decoration: none;
+  }
+}
+
+tr:hover .text-muted {
+  color: @gray-base;
+}
+
+// Adjust column/row/cell sizes.
+.table {
+  table-layout: fixed; // Allows correct text overflow in cells.
+}
+
+.table > tbody > tr > td {
+  border: none;
+  padding: 0;
+  line-height: 40px;
+}
+
+// Filename.
+col:nth-child(1) {
+  width: auto;
+}
+
+// Permissions.
+col:nth-child(2) {
+  width: 100px;
+}
+
+// Timestamp.
+col:nth-child(3) {
+  width: 150px;
+}
+
+// Size.
+col:nth-child(4) {
+  width: 150px;
+}
+.table > tbody > tr > td:nth-child(4) {
+  padding-right: 50px;
+  text-align: right;
+}
+
+// Actions.
+col:nth-child(5) {
+  width: 50px;
+}
+td:nth-child(5) {
+  text-align: right;
+}
+
+@media (max-width: @screen-xs-max) {
+  col:nth-child(2), td:nth-child(2) {
+    display: none;
+  }
+  col:nth-child(3), td:nth-child(3) {
+    display: none;
+  }
+  col:nth-child(4), td:nth-child(4) {
+    display: none;
+  }
+}
+
+// TODO Re-add once timstamps are working.
+col:nth-child(3), td:nth-child(3) {
+  display: none;
+}

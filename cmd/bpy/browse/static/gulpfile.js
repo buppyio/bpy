@@ -29,9 +29,14 @@ gulp.task('css', function() {
 gulp.task('libs', function() {
   return [
     gulp.src('./node_modules/bootstrap/dist/fonts/*').pipe(gulp.dest('./www/fonts')),
-    gulp.src('./node_modules/bootstrap/dist/js/*').pipe(gulp.dest('./www/js')),
+    //gulp.src('./node_modules/bootstrap/dist/js/*').pipe(gulp.dest('./www/js')),
     gulp.src('./node_modules/jquery/dist/*').pipe(gulp.dest('./www/js'))
   ];
 });
 
+// Helpers.
 gulp.task('default', ['css', 'libs']);
+
+gulp.task('watch', ['default'], function(){
+  gulp.watch(cssSources, ['css']);
+});

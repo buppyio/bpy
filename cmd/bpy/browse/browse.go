@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strings"
 	"time"
 )
 
@@ -61,12 +62,18 @@ func (h *rootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+
 	_ = browseTemplate.Execute(w, struct {
-		Path    string
-		DirEnts fs.DirEnts
+		Path      string
+		PathParts []string
+		Name      string
+		DirEnts   fs.DirEnts
 	}{
-		Path:    walkPath,
-		DirEnts: dirEnts,
+		Path:      walkPath,
+		PathParts: pathParts,
+		Name:      pathParts[len(pathParts)-1],
+		DirEnts:   dirEnts,
 	})
 }
 
