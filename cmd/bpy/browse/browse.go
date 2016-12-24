@@ -1,7 +1,6 @@
 package browse
 
 import (
-	"compress/gzip"
 	"errors"
 	"flag"
 	"fmt"
@@ -78,10 +77,9 @@ func (h *rootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type archiveHandler struct {
-	c           *client.Client
-	k           *bpy.Key
-	store       bpy.CStore
-	archiveType string
+	c     *client.Client
+	k     *bpy.Key
+	store bpy.CStore
 }
 
 func (h *archiveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -122,37 +120,14 @@ func (h *archiveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case ".":
 		fallthrough
 	case "/":
-		archiveName = "root" + h.archiveType
+		archiveName = "root.zip"
 	default:
-		archiveName = base + h.archiveType
+		archiveName = base + ".zip"
 	}
 
-	w.Header().Set("Content-Type", mime.TypeByExtension(h.archiveType))
+	w.Header().Set("Content-Type", mime.TypeByExtension(".zip"))
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", archiveName))
-
-	switch h.archiveType {
-	case ".zip":
-		_ = archive.Zip(h.store, ent.HTree.Data, w)
-	case ".tar.gz":
-		gzw, err := gzip.NewWriterLevel(w, gzip.BestCompression)
-		if err != nil {
-			log.Printf("error creating gzip writer: %s", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		err = archive.Tar(h.store, ent.HTree.Data, gzw)
-		if err != nil {
-			log.Printf("error writing tar archive: %s", err)
-			return
-		}
-		err = gzw.Close()
-		if err != nil {
-			log.Printf("error closing gzip writer: %s", err)
-			return
-		}
-	default:
-		w.WriteHeader(http.StatusInternalServerError)
-	}
+	_ = archive.Zip(h.store, ent.HTree.Data, w)
 }
 
 type httpFs struct {
@@ -163,6 +138,7 @@ type httpFs struct {
 
 func (httpFs *httpFs) Open(fullPath string) (http.File, error) {
 	log.Printf("open: %s", fullPath)
+
 	rootHash, _, ok, err := remote.GetRoot(httpFs.c, httpFs.k)
 	if err != nil {
 		return nil, err
@@ -307,17 +283,9 @@ func Browse() {
 	}))
 
 	http.Handle("/zip/", http.StripPrefix("/zip", &archiveHandler{
-		c:           c,
-		k:           &k,
-		store:       store,
-		archiveType: ".zip",
-	}))
-
-	http.Handle("/targz/", http.StripPrefix("/targz", &archiveHandler{
-		c:           c,
-		k:           &k,
-		store:       store,
-		archiveType: ".tar.gz",
+		c:     c,
+		k:     &k,
+		store: store,
 	}))
 
 	http.Handle("/raw/", http.StripPrefix("/raw", http.FileServer(&httpFs{

@@ -33,9 +33,17 @@ func (ent *DirEnt) ModTime() time.Time { return time.Unix(ent.EntModTime, 0) }
 func (ent *DirEnt) IsDir() bool        { return ent.EntMode.IsDir() }
 func (ent *DirEnt) Sys() interface{}   { return nil }
 
-func (dir DirEnts) Len() int           { return len(dir) }
-func (dir DirEnts) Less(i, j int) bool { return dir[i].EntName < dir[j].EntName }
-func (dir DirEnts) Swap(i, j int)      { dir[i], dir[j] = dir[j], dir[i] }
+func (dir DirEnts) Len() int { return len(dir) }
+func (dir DirEnts) Less(i, j int) bool {
+	if dir[i].IsDir() && !dir[j].IsDir() {
+		return true
+	}
+	if !dir[i].IsDir() && dir[j].IsDir() {
+		return false
+	}
+	return dir[i].EntName < dir[j].EntName
+}
+func (dir DirEnts) Swap(i, j int) { dir[i], dir[j] = dir[j], dir[i] }
 
 func WriteDir(store bpy.CStore, indir DirEnts, mode os.FileMode) (DirEnt, error) {
 	dir := make(DirEnts, len(indir)+1, len(indir)+1)
