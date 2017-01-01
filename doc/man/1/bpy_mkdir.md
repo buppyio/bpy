@@ -25,6 +25,6 @@ $ bpy ls
 files/
 ```
 
-# SEE ALSO
+# See Also
 
 **bpy(1)**

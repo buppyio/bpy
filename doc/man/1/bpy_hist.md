@@ -4,40 +4,29 @@
 
 # Name
 
-bpy hist - list or prune a drive history
+bpy hist - list drive history
 
 # Synopsis
 
+The bpy hist command allows you to list this history.
+
 Whenever you make a change to your bpy files, data not removed. Bpy maintains a full history
-of changes in case you ever need to revert a mistake such as accidental deletion of a file.
-The bpy hist command allows you to list this history, and even prune it. Pruning your history 
-in conjunction with running bpy_gc(1) is the only way to purge data from the pack file storage.
+of changes between each garbage collection in case you ever need to revert a mistake such as accidental
+deletion of a file.
+
 
 # Usage
 
-```$ bpy hist list ```
-```$ bpy hist prune [-all] [-older-than=TIMESPEC]```
+```$ bpy hist```
 
 # Example
 
 View your history:
 
 ```
-$ bpy hist list
+$ bpy hist
 ```
 
-Clear all history:
-
-```
-$ bpy hist prune -all
-```
-
-Clear history older than midday on the first of February 2016:
-
-```
-$ bpy hist prune -older-than="12:00:00 1/2/2016"
-```
-
-# SEE ALSO
+# See Also
 
 **bpy(1)**, **bpy_gc(1)**, **bpy_timespec(7)**

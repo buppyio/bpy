@@ -4,12 +4,14 @@
 
 # Name
 
-bpy browse - launch a webserver that allows browsing
+bpy browse - launch a webserver that allows browsing of your bpy files.
 
 # Synopsis
 
-The browse command allows a convenient web based user interface that updates when
-the remote data changes. 
+The browse command allows a convenient web based user interface. 
+When run with no arguments it starts a web server on the default port,
+and automatically opens a web browser pointing to this URL so you may browse
+your files.
 
 # Usage
 
@@ -25,6 +27,6 @@ Run a local webserver where you can browse the bpy file system:
 $ bpy browse
 ```
 
-# SEE ALSO
+# See Also
 
 **bpy(1)**

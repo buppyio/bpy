@@ -28,6 +28,6 @@ BPY_CACHE_SIZE=536870912
 BPY_CACHE_LISTEN_ADDR=127.0.0.1:8877
 ```
 
-# SEE ALSO
+# See Also
 
 **bpy(1)**, **bpy_environment(7)**

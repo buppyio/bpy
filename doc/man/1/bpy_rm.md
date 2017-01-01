@@ -4,12 +4,14 @@
 
 # Name
 
-bpy rm - remove a file or folder
+bpy rm - remove a file or folder.
 
 # Synopsis
 
-rm removes a file or folder. The file contents and disk space
-will not be reclaimed until the next history clearing and garbage collection with bpy_hist(1) and bpy_gc(1).
+rm removes a file or folder from the buppy drive.
+Remote space will not be reclaimed until the next garbage collection by bpy_gc(1).
+If you made a mistake, bpy_undo(1) can be used for rolling back changes that were made
+before the last garbage collection.
 
 # Usage
 
@@ -26,6 +28,6 @@ $ bpy rm stuff
 $ bpy ls
 ```
 
-# SEE ALSO
+# See Also
 
-**bpy(1)**
+**bpy(1)**, **bpy_undo(1)**, **bpy_gc(1)**
