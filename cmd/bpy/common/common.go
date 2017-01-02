@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	IdxCachePermissions = 0755
+	IdxCachePermissions = 0700
 )
 
 type slave struct {
@@ -72,12 +72,12 @@ func dialRemote(cmdstr string) (io.ReadWriteCloser, error) {
 func GetCacheClient(cfg *Config) (*cache.Client, error) {
 	conn, err := net.Dial("tcp", cfg.CacheListenAddr)
 	if err != nil {
-		cmd := exec.Command(os.Args[0], "cache-daemon", "-addr", cfg.CacheListenAddr, "-nohup", "-idle-timeout=30", "-db", cfg.CacheFile)
+		cmd := exec.Command(os.Args[0], "cache-daemon", "-socktype", cfg.CacheSocketType, "-addr", cfg.CacheListenAddr, "-nohup", "-idle-timeout=30", "-db", cfg.CacheFile)
 		cmd.Dir = cfg.BuppyPath
 		cmd.Start()
 		connected := false
 		for i := 0; i < 10; i++ {
-			conn, err = net.Dial("tcp", cfg.CacheListenAddr)
+			conn, err = net.Dial(cfg.CacheSocketType, cfg.CacheListenAddr)
 			if err != nil {
 				time.Sleep(100 * time.Millisecond)
 				continue

@@ -2,17 +2,17 @@ package cachedaemon
 
 import (
 	"flag"
-	"github.com/buppyio/bpy/cmd/bpy/common"
 	"github.com/buppyio/bpy/cstore/cache"
 	"log"
 	"net"
+	"net/rpc"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 )
 
-func deadman(cache *cache.Cache, newCon, conOk, conClosed chan struct{}, idleTimeout time.Duration) {
+func deadman(newCon, conOk, conClosed, shutdown chan struct{}, idleTimeout time.Duration) {
 	t := time.NewTimer(idleTimeout)
 	counter := uint64(0)
 
@@ -40,9 +40,7 @@ func deadman(cache *cache.Cache, newCon, conOk, conClosed chan struct{}, idleTim
 	}
 
 timeout:
-	cache.Close()
-	log.Printf("exiting due expired idle timer")
-	os.Exit(0)
+	shutdown <- struct{}{}
 }
 
 func runForever(newCon, conOk, conClosed chan struct{}) {
@@ -56,48 +54,7 @@ func runForever(newCon, conOk, conClosed chan struct{}) {
 
 }
 
-func CacheDaemon() {
-	dbArg := flag.String("db", "", "path to dbfile")
-	addrArg := flag.String("addr", common.DefaultCacheListenAddr, "address to listen on")
-	nohupArg := flag.Bool("nohup", false, "ignore HUP signals")
-	sizeArg := flag.Int64("size", 1024*1024*1024, "max size of cache in bytes")
-	idleTimeoutArg := flag.Int64("idle-timeout", -1, "close if no connections after this many seconds")
-	flag.Parse()
-
-	if *nohupArg {
-		signal.Ignore(syscall.SIGHUP)
-	}
-
-	if *dbArg == "" {
-		log.Fatalf("please specify a db file")
-	}
-
-	c, err := cache.NewCache(*dbArg, 0755, uint64(*sizeArg))
-	if err != nil {
-		log.Fatalf("error creating: %s", err.Error())
-	}
-
-	server, err := cache.NewServer(c)
-	if err != nil {
-		log.Fatalf("error creating cache server: %s", err.Error())
-	}
-
-	log.Printf("listening on %s", *addrArg)
-	l, err := net.Listen("tcp", *addrArg)
-	if err != nil {
-		log.Fatalf("error listening: %s", err.Error())
-	}
-
-	newCon := make(chan struct{})
-	conOk := make(chan struct{})
-	conClosed := make(chan struct{})
-
-	if *idleTimeoutArg < 0 {
-		go runForever(newCon, conOk, conClosed)
-	} else {
-		go deadman(c, newCon, conOk, conClosed, time.Second*time.Duration(*idleTimeoutArg))
-	}
-
+func listenLoop(newCon, conOk, conClosed chan struct{}, l net.Listener, server *rpc.Server) {
 	for {
 		c, err := l.Accept()
 
@@ -117,5 +74,65 @@ func CacheDaemon() {
 			}()
 		}
 	}
+}
+
+func CacheDaemon() {
+	dbArg := flag.String("db", "", "path to dbfile")
+	socketTypeArg := flag.String("socktype", "", "type of socket to listen on")
+	addrArg := flag.String("addr", "", "address to listen on")
+	nohupArg := flag.Bool("nohup", false, "ignore HUP signals")
+	sizeArg := flag.Int64("size", 1024*1024*1024, "max size of cache in bytes")
+	idleTimeoutArg := flag.Int64("idle-timeout", -1, "close if no connections after this many seconds")
+	flag.Parse()
+
+	// Set a umask so unix sockets are not public
+	syscall.Umask(0077)
+
+	if *nohupArg {
+		signal.Ignore(syscall.SIGHUP)
+	}
+
+	if *dbArg == "" {
+		log.Fatalf("please specify a db file")
+	}
+
+	c, err := cache.NewCache(*dbArg, 0600, uint64(*sizeArg))
+	if err != nil {
+		log.Fatalf("error creating: %s", err.Error())
+	}
+
+	server, err := cache.NewServer(c)
+	if err != nil {
+		log.Fatalf("error creating cache server: %s", err.Error())
+	}
+
+	// The boltdb locking means we are the only process with the cache db open.
+	if *socketTypeArg == "unix" {
+		os.Remove(*addrArg)
+	}
+
+	log.Printf("listening on %s %s", *socketTypeArg, *addrArg)
+	l, err := net.Listen(*socketTypeArg, *addrArg)
+	if err != nil {
+		log.Fatalf("error listening: %s", err.Error())
+	}
+
+	newCon := make(chan struct{})
+	conOk := make(chan struct{})
+	conClosed := make(chan struct{})
+	shutdown := make(chan struct{})
+
+	if *idleTimeoutArg < 0 {
+		go runForever(newCon, conOk, conClosed)
+	} else {
+		go deadman(newCon, conOk, conClosed, shutdown, time.Second*time.Duration(*idleTimeoutArg))
+	}
+
+	go listenLoop(newCon, conOk, conClosed, l, server)
+
+	<-shutdown
+	log.Printf("exiting due expired idle timer")
+	c.Close()
+	os.Exit(0)
 
 }

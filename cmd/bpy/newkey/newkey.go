@@ -9,16 +9,19 @@ import (
 )
 
 func NewKey() {
-
-	keyFile := flag.String("f", "", "file to write the key to. (defaults to stdout)")
+	keyFile := flag.String("f", "", "file to write the key to. (defaults to $BPY_PATH/bpy.key)")
 
 	flag.Parse()
 
 	if *keyFile == "" {
-
+		cfg, err := common.GetConfig()
+		if err != nil {
+			common.Die("error getting config: %s\n", err)
+		}
+		*keyFile = cfg.KeyPath
 	}
 
-	f, err := os.OpenFile(*keyFile, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	f, err := os.OpenFile(*keyFile, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0400)
 	if err != nil {
 		common.Die("error creating key file: %s\n", err.Error())
 	}

@@ -5,12 +5,18 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"strconv"
 )
 
-const (
-	DefaultCacheListenAddr = "127.0.0.1:8877"
+var (
+	DefaultCacheSocketType string
+	DefaultCacheListenAddr string
 )
+
+func init() {
+
+}
 
 type Config struct {
 	BuppyPath       string
@@ -18,6 +24,7 @@ type Config struct {
 	ICachePath      string
 	CacheFile       string
 	CacheSize       int64
+	CacheSocketType string
 	CacheListenAddr string
 	KeyPath         string
 }
@@ -48,6 +55,9 @@ func setEnvConfigValues(cfg *Config) error {
 	}
 	if cfg.CacheFile == "" {
 		cfg.CacheFile = os.Getenv("BPY_CACHE_FILE")
+	}
+	if cfg.CacheSocketType == "" {
+		cfg.CacheSocketType = os.Getenv("BPY_CACHE_SOCKET_TYPE")
 	}
 	if cfg.CacheListenAddr == "" {
 		cfg.CacheListenAddr = os.Getenv("BPY_CACHE_LISTEN_ADDR")
@@ -87,6 +97,22 @@ func setDefaultConfigValues(cfg *Config) error {
 	}
 	if cfg.KeyPath == "" {
 		cfg.KeyPath = filepath.Join(cfg.BuppyPath, "bpy.key")
+	}
+	switch runtime.GOOS {
+	case "windows":
+		if cfg.CacheSocketType == "" {
+			cfg.CacheSocketType = "tcp"
+		}
+		if cfg.CacheListenAddr == "" {
+			cfg.CacheListenAddr = "127.0.0.1:8877"
+		}
+	default:
+		if cfg.CacheSocketType == "" {
+			cfg.CacheSocketType = "unix"
+		}
+		if cfg.CacheListenAddr == "" {
+			cfg.CacheListenAddr = filepath.Join(cfg.BuppyPath, "cache.sock")
+		}
 	}
 	if cfg.CacheListenAddr == "" {
 		cfg.CacheListenAddr = DefaultCacheListenAddr

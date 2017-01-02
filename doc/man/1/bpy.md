@@ -97,6 +97,9 @@ Generate a local key file used by bpy for encrypting data.
 Upload a local folder or file.
 
 ## rm
+Revert a change to an entry in the drive history.
+
+## rm
 Remove a file or folder.
 
 ## tar
