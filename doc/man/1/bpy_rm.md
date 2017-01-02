@@ -10,7 +10,7 @@ bpy rm - remove a file or folder.
 
 rm removes a file or folder from the buppy drive.
 Remote space will not be reclaimed until the next garbage collection by bpy_gc(1).
-If you made a mistake, bpy_undo(1) can be used for rolling back changes that were made
+If you made a mistake, bpy_revert(1) can be used for rolling back changes that were made
 before the last garbage collection.
 
 # Usage
@@ -30,4 +30,4 @@ $ bpy ls
 
 # See Also
 
-**bpy(1)**, **bpy_undo(1)**, **bpy_gc(1)**
+**bpy(1)**, **bpy_gc(1)**, **bpy_revert(1)**

@@ -68,17 +68,21 @@ func GC() {
 		newRef.HasPrev = false
 
 		newRefHash, err := refs.PutRef(store, newRef)
+		if err != nil {
+			common.Die("error writing updated ref: %s\n", err.Error())
+		}
+
+		err = store.Flush()
+		if err != nil {
+			common.Die("error flushing content store: %s\n", err.Error())
+		}
+
 		ok, err = remote.CasRoot(c, &k, newRefHash, bpy.NextRootVersion(rootVersion), epoch)
 		if err != nil {
 			common.Die("error swapping root: %s\n", err.Error())
 		}
 		if !ok {
 			common.Die("root concurrently modified, try again\n")
-		}
-
-		err = store.Flush()
-		if err != nil {
-			common.Die("error flushing content store: %s\n", err.Error())
 		}
 	}
 

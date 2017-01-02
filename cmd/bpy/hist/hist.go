@@ -47,7 +47,7 @@ func Hist() {
 		if err != nil {
 			common.Die("error fetching ref: %s\n", err.Error())
 		}
-		_, err = fmt.Printf("%s@%s\n", hex.EncodeToString(rootHash[:]), time.Unix(ref.CreatedAt, 0))
+		_, err = fmt.Printf("%s\t%s\n", hex.EncodeToString(rootHash[:]), time.Unix(ref.CreatedAt, 0))
 		if err != nil {
 			common.Die("io error: %s\n", err.Error())
 		}

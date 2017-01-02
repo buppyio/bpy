@@ -17,6 +17,7 @@ import (
 	"github.com/buppyio/bpy/cmd/bpy/newkey"
 	"github.com/buppyio/bpy/cmd/bpy/p9"
 	"github.com/buppyio/bpy/cmd/bpy/put"
+	"github.com/buppyio/bpy/cmd/bpy/revert"
 	"github.com/buppyio/bpy/cmd/bpy/rm"
 	"github.com/buppyio/bpy/cmd/bpy/tar"
 	"github.com/buppyio/bpy/cmd/bpy/version"
@@ -63,6 +64,8 @@ func main() {
 			cmd = mv.Mv
 		case "put":
 			cmd = put.Put
+		case "revert":
+			cmd = revert.Revert
 		case "rm":
 			cmd = rm.Rm
 		case "tar":
