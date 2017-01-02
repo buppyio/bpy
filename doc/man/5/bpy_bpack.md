@@ -47,6 +47,6 @@ The following is an example diagram showing the layout of 3 values and the index
 +-------------+
 ```
 
-# SEE ALSO
+# See Also
 
 **bpy(1)**

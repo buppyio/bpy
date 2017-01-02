@@ -42,6 +42,6 @@ it can be accessed.
 
 ```
 
-# SEE ALSO
+# See Also
 
 **bpy(1)** **bpy_bpack(5)**
