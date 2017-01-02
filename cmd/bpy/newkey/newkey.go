@@ -45,5 +45,7 @@ func NewKey() {
 	if err != nil {
 		common.Die("%s\n", err.Error())
 	}
-
+	
+	_, _ = fmt.Printf("created key file %s\n\n", *keyFile)
+	_, _ = fmt.Println("store a copy in a safe place, if you lose it any data encrypted with it will be lost *FOREVER*")
 }

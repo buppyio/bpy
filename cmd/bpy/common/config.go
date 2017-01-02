@@ -14,10 +14,6 @@ var (
 	DefaultCacheListenAddr string
 )
 
-func init() {
-
-}
-
 type Config struct {
 	BuppyPath       string
 	RemoteCommand   string
