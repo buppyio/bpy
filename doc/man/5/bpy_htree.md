@@ -35,10 +35,10 @@ Chunk0, address = SHA256(Deflate(Chunk0))
 | | offset1[8]   | | offset1 = 0
 | | address1[32] | | address1 = SHA256(Deflate(Chunk1))
 | | offset2[8]   | | offset2 = N1
-| | address1[32] | | address2 = SHA256(Deflate(Chunk2))
+| | address2[32] | | address2 = SHA256(Deflate(Chunk2))
 | +--------------+ |
 +------------------+
-Chunk1, address = SHA256(Deflate(Chunk2))
+Chunk1, address1 = SHA256(Deflate(Chunk2))
 +------------------+
 | Flate compressed |
 | +--------------+ |
@@ -46,7 +46,7 @@ Chunk1, address = SHA256(Deflate(Chunk2))
 | | data1[N1]    | |
 | +--------------+ |
 +------------------+
-Chunk2, address = SHA256(Deflate(Chunk2))
+Chunk2, address2 = SHA256(Deflate(Chunk2))
 +------------------+
 | Flate compressed |
 | +--------------+ |

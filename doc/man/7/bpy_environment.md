@@ -1,4 +1,4 @@
-% bpy_environ(7)
+% bpy_environment(7)
 % Andrew Chambers
 % 2016
 
