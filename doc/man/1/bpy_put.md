@@ -8,7 +8,7 @@ bpy put - put a local folder into the bpy drive.
 
 # Synopsis
 
-The put command lets you upload a local file or folder into the bpy root or a subfolder.
+The put command lets you upload a local file or folder into the bpy drive or a subfolder.
 
 # Usage
 
@@ -44,6 +44,5 @@ $ bpy ls
 foo.txt
 ```
 
-# SEE ALSO
-
+# See Also
 **bpy(1)**

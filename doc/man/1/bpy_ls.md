@@ -26,6 +26,6 @@ $ bpy ls
 hello/
 ```
 
-# SEE ALSO
+# See Also
 
 **bpy(1)**, **bpy_timespec(7)**

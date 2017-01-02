@@ -4,7 +4,7 @@
 
 # Name
 
-bpy put - move a file or folder
+bpy mv - move a file or folder
 
 # Synopsis
 
@@ -26,6 +26,6 @@ $ bpy ls
 renamed.txt
 ```
 
-# SEE ALSO
+# See Also
 
 **bpy(1)**

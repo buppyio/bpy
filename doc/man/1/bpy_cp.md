@@ -16,7 +16,7 @@ The cp command lets you copy a file or folder from one path to another.
 
 # Example
 
-Copy a file
+Copy a file:
 
 ```
 $ bpy ls
@@ -27,6 +27,6 @@ hello.txt
 renamed.txt
 ```
 
-# SEE ALSO
+# See Also
 
 **bpy(1)**, **bpy_timespec(7)**

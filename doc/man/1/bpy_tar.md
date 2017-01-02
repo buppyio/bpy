@@ -8,15 +8,15 @@ bpy tar - export a bpy folder to a tar archive
 
 # Synopsis
 
-The tar command creates a tar archive out of the specified folder.
+The tar command creates a tar archive out of the specified folder writing the output to stdout.
 
 # Usage
 
-```bpy tar [-at=TIMESPEC] src | gzip -9 > src.tar.gz```
+```bpy tar [-at=TIMESPEC] src```
 
 # Example
 
-Fetch the entire ref as a tar file:
+Fetch the entire drive as a tar file:
 
 ```
 $ bpy tar / > out.tar
@@ -28,6 +28,6 @@ Fetch a specific folder as a tar file and add compression
 $ bpy tar path/to/files | gzip > out.tar.gz
 ```
 
-# SEE ALSO
+# See Also
 
 **bpy(1)**
